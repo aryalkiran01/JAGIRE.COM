@@ -47,6 +47,8 @@ export function ApplyJobDialog({ jobId, disabled, applied }: { jobId: string; di
         finalResumeId = resumes.find((r) => r.is_default)?.id ?? resumes[0].id;
       }
 
+      if (!finalResumeId) throw new Error("Please attach a resume before applying");
+
       const { error } = await supabase.from("applications").insert({
         job_id: jobId,
         applicant_id: user.id,
