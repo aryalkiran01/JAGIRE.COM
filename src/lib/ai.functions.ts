@@ -206,12 +206,12 @@ export const scanResumeFromStorage = createServerFn({ method: "POST" })
     if (skills.length) {
       const { data: jobs } = await context.supabase
         .from("jobs")
-        .select("id, title, skills, company:companies(name)")
+        .select("id, title, required_skills, company:companies(name)")
         .eq("status", "active")
         .limit(200);
       matches = (jobs ?? [])
         .map((j: any) => {
-          const js = ((j.skills ?? []) as string[]).map((s) => s.toLowerCase());
+          const js = ((j.required_skills ?? []) as string[]).map((s) => s.toLowerCase());
           if (!js.length) return { id: j.id, title: j.title, company: j.company?.name ?? null, score: 0 };
           const hits = js.filter((s) => skills.some((k) => s.includes(k) || k.includes(s))).length;
           const score = Math.round((hits / Math.max(js.length, 1)) * 100);
