@@ -163,6 +163,24 @@ function ProfilePage() {
         </CardContent>
       </Card>
 
+      <Card>
+        <CardHeader><CardTitle className="flex items-center gap-2"><Linkedin className="h-5 w-5" /> Import from LinkedIn</CardTitle></CardHeader>
+        <CardContent className="space-y-2">
+          <Input placeholder="https://linkedin.com/in/your-handle (optional)" value={liUrl} onChange={(e) => setLiUrl(e.target.value)} />
+          <Textarea
+            rows={5}
+            placeholder="Paste your LinkedIn About + Experience text here. AI will extract your headline, skills, and summary."
+            value={liText}
+            onChange={(e) => setLiText(e.target.value)}
+          />
+          <div className="flex justify-end">
+            <Button onClick={doLiImport} disabled={liImporting} className="gradient-brand text-primary-foreground">
+              {liImporting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Import with AI"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       {projects.length > 0 && (
         <Card>
           <CardHeader><CardTitle>Featured projects</CardTitle></CardHeader>
