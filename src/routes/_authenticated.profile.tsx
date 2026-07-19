@@ -12,8 +12,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
-import { Github, Upload, Loader2, Star, ExternalLink } from "lucide-react";
-import { importFromGitHub } from "@/lib/ai.functions";
+import { Github, Upload, Loader2, Star, ExternalLink, Linkedin } from "lucide-react";
+import { importFromGitHub, importFromLinkedInText } from "@/lib/ai.functions";
 
 export const Route = createFileRoute("/_authenticated/profile")({ component: ProfilePage });
 
@@ -21,8 +21,12 @@ function ProfilePage() {
   const { user } = useAuth();
   const qc = useQueryClient();
   const runImport = useServerFn(importFromGitHub);
+  const runLiImport = useServerFn(importFromLinkedInText);
   const [ghUser, setGhUser] = useState("");
   const [importing, setImporting] = useState(false);
+  const [liText, setLiText] = useState("");
+  const [liUrl, setLiUrl] = useState("");
+  const [liImporting, setLiImporting] = useState(false);
   const [uploading, setUploading] = useState<null | "avatar" | "banner">(null);
 
   const { data: profile } = useQuery({
@@ -88,6 +92,21 @@ function ProfilePage() {
       toast.error(e.message);
     } finally {
       setImporting(false);
+    }
+  }
+
+  async function doLiImport() {
+    if (!liText.trim()) return toast.error("Paste your LinkedIn About / Experience text");
+    setLiImporting(true);
+    try {
+      const res = await runLiImport({ data: { text: liText.trim(), url: liUrl.trim() } });
+      toast.success(`Imported ${res.imported.fields} profile fields`);
+      setLiText("");
+      qc.invalidateQueries({ queryKey: ["profile"] });
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setLiImporting(false);
     }
   }
 
