@@ -24,7 +24,7 @@ function Assessments() {
 
   const { data: list } = useQuery({
     queryKey: ["assessments"], enabled: !!user,
-    queryFn: async () => (await supabase.from("assessments").select("*").order("created_at", { ascending: false })).data ?? [],
+    queryFn: async () => (await supabase.from("assessments_catalog" as any).select("*").order("created_at", { ascending: false })).data ?? [],
   });
   const { data: attempts } = useQuery({
     queryKey: ["attempts", user?.id], enabled: !!user,
@@ -33,22 +33,19 @@ function Assessments() {
 
   async function submit() {
     if (!taking || !user) return;
-    const questions = (taking.questions ?? []) as Q[];
-    let correct = 0;
-    questions.forEach((q, i) => { if (answers[i] === q.correct) correct++; });
-    const score = questions.length ? Math.round((correct / questions.length) * 100) : 0;
-    const passed = score >= (taking.passing_score ?? 70);
-    const { error } = await supabase.from("assessment_attempts").insert({
-      assessment_id: taking.id, user_id: user.id, score, answers, passed,
+    const { data, error } = await supabase.rpc("submit_assessment" as any, {
+      _assessment_id: taking.id,
+      _answers: answers as any,
     });
     if (error) return toast.error(error.message);
-    toast.success(`Score: ${score}% — ${passed ? "Passed 🎉" : "Try again"}`);
+    const row: any = Array.isArray(data) ? data[0] : data;
+    toast.success(`Score: ${row?.score ?? 0}% — ${row?.passed ? "Passed 🎉" : "Try again"}`);
     setTaking(null); setAnswers([]);
     qc.invalidateQueries({ queryKey: ["attempts"] });
   }
 
   if (taking) {
-    const questions = (taking.questions ?? []) as Q[];
+    const questions = (taking.questions ?? []) as Omit<Q, "correct">[];
     return (
       <div className="container mx-auto px-4 py-8 max-w-3xl">
         <div className="flex justify-between items-center mb-6">
