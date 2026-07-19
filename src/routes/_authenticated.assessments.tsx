@@ -24,7 +24,7 @@ function Assessments() {
 
   const { data: list } = useQuery({
     queryKey: ["assessments"], enabled: !!user,
-    queryFn: async () => (await supabase.from("assessments").select("*").order("created_at", { ascending: false })).data ?? [],
+    queryFn: async () => (await supabase.from("assessments_catalog" as any).select("*").order("created_at", { ascending: false })).data ?? [],
   });
   const { data: attempts } = useQuery({
     queryKey: ["attempts", user?.id], enabled: !!user,
@@ -33,22 +33,19 @@ function Assessments() {
 
   async function submit() {
     if (!taking || !user) return;
-    const questions = (taking.questions ?? []) as Q[];
-    let correct = 0;
-    questions.forEach((q, i) => { if (answers[i] === q.correct) correct++; });
-    const score = questions.length ? Math.round((correct / questions.length) * 100) : 0;
-    const passed = score >= (taking.passing_score ?? 70);
-    const { error } = await supabase.from("assessment_attempts").insert({
-      assessment_id: taking.id, user_id: user.id, score, answers, passed,
+    const { data, error } = await supabase.rpc("submit_assessment" as any, {
+      _assessment_id: taking.id,
+      _answers: answers as any,
     });
     if (error) return toast.error(error.message);
-    toast.success(`Score: ${score}% — ${passed ? "Passed 🎉" : "Try again"}`);
+    const row: any = Array.isArray(data) ? data[0] : data;
+    toast.success(`Score: ${row?.score ?? 0}% — ${row?.passed ? "Passed 🎉" : "Try again"}`);
     setTaking(null); setAnswers([]);
     qc.invalidateQueries({ queryKey: ["attempts"] });
   }
 
   if (taking) {
-    const questions = (taking.questions ?? []) as Q[];
+    const questions = (taking.questions ?? []) as Omit<Q, "correct">[];
     return (
       <div className="container mx-auto px-4 py-8 max-w-3xl">
         <div className="flex justify-between items-center mb-6">
@@ -99,9 +96,15 @@ function Assessments() {
               </CardHeader>
               <CardContent className="space-y-3">
                 <p className="text-sm text-muted-foreground line-clamp-2">{a.description}</p>
-                <div className="text-xs text-muted-foreground">{(a.questions ?? []).length} questions · {a.duration_minutes} min · pass {a.passing_score}%</div>
+                <div className="text-xs text-muted-foreground">{a.question_count ?? 0} questions · {a.duration_minutes} min · pass {a.passing_score}%</div>
                 {best && <div className="flex items-center gap-1 text-sm"><Award className="h-4 w-4 text-primary" />Best: {best.score}% {best.passed && <Badge className="ml-1">Passed</Badge>}</div>}
-                <Button className="w-full" onClick={() => { setTaking(a); setAnswers(new Array((a.questions ?? []).length).fill(-1)); }}>Take assessment</Button>
+                <Button className="w-full" onClick={async () => {
+                  const { data, error } = await supabase.rpc("get_assessment_questions" as any, { _assessment_id: a.id });
+                  if (error) return toast.error(error.message);
+                  const qs = (data ?? []) as any[];
+                  setTaking({ ...a, questions: qs });
+                  setAnswers(new Array(qs.length).fill(-1));
+                }}>Take assessment</Button>
               </CardContent>
             </Card>
           );
