@@ -12,8 +12,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
-import { Github, Upload, Loader2, Star, ExternalLink } from "lucide-react";
-import { importFromGitHub } from "@/lib/ai.functions";
+import { Github, Upload, Loader2, Star, ExternalLink, Linkedin } from "lucide-react";
+import { importFromGitHub, importFromLinkedInText } from "@/lib/ai.functions";
 
 export const Route = createFileRoute("/_authenticated/profile")({ component: ProfilePage });
 
@@ -21,8 +21,12 @@ function ProfilePage() {
   const { user } = useAuth();
   const qc = useQueryClient();
   const runImport = useServerFn(importFromGitHub);
+  const runLiImport = useServerFn(importFromLinkedInText);
   const [ghUser, setGhUser] = useState("");
   const [importing, setImporting] = useState(false);
+  const [liText, setLiText] = useState("");
+  const [liUrl, setLiUrl] = useState("");
+  const [liImporting, setLiImporting] = useState(false);
   const [uploading, setUploading] = useState<null | "avatar" | "banner">(null);
 
   const { data: profile } = useQuery({
@@ -91,6 +95,21 @@ function ProfilePage() {
     }
   }
 
+  async function doLiImport() {
+    if (!liText.trim()) return toast.error("Paste your LinkedIn About / Experience text");
+    setLiImporting(true);
+    try {
+      const res = await runLiImport({ data: { text: liText.trim(), url: liUrl.trim() } });
+      toast.success(`Imported ${res.imported.fields} profile fields`);
+      setLiText("");
+      qc.invalidateQueries({ queryKey: ["profile"] });
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setLiImporting(false);
+    }
+  }
+
   const projects = (profile as any)?.projects ?? [];
   const skills = (profile as any)?.skills ?? [];
 
@@ -141,6 +160,24 @@ function ProfilePage() {
           <Button onClick={doImport} disabled={importing} className="gradient-brand text-primary-foreground">
             {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : "Import"}
           </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader><CardTitle className="flex items-center gap-2"><Linkedin className="h-5 w-5" /> Import from LinkedIn</CardTitle></CardHeader>
+        <CardContent className="space-y-2">
+          <Input placeholder="https://linkedin.com/in/your-handle (optional)" value={liUrl} onChange={(e) => setLiUrl(e.target.value)} />
+          <Textarea
+            rows={5}
+            placeholder="Paste your LinkedIn About + Experience text here. AI will extract your headline, skills, and summary."
+            value={liText}
+            onChange={(e) => setLiText(e.target.value)}
+          />
+          <div className="flex justify-end">
+            <Button onClick={doLiImport} disabled={liImporting} className="gradient-brand text-primary-foreground">
+              {liImporting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Import with AI"}
+            </Button>
+          </div>
         </CardContent>
       </Card>
 

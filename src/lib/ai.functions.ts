@@ -206,12 +206,12 @@ export const scanResumeFromStorage = createServerFn({ method: "POST" })
     if (skills.length) {
       const { data: jobs } = await context.supabase
         .from("jobs")
-        .select("id, title, skills, company:companies(name)")
+        .select("id, title, required_skills, company:companies(name)")
         .eq("status", "active")
         .limit(200);
       matches = (jobs ?? [])
         .map((j: any) => {
-          const js = ((j.skills ?? []) as string[]).map((s) => s.toLowerCase());
+          const js = ((j.required_skills ?? []) as string[]).map((s) => s.toLowerCase());
           if (!js.length) return { id: j.id, title: j.title, company: j.company?.name ?? null, score: 0 };
           const hits = js.filter((s) => skills.some((k) => s.includes(k) || k.includes(s))).length;
           const score = Math.round((hits / Math.max(js.length, 1)) * 100);
@@ -290,4 +290,39 @@ export const learningRecommendations = createServerFn({ method: "POST" })
     ]);
     const parsed = safeJson<{ items: any[] }>(out);
     return { items: parsed?.items ?? [] };
+  });
+
+export const importFromLinkedInText = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => {
+    const i = input as { text: string; url?: string };
+    if (!i?.text || i.text.trim().length < 50) throw new Error("Paste at least your LinkedIn About / Experience text");
+    return { text: i.text.slice(0, 20000), url: (i.url ?? "").trim() };
+  })
+  .handler(async ({ data, context }) => {
+    const out = await callGateway([
+      {
+        role: "system",
+        content:
+          "Extract a professional profile from the pasted LinkedIn text. Return ONLY strict JSON with keys: full_name (string or null), headline (string or null), about (string), location (string or null), current_position (string or null), experience_years (integer estimate, 0 if unknown), skills (array of strings, max 20).",
+      },
+      { role: "user", content: data.text },
+    ]);
+    const parsed = safeJson<{
+      full_name?: string | null; headline?: string | null; about?: string; location?: string | null;
+      current_position?: string | null; experience_years?: number; skills?: string[];
+    }>(out);
+    if (!parsed) throw new Error("AI returned invalid response");
+    const patch: Record<string, any> = {};
+    if (parsed.full_name) patch.full_name = parsed.full_name;
+    if (parsed.headline) patch.headline = parsed.headline;
+    if (parsed.about) patch.about = parsed.about;
+    if (parsed.location) patch.location = parsed.location;
+    if (parsed.current_position) patch.current_position = parsed.current_position;
+    if (Number.isFinite(parsed.experience_years)) patch.experience_years = Math.max(0, Math.min(60, Math.round(Number(parsed.experience_years))));
+    if (parsed.skills?.length) patch.skills = parsed.skills.slice(0, 20);
+    if (data.url) patch.linkedin_url = data.url;
+    const { error } = await (context.supabase.from("profiles") as any).update(patch).eq("id", context.userId);
+    if (error) throw new Error(error.message);
+    return { imported: { fields: Object.keys(patch).length, skills: patch.skills?.length ?? 0 } };
   });
