@@ -19,6 +19,7 @@ function FeedPage() {
   const qc = useQueryClient();
   const [content, setContent] = useState("");
   const [imageUrl, setImageUrl] = useState("");
+  const [uploading, setUploading] = useState(false);
   const [commentDraft, setCommentDraft] = useState<Record<string, string>>({});
 
   const { data: posts, isLoading } = useQuery({
@@ -60,6 +61,25 @@ function FeedPage() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    if (file.size > 5 * 1024 * 1024) return toast.error("Image must be under 5MB");
+    setUploading(true);
+    try {
+      const path = `${user.id}/${Date.now()}-${file.name}`;
+      const up = await supabase.storage.from("posts").upload(path, file, { upsert: false });
+      if (up.error) throw up.error;
+      const { data } = await supabase.storage.from("posts").createSignedUrl(path, 60 * 60 * 24 * 365);
+      setImageUrl(data?.signedUrl ?? "");
+      toast.success("Image attached");
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setUploading(false);
+    }
+  }
+
   async function toggleLike(postId: string, liked: boolean) {
     if (liked) await supabase.from("post_likes" as any).delete().eq("post_id", postId).eq("user_id", user!.id);
     else await supabase.from("post_likes" as any).insert({ post_id: postId, user_id: user!.id });
@@ -86,7 +106,10 @@ function FeedPage() {
       <Card>
         <CardContent className="p-4 space-y-3">
           <Textarea rows={3} placeholder="Share an update, insight, or achievement…" value={content} onChange={(e) => setContent(e.target.value)} />
-          <Input placeholder="Optional image URL" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} />
+          <div className="flex gap-2 items-center">
+            <Input type="file" accept="image/*" onChange={handleImageUpload} disabled={uploading} className="text-xs" />
+            {imageUrl && <span className="text-xs text-muted-foreground truncate">✓ image attached</span>}
+          </div>
           <div className="flex justify-end">
             <Button className="gradient-brand text-primary-foreground" onClick={() => createPost.mutate()} disabled={createPost.isPending}>
               {createPost.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Post"}
