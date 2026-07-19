@@ -96,9 +96,15 @@ function Assessments() {
               </CardHeader>
               <CardContent className="space-y-3">
                 <p className="text-sm text-muted-foreground line-clamp-2">{a.description}</p>
-                <div className="text-xs text-muted-foreground">{(a.questions ?? []).length} questions · {a.duration_minutes} min · pass {a.passing_score}%</div>
+                <div className="text-xs text-muted-foreground">{a.question_count ?? 0} questions · {a.duration_minutes} min · pass {a.passing_score}%</div>
                 {best && <div className="flex items-center gap-1 text-sm"><Award className="h-4 w-4 text-primary" />Best: {best.score}% {best.passed && <Badge className="ml-1">Passed</Badge>}</div>}
-                <Button className="w-full" onClick={() => { setTaking(a); setAnswers(new Array((a.questions ?? []).length).fill(-1)); }}>Take assessment</Button>
+                <Button className="w-full" onClick={async () => {
+                  const { data, error } = await supabase.rpc("get_assessment_questions" as any, { _assessment_id: a.id });
+                  if (error) return toast.error(error.message);
+                  const qs = (data ?? []) as any[];
+                  setTaking({ ...a, questions: qs });
+                  setAnswers(new Array(qs.length).fill(-1));
+                }}>Take assessment</Button>
               </CardContent>
             </Card>
           );
