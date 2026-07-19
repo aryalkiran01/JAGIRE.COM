@@ -28,13 +28,30 @@ function CompanyForm() {
 
   const upsert = useMutation({
     mutationFn: async () => {
-      await supabase.from("user_roles").insert({ user_id: user!.id, role: "employer" }).select();
-      const payload = { ...form, owner_id: user!.id, slug: form.slug || slugify(form.name) };
+      // Ensure the user has the employer role (ignore duplicate)
+      const roleRes = await supabase.from("user_roles").insert({ user_id: user!.id, role: "employer" });
+      if (roleRes.error && roleRes.error.code !== "23505") throw roleRes.error;
+
+      // Only send editable fields; never send id/created_at/updated_at/counter cols
+      const editable = {
+        name: form.name,
+        tagline: form.tagline || null,
+        description: form.description || null,
+        website: form.website || null,
+        industry: form.industry || null,
+        size: form.size || null,
+        headquarters: form.headquarters || null,
+        logo_url: form.logo_url || null,
+      };
       if (company) {
-        const { error } = await supabase.from("companies").update(payload).eq("id", company.id);
+        const { error } = await supabase.from("companies").update(editable).eq("id", company.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("companies").insert(payload);
+        const { error } = await supabase.from("companies").insert({
+          ...editable,
+          owner_id: user!.id,
+          slug: slugify(form.name) || `co-${Date.now()}`,
+        });
         if (error) throw error;
       }
     },
