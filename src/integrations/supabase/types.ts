@@ -1347,7 +1347,6 @@ export type Database = {
         Row: {
           category: string | null
           created_at: string | null
-          created_by: string | null
           description: string | null
           difficulty: string | null
           duration_minutes: number | null
@@ -1355,12 +1354,10 @@ export type Database = {
           passing_score: number | null
           question_count: number | null
           title: string | null
-          updated_at: string | null
         }
         Insert: {
           category?: string | null
           created_at?: string | null
-          created_by?: string | null
           description?: string | null
           difficulty?: string | null
           duration_minutes?: number | null
@@ -1368,12 +1365,10 @@ export type Database = {
           passing_score?: number | null
           question_count?: never
           title?: string | null
-          updated_at?: string | null
         }
         Update: {
           category?: string | null
           created_at?: string | null
-          created_by?: string | null
           description?: string | null
           difficulty?: string | null
           duration_minutes?: number | null
@@ -1381,12 +1376,15 @@ export type Database = {
           passing_score?: number | null
           question_count?: never
           title?: string | null
-          updated_at?: string | null
         }
         Relationships: []
       }
     }
     Functions: {
+      get_assessment_questions: {
+        Args: { _assessment_id: string }
+        Returns: Json
+      }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
@@ -1397,6 +1395,13 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      submit_assessment: {
+        Args: { _answers: Json; _assessment_id: string }
+        Returns: {
+          passed: boolean
+          score: number
+        }[]
       }
     }
     Enums: {
