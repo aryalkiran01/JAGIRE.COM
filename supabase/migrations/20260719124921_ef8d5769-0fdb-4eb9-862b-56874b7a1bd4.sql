@@ -1,0 +1,1 @@
+-- see /tmp/all_migrations.sql; loading via file inclusion isn't supported so I'll pass in chunks
