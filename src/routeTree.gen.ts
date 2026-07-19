@@ -9,38 +9,540 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SupportRouteImport } from './routes/support'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as PricingRouteImport } from './routes/pricing'
+import { Route as JobsRouteImport } from './routes/jobs'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
+import { Route as ContactRouteImport } from './routes/contact'
+import { Route as CompaniesRouteImport } from './routes/companies'
+import { Route as BlogRouteImport } from './routes/blog'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AboutRouteImport } from './routes/about'
+import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as JobsJobIdRouteImport } from './routes/jobs.$jobId'
+import { Route as CompaniesSlugRouteImport } from './routes/companies.$slug'
+import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
+import { Route as AuthenticatedSavedRouteImport } from './routes/_authenticated.saved'
+import { Route as AuthenticatedResumeScannerRouteImport } from './routes/_authenticated.resume-scanner'
+import { Route as AuthenticatedResumeBuilderRouteImport } from './routes/_authenticated.resume-builder'
+import { Route as AuthenticatedReferralsRouteImport } from './routes/_authenticated.referrals'
+import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated.profile'
+import { Route as AuthenticatedNotificationsRouteImport } from './routes/_authenticated.notifications'
+import { Route as AuthenticatedMessagesRouteImport } from './routes/_authenticated.messages'
+import { Route as AuthenticatedLearnRouteImport } from './routes/_authenticated.learn'
+import { Route as AuthenticatedFeedRouteImport } from './routes/_authenticated.feed'
+import { Route as AuthenticatedEmployerRouteImport } from './routes/_authenticated.employer'
+import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated.dashboard'
+import { Route as AuthenticatedCareerRouteImport } from './routes/_authenticated.career'
+import { Route as AuthenticatedBlogEditorRouteImport } from './routes/_authenticated.blog-editor'
+import { Route as AuthenticatedAssessmentsRouteImport } from './routes/_authenticated.assessments'
+import { Route as AuthenticatedApplicationsRouteImport } from './routes/_authenticated.applications'
+import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated.admin'
+import { Route as AuthenticatedEmployerIndexRouteImport } from './routes/_authenticated.employer.index'
+import { Route as AuthenticatedEmployerCompanyRouteImport } from './routes/_authenticated.employer.company'
+import { Route as AuthenticatedEmployerJobsNewRouteImport } from './routes/_authenticated.employer.jobs.new'
+import { Route as AuthenticatedEmployerJobsJobIdRouteImport } from './routes/_authenticated.employer.jobs.$jobId'
 
+const SupportRoute = SupportRouteImport.update({
+  id: '/support',
+  path: '/support',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PricingRoute = PricingRouteImport.update({
+  id: '/pricing',
+  path: '/pricing',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const JobsRoute = JobsRouteImport.update({
+  id: '/jobs',
+  path: '/jobs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContactRoute = ContactRouteImport.update({
+  id: '/contact',
+  path: '/contact',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CompaniesRoute = CompaniesRouteImport.update({
+  id: '/companies',
+  path: '/companies',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BlogRoute = BlogRouteImport.update({
+  id: '/blog',
+  path: '/blog',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AboutRoute = AboutRouteImport.update({
+  id: '/about',
+  path: '/about',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedRoute = AuthenticatedRouteImport.update({
+  id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const JobsJobIdRoute = JobsJobIdRouteImport.update({
+  id: '/$jobId',
+  path: '/$jobId',
+  getParentRoute: () => JobsRoute,
+} as any)
+const CompaniesSlugRoute = CompaniesSlugRouteImport.update({
+  id: '/$slug',
+  path: '/$slug',
+  getParentRoute: () => CompaniesRoute,
+} as any)
+const BlogSlugRoute = BlogSlugRouteImport.update({
+  id: '/$slug',
+  path: '/$slug',
+  getParentRoute: () => BlogRoute,
+} as any)
+const AuthenticatedSavedRoute = AuthenticatedSavedRouteImport.update({
+  id: '/saved',
+  path: '/saved',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedResumeScannerRoute =
+  AuthenticatedResumeScannerRouteImport.update({
+    id: '/resume-scanner',
+    path: '/resume-scanner',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedResumeBuilderRoute =
+  AuthenticatedResumeBuilderRouteImport.update({
+    id: '/resume-builder',
+    path: '/resume-builder',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedReferralsRoute = AuthenticatedReferralsRouteImport.update({
+  id: '/referrals',
+  path: '/referrals',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedProfileRoute = AuthenticatedProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedNotificationsRoute =
+  AuthenticatedNotificationsRouteImport.update({
+    id: '/notifications',
+    path: '/notifications',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedMessagesRoute = AuthenticatedMessagesRouteImport.update({
+  id: '/messages',
+  path: '/messages',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedLearnRoute = AuthenticatedLearnRouteImport.update({
+  id: '/learn',
+  path: '/learn',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedFeedRoute = AuthenticatedFeedRouteImport.update({
+  id: '/feed',
+  path: '/feed',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedEmployerRoute = AuthenticatedEmployerRouteImport.update({
+  id: '/employer',
+  path: '/employer',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedCareerRoute = AuthenticatedCareerRouteImport.update({
+  id: '/career',
+  path: '/career',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedBlogEditorRoute = AuthenticatedBlogEditorRouteImport.update({
+  id: '/blog-editor',
+  path: '/blog-editor',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedAssessmentsRoute =
+  AuthenticatedAssessmentsRouteImport.update({
+    id: '/assessments',
+    path: '/assessments',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedApplicationsRoute =
+  AuthenticatedApplicationsRouteImport.update({
+    id: '/applications',
+    path: '/applications',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedEmployerIndexRoute =
+  AuthenticatedEmployerIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedEmployerRoute,
+  } as any)
+const AuthenticatedEmployerCompanyRoute =
+  AuthenticatedEmployerCompanyRouteImport.update({
+    id: '/company',
+    path: '/company',
+    getParentRoute: () => AuthenticatedEmployerRoute,
+  } as any)
+const AuthenticatedEmployerJobsNewRoute =
+  AuthenticatedEmployerJobsNewRouteImport.update({
+    id: '/jobs/new',
+    path: '/jobs/new',
+    getParentRoute: () => AuthenticatedEmployerRoute,
+  } as any)
+const AuthenticatedEmployerJobsJobIdRoute =
+  AuthenticatedEmployerJobsJobIdRouteImport.update({
+    id: '/jobs/$jobId',
+    path: '/jobs/$jobId',
+    getParentRoute: () => AuthenticatedEmployerRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
+  '/auth': typeof AuthRoute
+  '/blog': typeof BlogRouteWithChildren
+  '/companies': typeof CompaniesRouteWithChildren
+  '/contact': typeof ContactRoute
+  '/forgot-password': typeof ForgotPasswordRoute
+  '/jobs': typeof JobsRouteWithChildren
+  '/pricing': typeof PricingRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/support': typeof SupportRoute
+  '/admin': typeof AuthenticatedAdminRoute
+  '/applications': typeof AuthenticatedApplicationsRoute
+  '/assessments': typeof AuthenticatedAssessmentsRoute
+  '/blog-editor': typeof AuthenticatedBlogEditorRoute
+  '/career': typeof AuthenticatedCareerRoute
+  '/dashboard': typeof AuthenticatedDashboardRoute
+  '/employer': typeof AuthenticatedEmployerRouteWithChildren
+  '/feed': typeof AuthenticatedFeedRoute
+  '/learn': typeof AuthenticatedLearnRoute
+  '/messages': typeof AuthenticatedMessagesRoute
+  '/notifications': typeof AuthenticatedNotificationsRoute
+  '/profile': typeof AuthenticatedProfileRoute
+  '/referrals': typeof AuthenticatedReferralsRoute
+  '/resume-builder': typeof AuthenticatedResumeBuilderRoute
+  '/resume-scanner': typeof AuthenticatedResumeScannerRoute
+  '/saved': typeof AuthenticatedSavedRoute
+  '/blog/$slug': typeof BlogSlugRoute
+  '/companies/$slug': typeof CompaniesSlugRoute
+  '/jobs/$jobId': typeof JobsJobIdRoute
+  '/employer/company': typeof AuthenticatedEmployerCompanyRoute
+  '/employer/': typeof AuthenticatedEmployerIndexRoute
+  '/employer/jobs/$jobId': typeof AuthenticatedEmployerJobsJobIdRoute
+  '/employer/jobs/new': typeof AuthenticatedEmployerJobsNewRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
+  '/auth': typeof AuthRoute
+  '/blog': typeof BlogRouteWithChildren
+  '/companies': typeof CompaniesRouteWithChildren
+  '/contact': typeof ContactRoute
+  '/forgot-password': typeof ForgotPasswordRoute
+  '/jobs': typeof JobsRouteWithChildren
+  '/pricing': typeof PricingRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/support': typeof SupportRoute
+  '/admin': typeof AuthenticatedAdminRoute
+  '/applications': typeof AuthenticatedApplicationsRoute
+  '/assessments': typeof AuthenticatedAssessmentsRoute
+  '/blog-editor': typeof AuthenticatedBlogEditorRoute
+  '/career': typeof AuthenticatedCareerRoute
+  '/dashboard': typeof AuthenticatedDashboardRoute
+  '/feed': typeof AuthenticatedFeedRoute
+  '/learn': typeof AuthenticatedLearnRoute
+  '/messages': typeof AuthenticatedMessagesRoute
+  '/notifications': typeof AuthenticatedNotificationsRoute
+  '/profile': typeof AuthenticatedProfileRoute
+  '/referrals': typeof AuthenticatedReferralsRoute
+  '/resume-builder': typeof AuthenticatedResumeBuilderRoute
+  '/resume-scanner': typeof AuthenticatedResumeScannerRoute
+  '/saved': typeof AuthenticatedSavedRoute
+  '/blog/$slug': typeof BlogSlugRoute
+  '/companies/$slug': typeof CompaniesSlugRoute
+  '/jobs/$jobId': typeof JobsJobIdRoute
+  '/employer/company': typeof AuthenticatedEmployerCompanyRoute
+  '/employer': typeof AuthenticatedEmployerIndexRoute
+  '/employer/jobs/$jobId': typeof AuthenticatedEmployerJobsJobIdRoute
+  '/employer/jobs/new': typeof AuthenticatedEmployerJobsNewRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_authenticated': typeof AuthenticatedRouteWithChildren
+  '/about': typeof AboutRoute
+  '/auth': typeof AuthRoute
+  '/blog': typeof BlogRouteWithChildren
+  '/companies': typeof CompaniesRouteWithChildren
+  '/contact': typeof ContactRoute
+  '/forgot-password': typeof ForgotPasswordRoute
+  '/jobs': typeof JobsRouteWithChildren
+  '/pricing': typeof PricingRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/support': typeof SupportRoute
+  '/_authenticated/admin': typeof AuthenticatedAdminRoute
+  '/_authenticated/applications': typeof AuthenticatedApplicationsRoute
+  '/_authenticated/assessments': typeof AuthenticatedAssessmentsRoute
+  '/_authenticated/blog-editor': typeof AuthenticatedBlogEditorRoute
+  '/_authenticated/career': typeof AuthenticatedCareerRoute
+  '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/employer': typeof AuthenticatedEmployerRouteWithChildren
+  '/_authenticated/feed': typeof AuthenticatedFeedRoute
+  '/_authenticated/learn': typeof AuthenticatedLearnRoute
+  '/_authenticated/messages': typeof AuthenticatedMessagesRoute
+  '/_authenticated/notifications': typeof AuthenticatedNotificationsRoute
+  '/_authenticated/profile': typeof AuthenticatedProfileRoute
+  '/_authenticated/referrals': typeof AuthenticatedReferralsRoute
+  '/_authenticated/resume-builder': typeof AuthenticatedResumeBuilderRoute
+  '/_authenticated/resume-scanner': typeof AuthenticatedResumeScannerRoute
+  '/_authenticated/saved': typeof AuthenticatedSavedRoute
+  '/blog/$slug': typeof BlogSlugRoute
+  '/companies/$slug': typeof CompaniesSlugRoute
+  '/jobs/$jobId': typeof JobsJobIdRoute
+  '/_authenticated/employer/company': typeof AuthenticatedEmployerCompanyRoute
+  '/_authenticated/employer/': typeof AuthenticatedEmployerIndexRoute
+  '/_authenticated/employer/jobs/$jobId': typeof AuthenticatedEmployerJobsJobIdRoute
+  '/_authenticated/employer/jobs/new': typeof AuthenticatedEmployerJobsNewRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/about'
+    | '/auth'
+    | '/blog'
+    | '/companies'
+    | '/contact'
+    | '/forgot-password'
+    | '/jobs'
+    | '/pricing'
+    | '/reset-password'
+    | '/support'
+    | '/admin'
+    | '/applications'
+    | '/assessments'
+    | '/blog-editor'
+    | '/career'
+    | '/dashboard'
+    | '/employer'
+    | '/feed'
+    | '/learn'
+    | '/messages'
+    | '/notifications'
+    | '/profile'
+    | '/referrals'
+    | '/resume-builder'
+    | '/resume-scanner'
+    | '/saved'
+    | '/blog/$slug'
+    | '/companies/$slug'
+    | '/jobs/$jobId'
+    | '/employer/company'
+    | '/employer/'
+    | '/employer/jobs/$jobId'
+    | '/employer/jobs/new'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/about'
+    | '/auth'
+    | '/blog'
+    | '/companies'
+    | '/contact'
+    | '/forgot-password'
+    | '/jobs'
+    | '/pricing'
+    | '/reset-password'
+    | '/support'
+    | '/admin'
+    | '/applications'
+    | '/assessments'
+    | '/blog-editor'
+    | '/career'
+    | '/dashboard'
+    | '/feed'
+    | '/learn'
+    | '/messages'
+    | '/notifications'
+    | '/profile'
+    | '/referrals'
+    | '/resume-builder'
+    | '/resume-scanner'
+    | '/saved'
+    | '/blog/$slug'
+    | '/companies/$slug'
+    | '/jobs/$jobId'
+    | '/employer/company'
+    | '/employer'
+    | '/employer/jobs/$jobId'
+    | '/employer/jobs/new'
+  id:
+    | '__root__'
+    | '/'
+    | '/_authenticated'
+    | '/about'
+    | '/auth'
+    | '/blog'
+    | '/companies'
+    | '/contact'
+    | '/forgot-password'
+    | '/jobs'
+    | '/pricing'
+    | '/reset-password'
+    | '/support'
+    | '/_authenticated/admin'
+    | '/_authenticated/applications'
+    | '/_authenticated/assessments'
+    | '/_authenticated/blog-editor'
+    | '/_authenticated/career'
+    | '/_authenticated/dashboard'
+    | '/_authenticated/employer'
+    | '/_authenticated/feed'
+    | '/_authenticated/learn'
+    | '/_authenticated/messages'
+    | '/_authenticated/notifications'
+    | '/_authenticated/profile'
+    | '/_authenticated/referrals'
+    | '/_authenticated/resume-builder'
+    | '/_authenticated/resume-scanner'
+    | '/_authenticated/saved'
+    | '/blog/$slug'
+    | '/companies/$slug'
+    | '/jobs/$jobId'
+    | '/_authenticated/employer/company'
+    | '/_authenticated/employer/'
+    | '/_authenticated/employer/jobs/$jobId'
+    | '/_authenticated/employer/jobs/new'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
+  AboutRoute: typeof AboutRoute
+  AuthRoute: typeof AuthRoute
+  BlogRoute: typeof BlogRouteWithChildren
+  CompaniesRoute: typeof CompaniesRouteWithChildren
+  ContactRoute: typeof ContactRoute
+  ForgotPasswordRoute: typeof ForgotPasswordRoute
+  JobsRoute: typeof JobsRouteWithChildren
+  PricingRoute: typeof PricingRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
+  SupportRoute: typeof SupportRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/support': {
+      id: '/support'
+      path: '/support'
+      fullPath: '/support'
+      preLoaderRoute: typeof SupportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pricing': {
+      id: '/pricing'
+      path: '/pricing'
+      fullPath: '/pricing'
+      preLoaderRoute: typeof PricingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/jobs': {
+      id: '/jobs'
+      path: '/jobs'
+      fullPath: '/jobs'
+      preLoaderRoute: typeof JobsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/contact': {
+      id: '/contact'
+      path: '/contact'
+      fullPath: '/contact'
+      preLoaderRoute: typeof ContactRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/companies': {
+      id: '/companies'
+      path: '/companies'
+      fullPath: '/companies'
+      preLoaderRoute: typeof CompaniesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/blog': {
+      id: '/blog'
+      path: '/blog'
+      fullPath: '/blog'
+      preLoaderRoute: typeof BlogRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/about': {
+      id: '/about'
+      path: '/about'
+      fullPath: '/about'
+      preLoaderRoute: typeof AboutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,11 +550,276 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/jobs/$jobId': {
+      id: '/jobs/$jobId'
+      path: '/$jobId'
+      fullPath: '/jobs/$jobId'
+      preLoaderRoute: typeof JobsJobIdRouteImport
+      parentRoute: typeof JobsRoute
+    }
+    '/companies/$slug': {
+      id: '/companies/$slug'
+      path: '/$slug'
+      fullPath: '/companies/$slug'
+      preLoaderRoute: typeof CompaniesSlugRouteImport
+      parentRoute: typeof CompaniesRoute
+    }
+    '/blog/$slug': {
+      id: '/blog/$slug'
+      path: '/$slug'
+      fullPath: '/blog/$slug'
+      preLoaderRoute: typeof BlogSlugRouteImport
+      parentRoute: typeof BlogRoute
+    }
+    '/_authenticated/saved': {
+      id: '/_authenticated/saved'
+      path: '/saved'
+      fullPath: '/saved'
+      preLoaderRoute: typeof AuthenticatedSavedRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/resume-scanner': {
+      id: '/_authenticated/resume-scanner'
+      path: '/resume-scanner'
+      fullPath: '/resume-scanner'
+      preLoaderRoute: typeof AuthenticatedResumeScannerRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/resume-builder': {
+      id: '/_authenticated/resume-builder'
+      path: '/resume-builder'
+      fullPath: '/resume-builder'
+      preLoaderRoute: typeof AuthenticatedResumeBuilderRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/referrals': {
+      id: '/_authenticated/referrals'
+      path: '/referrals'
+      fullPath: '/referrals'
+      preLoaderRoute: typeof AuthenticatedReferralsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/profile': {
+      id: '/_authenticated/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof AuthenticatedProfileRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/notifications': {
+      id: '/_authenticated/notifications'
+      path: '/notifications'
+      fullPath: '/notifications'
+      preLoaderRoute: typeof AuthenticatedNotificationsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/messages': {
+      id: '/_authenticated/messages'
+      path: '/messages'
+      fullPath: '/messages'
+      preLoaderRoute: typeof AuthenticatedMessagesRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/learn': {
+      id: '/_authenticated/learn'
+      path: '/learn'
+      fullPath: '/learn'
+      preLoaderRoute: typeof AuthenticatedLearnRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/feed': {
+      id: '/_authenticated/feed'
+      path: '/feed'
+      fullPath: '/feed'
+      preLoaderRoute: typeof AuthenticatedFeedRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/employer': {
+      id: '/_authenticated/employer'
+      path: '/employer'
+      fullPath: '/employer'
+      preLoaderRoute: typeof AuthenticatedEmployerRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/dashboard': {
+      id: '/_authenticated/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AuthenticatedDashboardRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/career': {
+      id: '/_authenticated/career'
+      path: '/career'
+      fullPath: '/career'
+      preLoaderRoute: typeof AuthenticatedCareerRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/blog-editor': {
+      id: '/_authenticated/blog-editor'
+      path: '/blog-editor'
+      fullPath: '/blog-editor'
+      preLoaderRoute: typeof AuthenticatedBlogEditorRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/assessments': {
+      id: '/_authenticated/assessments'
+      path: '/assessments'
+      fullPath: '/assessments'
+      preLoaderRoute: typeof AuthenticatedAssessmentsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/applications': {
+      id: '/_authenticated/applications'
+      path: '/applications'
+      fullPath: '/applications'
+      preLoaderRoute: typeof AuthenticatedApplicationsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/admin': {
+      id: '/_authenticated/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AuthenticatedAdminRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/employer/': {
+      id: '/_authenticated/employer/'
+      path: '/'
+      fullPath: '/employer/'
+      preLoaderRoute: typeof AuthenticatedEmployerIndexRouteImport
+      parentRoute: typeof AuthenticatedEmployerRoute
+    }
+    '/_authenticated/employer/company': {
+      id: '/_authenticated/employer/company'
+      path: '/company'
+      fullPath: '/employer/company'
+      preLoaderRoute: typeof AuthenticatedEmployerCompanyRouteImport
+      parentRoute: typeof AuthenticatedEmployerRoute
+    }
+    '/_authenticated/employer/jobs/new': {
+      id: '/_authenticated/employer/jobs/new'
+      path: '/jobs/new'
+      fullPath: '/employer/jobs/new'
+      preLoaderRoute: typeof AuthenticatedEmployerJobsNewRouteImport
+      parentRoute: typeof AuthenticatedEmployerRoute
+    }
+    '/_authenticated/employer/jobs/$jobId': {
+      id: '/_authenticated/employer/jobs/$jobId'
+      path: '/jobs/$jobId'
+      fullPath: '/employer/jobs/$jobId'
+      preLoaderRoute: typeof AuthenticatedEmployerJobsJobIdRouteImport
+      parentRoute: typeof AuthenticatedEmployerRoute
+    }
   }
 }
 
+interface AuthenticatedEmployerRouteChildren {
+  AuthenticatedEmployerCompanyRoute: typeof AuthenticatedEmployerCompanyRoute
+  AuthenticatedEmployerIndexRoute: typeof AuthenticatedEmployerIndexRoute
+  AuthenticatedEmployerJobsJobIdRoute: typeof AuthenticatedEmployerJobsJobIdRoute
+  AuthenticatedEmployerJobsNewRoute: typeof AuthenticatedEmployerJobsNewRoute
+}
+
+const AuthenticatedEmployerRouteChildren: AuthenticatedEmployerRouteChildren = {
+  AuthenticatedEmployerCompanyRoute: AuthenticatedEmployerCompanyRoute,
+  AuthenticatedEmployerIndexRoute: AuthenticatedEmployerIndexRoute,
+  AuthenticatedEmployerJobsJobIdRoute: AuthenticatedEmployerJobsJobIdRoute,
+  AuthenticatedEmployerJobsNewRoute: AuthenticatedEmployerJobsNewRoute,
+}
+
+const AuthenticatedEmployerRouteWithChildren =
+  AuthenticatedEmployerRoute._addFileChildren(
+    AuthenticatedEmployerRouteChildren,
+  )
+
+interface AuthenticatedRouteChildren {
+  AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
+  AuthenticatedApplicationsRoute: typeof AuthenticatedApplicationsRoute
+  AuthenticatedAssessmentsRoute: typeof AuthenticatedAssessmentsRoute
+  AuthenticatedBlogEditorRoute: typeof AuthenticatedBlogEditorRoute
+  AuthenticatedCareerRoute: typeof AuthenticatedCareerRoute
+  AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedEmployerRoute: typeof AuthenticatedEmployerRouteWithChildren
+  AuthenticatedFeedRoute: typeof AuthenticatedFeedRoute
+  AuthenticatedLearnRoute: typeof AuthenticatedLearnRoute
+  AuthenticatedMessagesRoute: typeof AuthenticatedMessagesRoute
+  AuthenticatedNotificationsRoute: typeof AuthenticatedNotificationsRoute
+  AuthenticatedProfileRoute: typeof AuthenticatedProfileRoute
+  AuthenticatedReferralsRoute: typeof AuthenticatedReferralsRoute
+  AuthenticatedResumeBuilderRoute: typeof AuthenticatedResumeBuilderRoute
+  AuthenticatedResumeScannerRoute: typeof AuthenticatedResumeScannerRoute
+  AuthenticatedSavedRoute: typeof AuthenticatedSavedRoute
+}
+
+const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
+  AuthenticatedAdminRoute: AuthenticatedAdminRoute,
+  AuthenticatedApplicationsRoute: AuthenticatedApplicationsRoute,
+  AuthenticatedAssessmentsRoute: AuthenticatedAssessmentsRoute,
+  AuthenticatedBlogEditorRoute: AuthenticatedBlogEditorRoute,
+  AuthenticatedCareerRoute: AuthenticatedCareerRoute,
+  AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedEmployerRoute: AuthenticatedEmployerRouteWithChildren,
+  AuthenticatedFeedRoute: AuthenticatedFeedRoute,
+  AuthenticatedLearnRoute: AuthenticatedLearnRoute,
+  AuthenticatedMessagesRoute: AuthenticatedMessagesRoute,
+  AuthenticatedNotificationsRoute: AuthenticatedNotificationsRoute,
+  AuthenticatedProfileRoute: AuthenticatedProfileRoute,
+  AuthenticatedReferralsRoute: AuthenticatedReferralsRoute,
+  AuthenticatedResumeBuilderRoute: AuthenticatedResumeBuilderRoute,
+  AuthenticatedResumeScannerRoute: AuthenticatedResumeScannerRoute,
+  AuthenticatedSavedRoute: AuthenticatedSavedRoute,
+}
+
+const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
+  AuthenticatedRouteChildren,
+)
+
+interface BlogRouteChildren {
+  BlogSlugRoute: typeof BlogSlugRoute
+}
+
+const BlogRouteChildren: BlogRouteChildren = {
+  BlogSlugRoute: BlogSlugRoute,
+}
+
+const BlogRouteWithChildren = BlogRoute._addFileChildren(BlogRouteChildren)
+
+interface CompaniesRouteChildren {
+  CompaniesSlugRoute: typeof CompaniesSlugRoute
+}
+
+const CompaniesRouteChildren: CompaniesRouteChildren = {
+  CompaniesSlugRoute: CompaniesSlugRoute,
+}
+
+const CompaniesRouteWithChildren = CompaniesRoute._addFileChildren(
+  CompaniesRouteChildren,
+)
+
+interface JobsRouteChildren {
+  JobsJobIdRoute: typeof JobsJobIdRoute
+}
+
+const JobsRouteChildren: JobsRouteChildren = {
+  JobsJobIdRoute: JobsJobIdRoute,
+}
+
+const JobsRouteWithChildren = JobsRoute._addFileChildren(JobsRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthenticatedRoute: AuthenticatedRouteWithChildren,
+  AboutRoute: AboutRoute,
+  AuthRoute: AuthRoute,
+  BlogRoute: BlogRouteWithChildren,
+  CompaniesRoute: CompaniesRouteWithChildren,
+  ContactRoute: ContactRoute,
+  ForgotPasswordRoute: ForgotPasswordRoute,
+  JobsRoute: JobsRouteWithChildren,
+  PricingRoute: PricingRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
+  SupportRoute: SupportRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
