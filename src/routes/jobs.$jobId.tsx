@@ -91,11 +91,21 @@ function JobDetail() {
           <Card className="sticky top-24">
             <CardContent className="p-6 space-y-3">
               {user ? (
-                <ApplyJobDialog jobId={jobId} applied={hasApplied} />
+                <ApplyJobDialog
+                  jobId={jobId}
+                  applied={hasApplied}
+                  jobClosed={job.status !== "active"}
+                  deadlinePassed={!!job.application_deadline && new Date(job.application_deadline) < new Date()}
+                />
               ) : (
                 <Button onClick={() => navigate({ to: "/auth", search: { mode: "signin", redirect: `/jobs/${jobId}` } })} className="w-full gradient-brand text-primary-foreground">
                   Sign in to apply
                 </Button>
+              )}
+              {job.application_deadline && (
+                <p className="text-xs text-muted-foreground text-center">
+                  Apply by {new Date(job.application_deadline).toLocaleDateString()}
+                </p>
               )}
               <Button onClick={save} disabled={saving} variant="outline" className="w-full">
                 <Bookmark className="mr-2 h-4 w-4" />Save job
