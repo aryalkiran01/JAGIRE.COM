@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Building2, MapPin, Globe, Star, MessageSquare } from "lucide-react";
+import { Building2, MapPin, Globe, Star, MessageSquare, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/companies/$slug")({ component: CompanyDetail });
@@ -106,10 +106,21 @@ function CompanyDetail() {
         <h2 className="text-2xl font-bold mb-4">Open positions ({jobs?.length ?? 0})</h2>
         <div className="grid gap-3">
           {jobs?.map((j) => (
-            <Link key={j.id} to="/jobs/$jobId" params={{ jobId: j.id }}>
-              <Card className="hover:shadow-glow transition"><CardContent className="p-4"><div className="font-semibold">{j.title}</div><div className="text-sm text-muted-foreground">{j.location} · {String(j.job_type).replace("_"," ")}</div></CardContent></Card>
-            </Link>
+            <Card key={j.id} className="hover:shadow-glow transition">
+              <CardContent className="p-4 flex items-center gap-4">
+                <Link to="/jobs/$jobId" params={{ jobId: j.id }} className="flex-1 min-w-0">
+                  <div className="font-semibold">{j.title}</div>
+                  <div className="text-sm text-muted-foreground">{j.location} · {String(j.job_type).replace("_"," ")}</div>
+                </Link>
+                <Button asChild size="sm" className="gradient-brand text-primary-foreground shrink-0">
+                  <Link to="/jobs/$jobId" params={{ jobId: j.id }}>
+                    Apply <ArrowRight className="ml-1 h-3 w-3" />
+                  </Link>
+                </Button>
+              </CardContent>
+            </Card>
           ))}
+          {jobs && jobs.length === 0 && <p className="text-sm text-muted-foreground">No open positions right now.</p>}
         </div>
 
         <h2 className="text-2xl font-bold mt-10 mb-4">Reviews</h2>
