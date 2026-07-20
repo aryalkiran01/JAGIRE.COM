@@ -15,7 +15,7 @@ export const Route = createFileRoute("/pricing")({
         <div className="grid md:grid-cols-3 gap-6">
           {[
             { name: "Free", price: "$0", features: ["Unlimited job search", "AI resume scan", "5 applications/day", "Basic career tips"], cta: "Get started", to: "/auth", featured: false },
-            { name: "Employer Starter", price: "$49/mo", features: ["3 active job posts", "AI candidate ranking", "Applicant management", "Email support"], cta: "Start hiring", to: "/auth", featured: true },
+            { name: "Employer Starter", price: "Rs. 4,900/mo", features: ["3 active job posts", "AI candidate ranking", "Applicant management", "Email support"], cta: "Start hiring", to: "/checkout/starter", featured: true },
             { name: "Enterprise", price: "Custom", features: ["Unlimited job posts", "Priority AI matching", "Google Meet integration", "Dedicated support"], cta: "Contact sales", to: "/contact", featured: false },
           ].map((p) => (
             <Card key={p.name} className={p.featured ? "border-primary shadow-glow" : ""}><CardContent className="p-6">
