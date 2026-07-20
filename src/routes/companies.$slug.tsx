@@ -82,6 +82,13 @@ function CompanyDetail() {
                   {company.website && <a href={company.website} target="_blank" rel="noopener" className="text-xs text-primary flex items-center gap-1"><Globe className="h-3 w-3" />Website</a>}
                   {avg && <Badge className="gradient-brand text-primary-foreground"><Star className="mr-1 h-3 w-3" />{avg} ({reviews!.length})</Badge>}
                 </div>
+                {user && (company as any).owner_id && (company as any).owner_id !== user.id && (
+                  <Button asChild size="sm" variant="outline" className="mt-3">
+                    <Link to="/messages" search={{ with: (company as any).owner_id }}>
+                      <MessageSquare className="mr-2 h-4 w-4" />Message company
+                    </Link>
+                  </Button>
+                )}
               </div>
             </div>
             {company.description && <p className="mt-6 text-sm">{company.description}</p>}
