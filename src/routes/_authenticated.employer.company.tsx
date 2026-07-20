@@ -44,7 +44,12 @@ function CompanyForm() {
         logo_url: form.logo_url || null,
       };
       if (company) {
-        const { error } = await supabase.from("companies").update(editable).eq("id", company.id);
+        // Update slug when the name changes (keeps company URL in sync)
+        const nextSlug = slugify(form.name) || company.slug;
+        const { error } = await supabase
+          .from("companies")
+          .update({ ...editable, slug: nextSlug })
+          .eq("id", company.id);
         if (error) throw error;
       } else {
         const { error } = await supabase.from("companies").insert({

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Heart, MessageCircle, Bookmark, Send, Loader2 } from "lucide-react";
+import { Heart, MessageCircle, Bookmark, Send, Loader2, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 
@@ -139,6 +139,13 @@ function FeedPage() {
                 </Button>
                 <Button variant="ghost" size="sm"><MessageCircle className="h-4 w-4 mr-1" /> {p.comments_count ?? 0}</Button>
                 <Button variant="ghost" size="sm" onClick={() => toggleSave(p.id)}><Bookmark className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="sm" onClick={async () => {
+                  const url = `${window.location.origin}/feed#post-${p.id}`;
+                  try {
+                    if (navigator.share) await navigator.share({ title: "Jagire post", url });
+                    else { await navigator.clipboard.writeText(url); toast.success("Link copied"); }
+                  } catch {}
+                }}><Share2 className="h-4 w-4" /></Button>
               </div>
               <div className="flex gap-2">
                 <Input placeholder="Write a comment…" value={commentDraft[p.id] ?? ""} onChange={(e) => setCommentDraft((d) => ({ ...d, [p.id]: e.target.value }))}

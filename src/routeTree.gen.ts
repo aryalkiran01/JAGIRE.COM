@@ -12,6 +12,8 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SupportRouteImport } from './routes/support'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as PricingRouteImport } from './routes/pricing'
+import { Route as PaymentSuccessRouteImport } from './routes/payment-success'
+import { Route as PaymentFailureRouteImport } from './routes/payment-failure'
 import { Route as JobsRouteImport } from './routes/jobs'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as ContactRouteImport } from './routes/contact'
@@ -23,6 +25,7 @@ import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as JobsJobIdRouteImport } from './routes/jobs.$jobId'
 import { Route as CompaniesSlugRouteImport } from './routes/companies.$slug'
+import { Route as CheckoutPlanRouteImport } from './routes/checkout.$plan'
 import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
 import { Route as AuthenticatedSavedRouteImport } from './routes/_authenticated.saved'
 import { Route as AuthenticatedResumeScannerRouteImport } from './routes/_authenticated.resume-scanner'
@@ -58,6 +61,16 @@ const ResetPasswordRoute = ResetPasswordRouteImport.update({
 const PricingRoute = PricingRouteImport.update({
   id: '/pricing',
   path: '/pricing',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PaymentSuccessRoute = PaymentSuccessRouteImport.update({
+  id: '/payment-success',
+  path: '/payment-success',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PaymentFailureRoute = PaymentFailureRouteImport.update({
+  id: '/payment-failure',
+  path: '/payment-failure',
   getParentRoute: () => rootRouteImport,
 } as any)
 const JobsRoute = JobsRouteImport.update({
@@ -113,6 +126,11 @@ const CompaniesSlugRoute = CompaniesSlugRouteImport.update({
   id: '/$slug',
   path: '/$slug',
   getParentRoute: () => CompaniesRoute,
+} as any)
+const CheckoutPlanRoute = CheckoutPlanRouteImport.update({
+  id: '/checkout/$plan',
+  path: '/checkout/$plan',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const BlogSlugRoute = BlogSlugRouteImport.update({
   id: '/$slug',
@@ -238,6 +256,8 @@ export interface FileRoutesByFullPath {
   '/contact': typeof ContactRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/jobs': typeof JobsRouteWithChildren
+  '/payment-failure': typeof PaymentFailureRoute
+  '/payment-success': typeof PaymentSuccessRoute
   '/pricing': typeof PricingRoute
   '/reset-password': typeof ResetPasswordRoute
   '/support': typeof SupportRoute
@@ -258,6 +278,7 @@ export interface FileRoutesByFullPath {
   '/resume-scanner': typeof AuthenticatedResumeScannerRoute
   '/saved': typeof AuthenticatedSavedRoute
   '/blog/$slug': typeof BlogSlugRoute
+  '/checkout/$plan': typeof CheckoutPlanRoute
   '/companies/$slug': typeof CompaniesSlugRoute
   '/jobs/$jobId': typeof JobsJobIdRoute
   '/employer/company': typeof AuthenticatedEmployerCompanyRoute
@@ -274,6 +295,8 @@ export interface FileRoutesByTo {
   '/contact': typeof ContactRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/jobs': typeof JobsRouteWithChildren
+  '/payment-failure': typeof PaymentFailureRoute
+  '/payment-success': typeof PaymentSuccessRoute
   '/pricing': typeof PricingRoute
   '/reset-password': typeof ResetPasswordRoute
   '/support': typeof SupportRoute
@@ -293,6 +316,7 @@ export interface FileRoutesByTo {
   '/resume-scanner': typeof AuthenticatedResumeScannerRoute
   '/saved': typeof AuthenticatedSavedRoute
   '/blog/$slug': typeof BlogSlugRoute
+  '/checkout/$plan': typeof CheckoutPlanRoute
   '/companies/$slug': typeof CompaniesSlugRoute
   '/jobs/$jobId': typeof JobsJobIdRoute
   '/employer/company': typeof AuthenticatedEmployerCompanyRoute
@@ -311,6 +335,8 @@ export interface FileRoutesById {
   '/contact': typeof ContactRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/jobs': typeof JobsRouteWithChildren
+  '/payment-failure': typeof PaymentFailureRoute
+  '/payment-success': typeof PaymentSuccessRoute
   '/pricing': typeof PricingRoute
   '/reset-password': typeof ResetPasswordRoute
   '/support': typeof SupportRoute
@@ -331,6 +357,7 @@ export interface FileRoutesById {
   '/_authenticated/resume-scanner': typeof AuthenticatedResumeScannerRoute
   '/_authenticated/saved': typeof AuthenticatedSavedRoute
   '/blog/$slug': typeof BlogSlugRoute
+  '/checkout/$plan': typeof CheckoutPlanRoute
   '/companies/$slug': typeof CompaniesSlugRoute
   '/jobs/$jobId': typeof JobsJobIdRoute
   '/_authenticated/employer/company': typeof AuthenticatedEmployerCompanyRoute
@@ -349,6 +376,8 @@ export interface FileRouteTypes {
     | '/contact'
     | '/forgot-password'
     | '/jobs'
+    | '/payment-failure'
+    | '/payment-success'
     | '/pricing'
     | '/reset-password'
     | '/support'
@@ -369,6 +398,7 @@ export interface FileRouteTypes {
     | '/resume-scanner'
     | '/saved'
     | '/blog/$slug'
+    | '/checkout/$plan'
     | '/companies/$slug'
     | '/jobs/$jobId'
     | '/employer/company'
@@ -385,6 +415,8 @@ export interface FileRouteTypes {
     | '/contact'
     | '/forgot-password'
     | '/jobs'
+    | '/payment-failure'
+    | '/payment-success'
     | '/pricing'
     | '/reset-password'
     | '/support'
@@ -404,6 +436,7 @@ export interface FileRouteTypes {
     | '/resume-scanner'
     | '/saved'
     | '/blog/$slug'
+    | '/checkout/$plan'
     | '/companies/$slug'
     | '/jobs/$jobId'
     | '/employer/company'
@@ -421,6 +454,8 @@ export interface FileRouteTypes {
     | '/contact'
     | '/forgot-password'
     | '/jobs'
+    | '/payment-failure'
+    | '/payment-success'
     | '/pricing'
     | '/reset-password'
     | '/support'
@@ -441,6 +476,7 @@ export interface FileRouteTypes {
     | '/_authenticated/resume-scanner'
     | '/_authenticated/saved'
     | '/blog/$slug'
+    | '/checkout/$plan'
     | '/companies/$slug'
     | '/jobs/$jobId'
     | '/_authenticated/employer/company'
@@ -459,9 +495,12 @@ export interface RootRouteChildren {
   ContactRoute: typeof ContactRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   JobsRoute: typeof JobsRouteWithChildren
+  PaymentFailureRoute: typeof PaymentFailureRoute
+  PaymentSuccessRoute: typeof PaymentSuccessRoute
   PricingRoute: typeof PricingRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SupportRoute: typeof SupportRoute
+  CheckoutPlanRoute: typeof CheckoutPlanRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -485,6 +524,20 @@ declare module '@tanstack/react-router' {
       path: '/pricing'
       fullPath: '/pricing'
       preLoaderRoute: typeof PricingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/payment-success': {
+      id: '/payment-success'
+      path: '/payment-success'
+      fullPath: '/payment-success'
+      preLoaderRoute: typeof PaymentSuccessRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/payment-failure': {
+      id: '/payment-failure'
+      path: '/payment-failure'
+      fullPath: '/payment-failure'
+      preLoaderRoute: typeof PaymentFailureRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/jobs': {
@@ -563,6 +616,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/companies/$slug'
       preLoaderRoute: typeof CompaniesSlugRouteImport
       parentRoute: typeof CompaniesRoute
+    }
+    '/checkout/$plan': {
+      id: '/checkout/$plan'
+      path: '/checkout/$plan'
+      fullPath: '/checkout/$plan'
+      preLoaderRoute: typeof CheckoutPlanRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/blog/$slug': {
       id: '/blog/$slug'
@@ -817,9 +877,12 @@ const rootRouteChildren: RootRouteChildren = {
   ContactRoute: ContactRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   JobsRoute: JobsRouteWithChildren,
+  PaymentFailureRoute: PaymentFailureRoute,
+  PaymentSuccessRoute: PaymentSuccessRoute,
   PricingRoute: PricingRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SupportRoute: SupportRoute,
+  CheckoutPlanRoute: CheckoutPlanRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
