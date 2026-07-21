@@ -292,30 +292,6 @@ export type Database = {
         };
         Relationships: [];
       };
-      badges: {
-        Row: {
-          id: string;
-          user_id: string;
-          kind: string;
-          name: string;
-          created_at: string | null;
-        };
-        Insert: {
-          id?: string;
-          user_id: string;
-          kind: string;
-          name: string;
-          created_at?: string | null;
-        };
-        Update: {
-          id?: string;
-          user_id?: string;
-          kind?: string;
-          name?: string;
-          created_at?: string | null;
-        };
-        Relationships: [];
-      };
       blogs: {
         Row: {
           id: string;
@@ -1204,6 +1180,27 @@ export type Database = {
         };
         Relationships: [];
       };
+      comment_likes: {
+        Row: {
+          id: string;
+          comment_id: string;
+          user_id: string;
+          created_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          comment_id: string;
+          user_id: string;
+          created_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          comment_id?: string;
+          user_id?: string;
+          created_at?: string | null;
+        };
+        Relationships: [];
+      };
       post_comments: {
         Row: {
           id: string;
@@ -1213,6 +1210,7 @@ export type Database = {
           parent_id: string | null;
           created_at: string | null;
           content: string | null;
+          likes_count: number | null;
         };
         Insert: {
           id?: string;
@@ -1222,6 +1220,7 @@ export type Database = {
           parent_id?: string | null;
           created_at?: string | null;
           content?: string | null;
+          likes_count?: number | null;
         };
         Update: {
           id?: string;
@@ -1231,6 +1230,7 @@ export type Database = {
           parent_id?: string | null;
           created_at?: string | null;
           content?: string | null;
+          likes_count?: number | null;
         };
         Relationships: [];
       };
@@ -1770,27 +1770,6 @@ export type Database = {
           id?: string;
           user_id?: string;
           job_id?: string;
-          created_at?: string | null;
-        };
-        Relationships: [];
-      };
-      skills: {
-        Row: {
-          id: string;
-          name: string;
-          category: string | null;
-          created_at: string | null;
-        };
-        Insert: {
-          id?: string;
-          name: string;
-          category?: string | null;
-          created_at?: string | null;
-        };
-        Update: {
-          id?: string;
-          name?: string;
-          category?: string | null;
           created_at?: string | null;
         };
         Relationships: [];
