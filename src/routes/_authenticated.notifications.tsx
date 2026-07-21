@@ -1,13 +1,27 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Check } from "lucide-react";
+import { Check, Bell, Video, Calendar, MessageSquare, Gift, FileText } from "lucide-react";
 
-export const Route = createFileRoute("/_authenticated/notifications")({ component: Notifications });
+export const Route = createFileRoute("/_authenticated/notifications")({
+  component: Notifications,
+});
+
+const ICONS: Record<string, any> = {
+  interview_scheduled: Video,
+  interview_confirmed: Check,
+  interview_cancelled: Calendar,
+  interview_reschedule: Calendar,
+  interview_completed: Check,
+  interview_updated: Calendar,
+  message: MessageSquare,
+  referral: Gift,
+  application: FileText,
+};
 
 function Notifications() {
   const { user } = useAuth();
@@ -25,6 +39,28 @@ function Notifications() {
           .limit(100)
       ).data ?? [],
   });
+
+  // Realtime subscription for new notifications
+  useEffect(() => {
+    if (!user) return;
+    const ch = supabase
+      .channel("notifications-realtime")
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "notifications",
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => {
+          qc.invalidateQueries({ queryKey: ["notif"] });
+          qc.invalidateQueries({ queryKey: ["notif-unread"] });
+        },
+      )
+      .subscribe();
+    return () => supabase.removeChannel(ch);
+  }, [user, qc]);
 
   // Mark all as read on view
   useEffect(() => {
@@ -49,10 +85,14 @@ function Notifications() {
     <div className="container mx-auto px-4 py-8 max-w-2xl">
       <h1 className="text-3xl font-bold mb-6">Notifications</h1>
       <div className="space-y-2">
-        {data?.map((n) => (
-          <Card key={n.id} className={n.is_read ? "" : "border-primary"}>
-            <CardContent className="p-4 flex items-start justify-between gap-3">
-              <div className="flex-1">
+        {data?.map((n) => {
+          const Icon = ICONS[n.type] ?? Bell;
+          const content = (
+            <CardContent className="p-4 flex items-start gap-3">
+              <div className="mt-0.5 rounded-lg bg-muted p-2">
+                <Icon className="h-4 w-4 text-muted-foreground" />
+              </div>
+              <div className="flex-1 min-w-0">
                 <div className="font-medium">{n.title}</div>
                 {n.message && <div className="text-sm text-muted-foreground">{n.message}</div>}
                 <div className="text-xs text-muted-foreground mt-1">
@@ -60,16 +100,31 @@ function Notifications() {
                 </div>
               </div>
               {!n.is_read && (
-                <Button size="icon" variant="ghost" onClick={() => markRead(n.id)}>
+                <Button size="icon" variant="ghost" onClick={(e) => { e.preventDefault(); markRead(n.id); }}>
                   <Check className="h-4 w-4" />
                 </Button>
               )}
             </CardContent>
-          </Card>
-        ))}
+          );
+          return (
+            <Card
+              key={n.id}
+              className={n.is_read ? "" : "border-primary"}
+            >
+              {n.link ? (
+                <Link to={n.link} className="block hover:bg-muted/50 transition rounded-lg">
+                  {content}
+                </Link>
+              ) : (
+                content
+              )}
+            </Card>
+          );
+        })}
         {!data?.length && (
           <Card>
             <CardContent className="p-12 text-center text-muted-foreground">
+              <Bell className="h-12 w-12 mx-auto mb-3 opacity-40" />
               No notifications yet.
             </CardContent>
           </Card>

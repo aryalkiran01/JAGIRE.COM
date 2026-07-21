@@ -1,9 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -23,8 +24,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Calendar, Clock, Video, Loader as Loader2, Pencil, X } from "lucide-react";
+import { Calendar, Clock, Video, Loader as Loader2, Pencil, X, CircleCheck as CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
+import { updateInterviewStatus } from "@/lib/google-calendar.functions";
 
 export const Route = createFileRoute("/_authenticated/employer/interviews")({
   component: EmployerInterviews,
@@ -44,6 +46,7 @@ type Interview = {
   candidate_id: string | null;
   candidate_email: string | null;
   created_at: string | null;
+  updated_at: string | null;
   application?: {
     applicant_id: string | null;
     job?: { id: string; title: string | null } | null;
@@ -69,11 +72,13 @@ const STATUS_COLORS: Record<string, string> = {
   cancelled: "bg-red-500",
   missed: "bg-gray-500",
   expired: "bg-gray-400",
+  reschedule_requested: "bg-amber-500",
 };
 
 function EmployerInterviews() {
   const { user } = useAuth();
   const qc = useQueryClient();
+  const updateStatusFn = useServerFn(updateInterviewStatus);
   const [editInterview, setEditInterview] = useState<Interview | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editStart, setEditStart] = useState("");
@@ -89,7 +94,7 @@ function EmployerInterviews() {
       const { data, error } = await supabase
         .from("interviews")
         .select(
-          "id, application_id, title, scheduled_at, duration_minutes, meeting_link, meet_link, location, status, notes, candidate_id, candidate_email, created_at, application:applications!interviews_application_id_fkey(applicant_id, job:jobs(id, title), profile:profiles!applications_applicant_id_fkey(id, full_name, email))",
+          "id, application_id, title, scheduled_at, duration_minutes, meeting_link, meet_link, location, status, notes, candidate_id, candidate_email, created_at, updated_at, application:applications!interviews_application_id_fkey(applicant_id, job:jobs(id, title), profile:profiles!applications_applicant_id_fkey(id, full_name, email))",
         )
         .eq("employer_id", user!.id)
         .order("scheduled_at", { ascending: true });
@@ -98,17 +103,34 @@ function EmployerInterviews() {
     },
   });
 
-  const updateStatus = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const { error } = await supabase.from("interviews").update({ status }).eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
+  // Realtime
+  useEffect(() => {
+    if (!user) return;
+    const ch = supabase
+      .channel("employer-interviews-realtime")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "interviews",
+          filter: `employer_id=eq.${user.id}`,
+        },
+        () => qc.invalidateQueries({ queryKey: ["employer-interviews"] }),
+      )
+      .subscribe();
+    return () => supabase.removeChannel(ch);
+  }, [user, qc]);
+
+  async function updateStatus(id: string, status: string) {
+    try {
+      await updateStatusFn({ data: { interviewId: id, status } });
       toast.success("Status updated");
       qc.invalidateQueries({ queryKey: ["employer-interviews"] });
-    },
-    onError: (e: any) => toast.error(e.message),
-  });
+    } catch (e: any) {
+      toast.error(e.message);
+    }
+  }
 
   function openEdit(iv: Interview) {
     setEditInterview(iv);
@@ -143,13 +165,7 @@ function EmployerInterviews() {
 
   async function cancelInterview(id: string) {
     if (!confirm("Cancel this interview? The candidate will be notified.")) return;
-    const { error } = await supabase
-      .from("interviews")
-      .update({ status: "cancelled", updated_at: new Date().toISOString() })
-      .eq("id", id);
-    if (error) return toast.error(error.message);
-    toast.success("Interview cancelled");
-    qc.invalidateQueries({ queryKey: ["employer-interviews"] });
+    await updateStatus(id, "cancelled");
   }
 
   if (isLoading) {
@@ -161,7 +177,11 @@ function EmployerInterviews() {
   }
 
   const upcoming = interviews?.filter(
-    (i) => i.status === "scheduled" || i.status === "confirmed" || i.status === "ongoing",
+    (i) =>
+      i.status === "scheduled" ||
+      i.status === "confirmed" ||
+      i.status === "ongoing" ||
+      i.status === "reschedule_requested",
   ) ?? [];
   const past = interviews?.filter(
     (i) =>
@@ -201,8 +221,8 @@ function EmployerInterviews() {
                       {iv.application?.job && ` · ${iv.application.job.title}`}
                     </div>
                   </div>
-                  <Badge className={`${STATUS_COLORS[iv.status ?? "scheduled"]} text-white`}>
-                    {iv.status}
+                  <Badge className={`${STATUS_COLORS[iv.status ?? "scheduled"] ?? "bg-gray-500"} text-white`}>
+                    {iv.status === "reschedule_requested" ? "Reschedule requested" : iv.status}
                   </Badge>
                 </div>
 
@@ -230,7 +250,16 @@ function EmployerInterviews() {
                   )}
                 </div>
 
-                {iv.notes && (
+                {iv.status === "reschedule_requested" && iv.notes && (
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950 p-3 text-sm">
+                    <div className="text-xs font-medium text-amber-700 dark:text-amber-400 mb-1">
+                      Reschedule request
+                    </div>
+                    {iv.notes}
+                  </div>
+                )}
+
+                {iv.notes && iv.status !== "reschedule_requested" && (
                   <div className="bg-muted rounded-lg p-3 text-sm">
                     <div className="text-xs font-medium text-muted-foreground mb-1">Notes</div>
                     {iv.notes}
@@ -240,9 +269,9 @@ function EmployerInterviews() {
                 <div className="flex flex-wrap gap-2 pt-1">
                   <Select
                     value={iv.status ?? "scheduled"}
-                    onValueChange={(v) => updateStatus.mutate({ id: iv.id, status: v })}
+                    onValueChange={(v) => updateStatus(iv.id, v)}
                   >
-                    <SelectTrigger className="w-40">
+                    <SelectTrigger className="w-44">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -256,6 +285,11 @@ function EmployerInterviews() {
                   <Button variant="outline" size="sm" onClick={() => openEdit(iv)}>
                     <Pencil className="h-4 w-4 mr-1" /> Edit
                   </Button>
+                  {iv.status !== "completed" && iv.status !== "cancelled" && (
+                    <Button variant="outline" size="sm" onClick={() => updateStatus(iv.id, "completed")}>
+                      <CheckCircle2 className="h-4 w-4 mr-1" /> Complete
+                    </Button>
+                  )}
                   <Button
                     variant="ghost"
                     size="sm"
@@ -285,7 +319,7 @@ function EmployerInterviews() {
                       {iv.scheduled_at && ` · ${new Date(iv.scheduled_at).toLocaleString()}`}
                     </div>
                   </div>
-                  <Badge className={`${STATUS_COLORS[iv.status ?? "completed"]} text-white`}>
+                  <Badge className={`${STATUS_COLORS[iv.status ?? "completed"] ?? "bg-gray-500"} text-white`}>
                     {iv.status}
                   </Badge>
                 </div>
@@ -334,11 +368,7 @@ function EmployerInterviews() {
             </div>
             <div>
               <Label>Notes</Label>
-              <Textarea
-                rows={3}
-                value={editNotes}
-                onChange={(e) => setEditNotes(e.target.value)}
-              />
+              <Textarea rows={3} value={editNotes} onChange={(e) => setEditNotes(e.target.value)} />
             </div>
           </div>
           <DialogFooter>

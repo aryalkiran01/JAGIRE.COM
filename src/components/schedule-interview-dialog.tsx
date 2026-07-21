@@ -13,7 +13,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Calendar } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Calendar, Video, Link2, Loader as Loader2, CircleCheck as CheckCircle2 } from "lucide-react";
 import {
   scheduleInterview,
   getGoogleCalendarStatus,
@@ -21,6 +22,8 @@ import {
   saveGoogleCalendarConnection,
 } from "@/lib/google-calendar.functions";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+
+type MeetingType = "google_meet" | "custom";
 
 export function ScheduleInterviewDialog({
   applicationId,
@@ -35,6 +38,10 @@ export function ScheduleInterviewDialog({
   const [title, setTitle] = useState(`Interview with ${candidateName ?? "candidate"}`);
   const [start, setStart] = useState("");
   const [duration, setDuration] = useState(30);
+  const [meetingType, setMeetingType] = useState<MeetingType>("google_meet");
+  const [customLink, setCustomLink] = useState("");
+  const [location, setLocation] = useState("");
+  const [notes, setNotes] = useState("");
   const qc = useQueryClient();
 
   const statusFn = useServerFn(getGoogleCalendarStatus);
@@ -52,7 +59,6 @@ export function ScheduleInterviewDialog({
     mutationFn: async () => {
       const targetOrigin = window.location.origin;
       const { authorizationUrl } = await startFn({ data: targetOrigin });
-      const redirectUri = `${targetOrigin}/google-calendar/callback`;
       const popup = window.open(authorizationUrl, "google-oauth", "width=600,height=720");
       if (!popup) throw new Error("Popup blocked. Allow popups and try again.");
 
@@ -88,6 +94,9 @@ export function ScheduleInterviewDialog({
   const schedule = useMutation({
     mutationFn: async () => {
       if (!start) throw new Error("Pick a start time");
+      if (meetingType === "custom" && !customLink) {
+        throw new Error("Enter a meeting link or switch to Google Meet");
+      }
       return scheduleFn({
         data: {
           applicationId,
@@ -96,16 +105,33 @@ export function ScheduleInterviewDialog({
           title,
           startISO: new Date(start).toISOString(),
           durationMinutes: duration,
+          meetingLink: meetingType === "custom" ? customLink : undefined,
+          location: location || undefined,
+          notes: notes || undefined,
+          useGoogleCalendar: meetingType === "google_meet",
         },
       });
     },
     onSuccess: (r) => {
-      toast.success("Interview scheduled");
-      if (r.meetLink) navigator.clipboard?.writeText(r.meetLink).catch(() => {});
+      toast.success("Interview scheduled! Candidate has been notified.");
+      if (r.meetLink) {
+        navigator.clipboard?.writeText(r.meetLink).catch(() => {});
+        toast.success(`Meeting link copied: ${r.meetLink}`);
+      }
       setOpen(false);
+      // Reset form
+      setStart("");
+      setCustomLink("");
+      setLocation("");
+      setNotes("");
+      qc.invalidateQueries({ queryKey: ["employer-interviews"] });
+      qc.invalidateQueries({ queryKey: ["job-apps"] });
     },
     onError: (e: any) => toast.error(e.message),
   });
+
+  const gcalConnected = status.data?.connected ?? false;
+  const gcalConfigured = status.data?.configured ?? false;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -114,30 +140,122 @@ export function ScheduleInterviewDialog({
           <Calendar className="h-4 w-4 mr-1" /> Schedule
         </Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>Schedule interview</DialogTitle>
         </DialogHeader>
-        {status.isLoading ? (
-          <p className="text-sm text-muted-foreground">Checking Google Calendar…</p>
-        ) : !status.data?.connected ? (
-          <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              Connect your Google account to create a Calendar event with an auto-generated Meet
-              link.
-            </p>
-            <Button onClick={() => connect.mutate()} disabled={connect.isPending}>
-              {connect.isPending ? "Connecting…" : "Connect Google Calendar"}
-            </Button>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            <div>
-              <Label>Title</Label>
-              <Input value={title} onChange={(e) => setTitle(e.target.value)} />
+        <div className="space-y-4">
+          {/* Meeting type selector */}
+          <div>
+            <Label>Meeting type</Label>
+            <div className="grid grid-cols-2 gap-2 mt-1">
+              <button
+                type="button"
+                onClick={() => setMeetingType("google_meet")}
+                className={`flex items-center gap-2 rounded-lg border p-3 text-sm transition ${
+                  meetingType === "google_meet"
+                    ? "border-primary bg-primary/5"
+                    : "border-border hover:bg-muted"
+                }`}
+              >
+                <Video className="h-4 w-4" />
+                <div className="text-left">
+                  <div className="font-medium">Google Meet</div>
+                  <div className="text-xs text-muted-foreground">Auto-generated link</div>
+                </div>
+                {meetingType === "google_meet" && (
+                  <CheckCircle2 className="h-4 w-4 text-primary ml-auto" />
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => setMeetingType("custom")}
+                className={`flex items-center gap-2 rounded-lg border p-3 text-sm transition ${
+                  meetingType === "custom"
+                    ? "border-primary bg-primary/5"
+                    : "border-border hover:bg-muted"
+                }`}
+              >
+                <Link2 className="h-4 w-4" />
+                <div className="text-left">
+                  <div className="font-medium">Custom link</div>
+                  <div className="text-xs text-muted-foreground">Zoom, Teams, etc.</div>
+                </div>
+                {meetingType === "custom" && (
+                  <CheckCircle2 className="h-4 w-4 text-primary ml-auto" />
+                )}
+              </button>
             </div>
+          </div>
+
+          {/* Google Calendar connect (only if google_meet selected) */}
+          {meetingType === "google_meet" && gcalConfigured && !gcalConnected && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950 p-3 space-y-2">
+              <p className="text-sm text-amber-700 dark:text-amber-400">
+                Connect Google Calendar to auto-generate Meet links and send calendar invites.
+              </p>
+              <Button size="sm" onClick={() => connect.mutate()} disabled={connect.isPending}>
+                {connect.isPending ? (
+                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                ) : (
+                  <Video className="h-4 w-4 mr-1" />
+                )}
+                Connect Google Calendar
+              </Button>
+            </div>
+          )}
+
+          {meetingType === "google_meet" && !gcalConfigured && (
+            <div className="rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950 p-3">
+              <p className="text-sm text-blue-700 dark:text-blue-400">
+                Google Calendar isn't configured on this server. You can still schedule with a
+                custom link.
+              </p>
+              <Button
+                size="sm"
+                variant="outline"
+                className="mt-2"
+                onClick={() => setMeetingType("custom")}
+              >
+                Use custom link instead
+              </Button>
+            </div>
+          )}
+
+          {meetingType === "google_meet" && gcalConnected && (
+            <div className="rounded-lg border border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950 p-3">
+              <p className="text-sm text-green-700 dark:text-green-400 flex items-center gap-1">
+                <CheckCircle2 className="h-4 w-4" /> Google Calendar connected — Meet link will be
+                auto-generated.
+              </p>
+            </div>
+          )}
+
+          {/* Custom link input */}
+          {meetingType === "custom" && (
             <div>
-              <Label>Start</Label>
+              <Label>Meeting link</Label>
+              <Input
+                placeholder="https://zoom.us/j/… or https://teams.microsoft.com/…"
+                value={customLink}
+                onChange={(e) => setCustomLink(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Paste any video call link (Zoom, Teams, Meet, etc.)
+              </p>
+            </div>
+          )}
+
+          {/* Title */}
+          <div>
+            <Label>Title</Label>
+            <Input value={title} onChange={(e) => setTitle(e.target.value)} />
+          </div>
+
+          {/* Start time */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Start time</Label>
               <Input
                 type="datetime-local"
                 value={start}
@@ -145,7 +263,7 @@ export function ScheduleInterviewDialog({
               />
             </div>
             <div>
-              <Label>Duration (minutes)</Label>
+              <Label>Duration (min)</Label>
               <Input
                 type="number"
                 min={15}
@@ -154,17 +272,48 @@ export function ScheduleInterviewDialog({
                 onChange={(e) => setDuration(Number(e.target.value))}
               />
             </div>
-            <p className="text-xs text-muted-foreground">
-              Invite goes to <span className="font-medium">{candidateEmail}</span>. A Google Meet
-              link is created automatically.
-            </p>
-            <DialogFooter>
-              <Button onClick={() => schedule.mutate()} disabled={schedule.isPending}>
-                {schedule.isPending ? "Scheduling…" : "Create event"}
-              </Button>
-            </DialogFooter>
           </div>
-        )}
+
+          {/* Location (optional) */}
+          <div>
+            <Label>Location (optional)</Label>
+            <Input
+              placeholder="Office address or leave blank for online"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+            />
+          </div>
+
+          {/* Notes (optional) */}
+          <div>
+            <Label>Notes (optional)</Label>
+            <Textarea
+              rows={2}
+              placeholder="Interview agenda, preparation tips, etc."
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+            />
+          </div>
+
+          <p className="text-xs text-muted-foreground">
+            Invite goes to <span className="font-medium">{candidateEmail}</span>. A notification is
+            sent automatically.
+          </p>
+
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={() => schedule.mutate()} disabled={schedule.isPending}>
+              {schedule.isPending ? (
+                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+              ) : (
+                <Calendar className="h-4 w-4 mr-1" />
+              )}
+              Schedule interview
+            </Button>
+          </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );
