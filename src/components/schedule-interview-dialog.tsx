@@ -7,11 +7,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Calendar } from "lucide-react";
-import { scheduleInterview, getGoogleCalendarStatus, startGoogleCalendarConnect, saveGoogleCalendarConnection } from "@/lib/google-calendar.functions";
-import { connectAppUser } from "@/integrations/lovable/appUserConnectorClient";
+import {
+  scheduleInterview,
+  getGoogleCalendarStatus,
+  startGoogleCalendarConnect,
+  saveGoogleCalendarConnection,
+} from "@/lib/google-calendar.functions";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-
-const GATEWAY = "https://connector-gateway.lovable.dev";
 
 export function ScheduleInterviewDialog({
   applicationId,
@@ -41,17 +43,35 @@ export function ScheduleInterviewDialog({
 
   const connect = useMutation({
     mutationFn: async () => {
-      const res = await connectAppUser({
-        connectorId: "google_calendar",
-        gatewayBaseUrl: GATEWAY,
-        start: (targetOrigin) => startFn({ data: targetOrigin }),
+      const targetOrigin = window.location.origin;
+      const { authorizationUrl } = await startFn({ data: targetOrigin });
+      const redirectUri = `${targetOrigin}/google-calendar/callback`;
+      const popup = window.open(authorizationUrl, "google-oauth", "width=600,height=720");
+      if (!popup) throw new Error("Popup blocked. Allow popups and try again.");
+
+      return await new Promise<string>((resolve, reject) => {
+        const timer = setInterval(() => {
+          if (popup.closed) {
+            clearInterval(timer);
+            reject(new Error("Sign in was cancelled"));
+          }
+        }, 500);
+
+        const onMessage = (event: MessageEvent) => {
+          if (event.origin !== targetOrigin) return;
+          const data = event.data;
+          if (data?.type !== "google-calendar-oauth") return;
+          window.removeEventListener("message", onMessage);
+          clearInterval(timer);
+          popup.close();
+          if (data.code) resolve(data.code as string);
+          else reject(new Error(data.error ?? "OAuth failed"));
+        };
+        window.addEventListener("message", onMessage);
       });
-      if (!res.success) throw new Error(res.error ?? "Failed to connect");
-      if (res.connectionAPIKey) {
-        await saveFn({ data: { connectionAPIKey: res.connectionAPIKey } });
-      }
     },
-    onSuccess: () => {
+    onSuccess: async (code) => {
+      await saveFn({ data: { code, redirectOrigin: window.location.origin } });
       toast.success("Google Calendar connected");
       qc.invalidateQueries({ queryKey: ["gcal-status"] });
     },

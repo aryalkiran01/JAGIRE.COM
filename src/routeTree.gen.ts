@@ -9,83 +9,53 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as SupportRouteImport } from './routes/support'
-import { Route as ResetPasswordRouteImport } from './routes/reset-password'
-import { Route as PricingRouteImport } from './routes/pricing'
-import { Route as PaymentSuccessRouteImport } from './routes/payment-success'
-import { Route as PaymentFailureRouteImport } from './routes/payment-failure'
-import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
-import { Route as ContactRouteImport } from './routes/contact'
-import { Route as AuthRouteImport } from './routes/auth'
-import { Route as AboutRouteImport } from './routes/about'
-import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as JobsIndexRouteImport } from './routes/jobs.index'
-import { Route as CompaniesIndexRouteImport } from './routes/companies.index'
-import { Route as BlogIndexRouteImport } from './routes/blog.index'
-import { Route as JobsJobIdRouteImport } from './routes/jobs.$jobId'
-import { Route as CompaniesSlugRouteImport } from './routes/companies.$slug'
-import { Route as CheckoutPlanRouteImport } from './routes/checkout.$plan'
-import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
-import { Route as AuthenticatedSavedRouteImport } from './routes/_authenticated.saved'
-import { Route as AuthenticatedResumeScannerRouteImport } from './routes/_authenticated.resume-scanner'
-import { Route as AuthenticatedResumeBuilderRouteImport } from './routes/_authenticated.resume-builder'
-import { Route as AuthenticatedReferralsRouteImport } from './routes/_authenticated.referrals'
-import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated.profile'
-import { Route as AuthenticatedNotificationsRouteImport } from './routes/_authenticated.notifications'
-import { Route as AuthenticatedMessagesRouteImport } from './routes/_authenticated.messages'
-import { Route as AuthenticatedLearnRouteImport } from './routes/_authenticated.learn'
-import { Route as AuthenticatedFeedRouteImport } from './routes/_authenticated.feed'
-import { Route as AuthenticatedEmployerRouteImport } from './routes/_authenticated.employer'
-import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated.dashboard'
-import { Route as AuthenticatedCareerRouteImport } from './routes/_authenticated.career'
-import { Route as AuthenticatedBlogEditorRouteImport } from './routes/_authenticated.blog-editor'
-import { Route as AuthenticatedAssessmentsRouteImport } from './routes/_authenticated.assessments'
-import { Route as AuthenticatedApplicationsRouteImport } from './routes/_authenticated.applications'
+import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
+import { Route as AboutRouteImport } from './routes/about'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as ContactRouteImport } from './routes/contact'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
+import { Route as PaymentFailureRouteImport } from './routes/payment-failure'
+import { Route as PaymentSuccessRouteImport } from './routes/payment-success'
+import { Route as PricingRouteImport } from './routes/pricing'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as SupportRouteImport } from './routes/support'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated.admin'
+import { Route as AuthenticatedApplicationsRouteImport } from './routes/_authenticated.applications'
+import { Route as AuthenticatedAssessmentsRouteImport } from './routes/_authenticated.assessments'
+import { Route as AuthenticatedBlogEditorRouteImport } from './routes/_authenticated.blog-editor'
+import { Route as AuthenticatedCareerRouteImport } from './routes/_authenticated.career'
+import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated.dashboard'
+import { Route as AuthenticatedEmployerRouteImport } from './routes/_authenticated.employer'
+import { Route as AuthenticatedFeedRouteImport } from './routes/_authenticated.feed'
+import { Route as AuthenticatedLearnRouteImport } from './routes/_authenticated.learn'
+import { Route as AuthenticatedMessagesRouteImport } from './routes/_authenticated.messages'
+import { Route as AuthenticatedNotificationsRouteImport } from './routes/_authenticated.notifications'
+import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated.profile'
+import { Route as AuthenticatedReferralsRouteImport } from './routes/_authenticated.referrals'
+import { Route as AuthenticatedResumeBuilderRouteImport } from './routes/_authenticated.resume-builder'
+import { Route as AuthenticatedResumeScannerRouteImport } from './routes/_authenticated.resume-scanner'
+import { Route as AuthenticatedSavedRouteImport } from './routes/_authenticated.saved'
+import { Route as BlogIndexRouteImport } from './routes/blog.index'
+import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
+import { Route as CheckoutPlanRouteImport } from './routes/checkout.$plan'
+import { Route as CompaniesIndexRouteImport } from './routes/companies.index'
+import { Route as CompaniesSlugRouteImport } from './routes/companies.$slug'
+import { Route as GoogleCalendarCallbackRouteImport } from './routes/google-calendar.callback'
+import { Route as JobsIndexRouteImport } from './routes/jobs.index'
+import { Route as JobsJobIdRouteImport } from './routes/jobs.$jobId'
 import { Route as AuthenticatedEmployerIndexRouteImport } from './routes/_authenticated.employer.index'
 import { Route as AuthenticatedEmployerCompanyRouteImport } from './routes/_authenticated.employer.company'
-import { Route as AuthenticatedEmployerJobsNewRouteImport } from './routes/_authenticated.employer.jobs.new'
 import { Route as AuthenticatedEmployerJobsJobIdRouteImport } from './routes/_authenticated.employer.jobs.$jobId'
+import { Route as AuthenticatedEmployerJobsNewRouteImport } from './routes/_authenticated.employer.jobs.new'
 
-const SupportRoute = SupportRouteImport.update({
-  id: '/support',
-  path: '/support',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ResetPasswordRoute = ResetPasswordRouteImport.update({
-  id: '/reset-password',
-  path: '/reset-password',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PricingRoute = PricingRouteImport.update({
-  id: '/pricing',
-  path: '/pricing',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PaymentSuccessRoute = PaymentSuccessRouteImport.update({
-  id: '/payment-success',
-  path: '/payment-success',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PaymentFailureRoute = PaymentFailureRouteImport.update({
-  id: '/payment-failure',
-  path: '/payment-failure',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
-  id: '/forgot-password',
-  path: '/forgot-password',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ContactRoute = ContactRouteImport.update({
-  id: '/contact',
-  path: '/contact',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthRoute = AuthRouteImport.update({
-  id: '/auth',
-  path: '/auth',
+const AuthenticatedRoute = AuthenticatedRouteImport.update({
+  id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AboutRoute = AboutRouteImport.update({
@@ -93,75 +63,96 @@ const AboutRoute = AboutRouteImport.update({
   path: '/about',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedRoute = AuthenticatedRouteImport.update({
-  id: '/_authenticated',
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const ContactRoute = ContactRouteImport.update({
+  id: '/contact',
+  path: '/contact',
   getParentRoute: () => rootRouteImport,
 } as any)
-const JobsIndexRoute = JobsIndexRouteImport.update({
-  id: '/jobs/',
-  path: '/jobs/',
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
   getParentRoute: () => rootRouteImport,
 } as any)
-const CompaniesIndexRoute = CompaniesIndexRouteImport.update({
-  id: '/companies/',
-  path: '/companies/',
+const PaymentFailureRoute = PaymentFailureRouteImport.update({
+  id: '/payment-failure',
+  path: '/payment-failure',
   getParentRoute: () => rootRouteImport,
 } as any)
-const BlogIndexRoute = BlogIndexRouteImport.update({
-  id: '/blog/',
-  path: '/blog/',
+const PaymentSuccessRoute = PaymentSuccessRouteImport.update({
+  id: '/payment-success',
+  path: '/payment-success',
   getParentRoute: () => rootRouteImport,
 } as any)
-const JobsJobIdRoute = JobsJobIdRouteImport.update({
-  id: '/jobs/$jobId',
-  path: '/jobs/$jobId',
+const PricingRoute = PricingRouteImport.update({
+  id: '/pricing',
+  path: '/pricing',
   getParentRoute: () => rootRouteImport,
 } as any)
-const CompaniesSlugRoute = CompaniesSlugRouteImport.update({
-  id: '/companies/$slug',
-  path: '/companies/$slug',
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
-const CheckoutPlanRoute = CheckoutPlanRouteImport.update({
-  id: '/checkout/$plan',
-  path: '/checkout/$plan',
+const SupportRoute = SupportRouteImport.update({
+  id: '/support',
+  path: '/support',
   getParentRoute: () => rootRouteImport,
 } as any)
-const BlogSlugRoute = BlogSlugRouteImport.update({
-  id: '/blog/$slug',
-  path: '/blog/$slug',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthenticatedSavedRoute = AuthenticatedSavedRouteImport.update({
-  id: '/saved',
-  path: '/saved',
+const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
-const AuthenticatedResumeScannerRoute =
-  AuthenticatedResumeScannerRouteImport.update({
-    id: '/resume-scanner',
-    path: '/resume-scanner',
+const AuthenticatedApplicationsRoute =
+  AuthenticatedApplicationsRouteImport.update({
+    id: '/applications',
+    path: '/applications',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
-const AuthenticatedResumeBuilderRoute =
-  AuthenticatedResumeBuilderRouteImport.update({
-    id: '/resume-builder',
-    path: '/resume-builder',
+const AuthenticatedAssessmentsRoute =
+  AuthenticatedAssessmentsRouteImport.update({
+    id: '/assessments',
+    path: '/assessments',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
-const AuthenticatedReferralsRoute = AuthenticatedReferralsRouteImport.update({
-  id: '/referrals',
-  path: '/referrals',
+const AuthenticatedBlogEditorRoute = AuthenticatedBlogEditorRouteImport.update({
+  id: '/blog-editor',
+  path: '/blog-editor',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
-const AuthenticatedProfileRoute = AuthenticatedProfileRouteImport.update({
-  id: '/profile',
-  path: '/profile',
+const AuthenticatedCareerRoute = AuthenticatedCareerRouteImport.update({
+  id: '/career',
+  path: '/career',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedEmployerRoute = AuthenticatedEmployerRouteImport.update({
+  id: '/employer',
+  path: '/employer',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedFeedRoute = AuthenticatedFeedRouteImport.update({
+  id: '/feed',
+  path: '/feed',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedLearnRoute = AuthenticatedLearnRouteImport.update({
+  id: '/learn',
+  path: '/learn',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedMessagesRoute = AuthenticatedMessagesRouteImport.update({
+  id: '/messages',
+  path: '/messages',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedNotificationsRoute =
@@ -170,57 +161,72 @@ const AuthenticatedNotificationsRoute =
     path: '/notifications',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
-const AuthenticatedMessagesRoute = AuthenticatedMessagesRouteImport.update({
-  id: '/messages',
-  path: '/messages',
+const AuthenticatedProfileRoute = AuthenticatedProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
-const AuthenticatedLearnRoute = AuthenticatedLearnRouteImport.update({
-  id: '/learn',
-  path: '/learn',
+const AuthenticatedReferralsRoute = AuthenticatedReferralsRouteImport.update({
+  id: '/referrals',
+  path: '/referrals',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
-const AuthenticatedFeedRoute = AuthenticatedFeedRouteImport.update({
-  id: '/feed',
-  path: '/feed',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
-const AuthenticatedEmployerRoute = AuthenticatedEmployerRouteImport.update({
-  id: '/employer',
-  path: '/employer',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
-const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
-const AuthenticatedCareerRoute = AuthenticatedCareerRouteImport.update({
-  id: '/career',
-  path: '/career',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
-const AuthenticatedBlogEditorRoute = AuthenticatedBlogEditorRouteImport.update({
-  id: '/blog-editor',
-  path: '/blog-editor',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
-const AuthenticatedAssessmentsRoute =
-  AuthenticatedAssessmentsRouteImport.update({
-    id: '/assessments',
-    path: '/assessments',
+const AuthenticatedResumeBuilderRoute =
+  AuthenticatedResumeBuilderRouteImport.update({
+    id: '/resume-builder',
+    path: '/resume-builder',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
-const AuthenticatedApplicationsRoute =
-  AuthenticatedApplicationsRouteImport.update({
-    id: '/applications',
-    path: '/applications',
+const AuthenticatedResumeScannerRoute =
+  AuthenticatedResumeScannerRouteImport.update({
+    id: '/resume-scanner',
+    path: '/resume-scanner',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
-const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
-  id: '/admin',
-  path: '/admin',
+const AuthenticatedSavedRoute = AuthenticatedSavedRouteImport.update({
+  id: '/saved',
+  path: '/saved',
   getParentRoute: () => AuthenticatedRoute,
+} as any)
+const BlogIndexRoute = BlogIndexRouteImport.update({
+  id: '/blog/',
+  path: '/blog/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BlogSlugRoute = BlogSlugRouteImport.update({
+  id: '/blog/$slug',
+  path: '/blog/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CheckoutPlanRoute = CheckoutPlanRouteImport.update({
+  id: '/checkout/$plan',
+  path: '/checkout/$plan',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CompaniesIndexRoute = CompaniesIndexRouteImport.update({
+  id: '/companies/',
+  path: '/companies/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CompaniesSlugRoute = CompaniesSlugRouteImport.update({
+  id: '/companies/$slug',
+  path: '/companies/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GoogleCalendarCallbackRoute = GoogleCalendarCallbackRouteImport.update({
+  id: '/google-calendar/callback',
+  path: '/google-calendar/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const JobsIndexRoute = JobsIndexRouteImport.update({
+  id: '/jobs/',
+  path: '/jobs/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const JobsJobIdRoute = JobsJobIdRouteImport.update({
+  id: '/jobs/$jobId',
+  path: '/jobs/$jobId',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedEmployerIndexRoute =
   AuthenticatedEmployerIndexRouteImport.update({
@@ -234,16 +240,16 @@ const AuthenticatedEmployerCompanyRoute =
     path: '/company',
     getParentRoute: () => AuthenticatedEmployerRoute,
   } as any)
-const AuthenticatedEmployerJobsNewRoute =
-  AuthenticatedEmployerJobsNewRouteImport.update({
-    id: '/jobs/new',
-    path: '/jobs/new',
-    getParentRoute: () => AuthenticatedEmployerRoute,
-  } as any)
 const AuthenticatedEmployerJobsJobIdRoute =
   AuthenticatedEmployerJobsJobIdRouteImport.update({
     id: '/jobs/$jobId',
     path: '/jobs/$jobId',
+    getParentRoute: () => AuthenticatedEmployerRoute,
+  } as any)
+const AuthenticatedEmployerJobsNewRoute =
+  AuthenticatedEmployerJobsNewRouteImport.update({
+    id: '/jobs/new',
+    path: '/jobs/new',
     getParentRoute: () => AuthenticatedEmployerRoute,
   } as any)
 
@@ -277,6 +283,7 @@ export interface FileRoutesByFullPath {
   '/blog/$slug': typeof BlogSlugRoute
   '/checkout/$plan': typeof CheckoutPlanRoute
   '/companies/$slug': typeof CompaniesSlugRoute
+  '/google-calendar/callback': typeof GoogleCalendarCallbackRoute
   '/jobs/$jobId': typeof JobsJobIdRoute
   '/blog/': typeof BlogIndexRoute
   '/companies/': typeof CompaniesIndexRoute
@@ -315,6 +322,7 @@ export interface FileRoutesByTo {
   '/blog/$slug': typeof BlogSlugRoute
   '/checkout/$plan': typeof CheckoutPlanRoute
   '/companies/$slug': typeof CompaniesSlugRoute
+  '/google-calendar/callback': typeof GoogleCalendarCallbackRoute
   '/jobs/$jobId': typeof JobsJobIdRoute
   '/blog': typeof BlogIndexRoute
   '/companies': typeof CompaniesIndexRoute
@@ -356,6 +364,7 @@ export interface FileRoutesById {
   '/blog/$slug': typeof BlogSlugRoute
   '/checkout/$plan': typeof CheckoutPlanRoute
   '/companies/$slug': typeof CompaniesSlugRoute
+  '/google-calendar/callback': typeof GoogleCalendarCallbackRoute
   '/jobs/$jobId': typeof JobsJobIdRoute
   '/blog/': typeof BlogIndexRoute
   '/companies/': typeof CompaniesIndexRoute
@@ -397,6 +406,7 @@ export interface FileRouteTypes {
     | '/blog/$slug'
     | '/checkout/$plan'
     | '/companies/$slug'
+    | '/google-calendar/callback'
     | '/jobs/$jobId'
     | '/blog/'
     | '/companies/'
@@ -435,6 +445,7 @@ export interface FileRouteTypes {
     | '/blog/$slug'
     | '/checkout/$plan'
     | '/companies/$slug'
+    | '/google-calendar/callback'
     | '/jobs/$jobId'
     | '/blog'
     | '/companies'
@@ -475,6 +486,7 @@ export interface FileRouteTypes {
     | '/blog/$slug'
     | '/checkout/$plan'
     | '/companies/$slug'
+    | '/google-calendar/callback'
     | '/jobs/$jobId'
     | '/blog/'
     | '/companies/'
@@ -500,6 +512,7 @@ export interface RootRouteChildren {
   BlogSlugRoute: typeof BlogSlugRoute
   CheckoutPlanRoute: typeof CheckoutPlanRoute
   CompaniesSlugRoute: typeof CompaniesSlugRoute
+  GoogleCalendarCallbackRoute: typeof GoogleCalendarCallbackRoute
   JobsJobIdRoute: typeof JobsJobIdRoute
   BlogIndexRoute: typeof BlogIndexRoute
   CompaniesIndexRoute: typeof CompaniesIndexRoute
@@ -508,67 +521,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/support': {
-      id: '/support'
-      path: '/support'
-      fullPath: '/support'
-      preLoaderRoute: typeof SupportRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/reset-password': {
-      id: '/reset-password'
-      path: '/reset-password'
-      fullPath: '/reset-password'
-      preLoaderRoute: typeof ResetPasswordRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/pricing': {
-      id: '/pricing'
-      path: '/pricing'
-      fullPath: '/pricing'
-      preLoaderRoute: typeof PricingRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/payment-success': {
-      id: '/payment-success'
-      path: '/payment-success'
-      fullPath: '/payment-success'
-      preLoaderRoute: typeof PaymentSuccessRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/payment-failure': {
-      id: '/payment-failure'
-      path: '/payment-failure'
-      fullPath: '/payment-failure'
-      preLoaderRoute: typeof PaymentFailureRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/forgot-password': {
-      id: '/forgot-password'
-      path: '/forgot-password'
-      fullPath: '/forgot-password'
-      preLoaderRoute: typeof ForgotPasswordRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/contact': {
-      id: '/contact'
-      path: '/contact'
-      fullPath: '/contact'
-      preLoaderRoute: typeof ContactRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/auth': {
-      id: '/auth'
-      path: '/auth'
-      fullPath: '/auth'
-      preLoaderRoute: typeof AuthRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/about': {
-      id: '/about'
-      path: '/about'
-      fullPath: '/about'
-      preLoaderRoute: typeof AboutRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated': {
@@ -578,158 +535,74 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/about': {
+      id: '/about'
+      path: '/about'
+      fullPath: '/about'
+      preLoaderRoute: typeof AboutRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/jobs/': {
-      id: '/jobs/'
-      path: '/jobs'
-      fullPath: '/jobs/'
-      preLoaderRoute: typeof JobsIndexRouteImport
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/companies/': {
-      id: '/companies/'
-      path: '/companies'
-      fullPath: '/companies/'
-      preLoaderRoute: typeof CompaniesIndexRouteImport
+    '/contact': {
+      id: '/contact'
+      path: '/contact'
+      fullPath: '/contact'
+      preLoaderRoute: typeof ContactRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/blog/': {
-      id: '/blog/'
-      path: '/blog'
-      fullPath: '/blog/'
-      preLoaderRoute: typeof BlogIndexRouteImport
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/jobs/$jobId': {
-      id: '/jobs/$jobId'
-      path: '/jobs/$jobId'
-      fullPath: '/jobs/$jobId'
-      preLoaderRoute: typeof JobsJobIdRouteImport
+    '/payment-failure': {
+      id: '/payment-failure'
+      path: '/payment-failure'
+      fullPath: '/payment-failure'
+      preLoaderRoute: typeof PaymentFailureRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/companies/$slug': {
-      id: '/companies/$slug'
-      path: '/companies/$slug'
-      fullPath: '/companies/$slug'
-      preLoaderRoute: typeof CompaniesSlugRouteImport
+    '/payment-success': {
+      id: '/payment-success'
+      path: '/payment-success'
+      fullPath: '/payment-success'
+      preLoaderRoute: typeof PaymentSuccessRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/checkout/$plan': {
-      id: '/checkout/$plan'
-      path: '/checkout/$plan'
-      fullPath: '/checkout/$plan'
-      preLoaderRoute: typeof CheckoutPlanRouteImport
+    '/pricing': {
+      id: '/pricing'
+      path: '/pricing'
+      fullPath: '/pricing'
+      preLoaderRoute: typeof PricingRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/blog/$slug': {
-      id: '/blog/$slug'
-      path: '/blog/$slug'
-      fullPath: '/blog/$slug'
-      preLoaderRoute: typeof BlogSlugRouteImport
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/saved': {
-      id: '/_authenticated/saved'
-      path: '/saved'
-      fullPath: '/saved'
-      preLoaderRoute: typeof AuthenticatedSavedRouteImport
-      parentRoute: typeof AuthenticatedRoute
+    '/support': {
+      id: '/support'
+      path: '/support'
+      fullPath: '/support'
+      preLoaderRoute: typeof SupportRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/resume-scanner': {
-      id: '/_authenticated/resume-scanner'
-      path: '/resume-scanner'
-      fullPath: '/resume-scanner'
-      preLoaderRoute: typeof AuthenticatedResumeScannerRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/resume-builder': {
-      id: '/_authenticated/resume-builder'
-      path: '/resume-builder'
-      fullPath: '/resume-builder'
-      preLoaderRoute: typeof AuthenticatedResumeBuilderRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/referrals': {
-      id: '/_authenticated/referrals'
-      path: '/referrals'
-      fullPath: '/referrals'
-      preLoaderRoute: typeof AuthenticatedReferralsRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/profile': {
-      id: '/_authenticated/profile'
-      path: '/profile'
-      fullPath: '/profile'
-      preLoaderRoute: typeof AuthenticatedProfileRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/notifications': {
-      id: '/_authenticated/notifications'
-      path: '/notifications'
-      fullPath: '/notifications'
-      preLoaderRoute: typeof AuthenticatedNotificationsRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/messages': {
-      id: '/_authenticated/messages'
-      path: '/messages'
-      fullPath: '/messages'
-      preLoaderRoute: typeof AuthenticatedMessagesRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/learn': {
-      id: '/_authenticated/learn'
-      path: '/learn'
-      fullPath: '/learn'
-      preLoaderRoute: typeof AuthenticatedLearnRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/feed': {
-      id: '/_authenticated/feed'
-      path: '/feed'
-      fullPath: '/feed'
-      preLoaderRoute: typeof AuthenticatedFeedRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/employer': {
-      id: '/_authenticated/employer'
-      path: '/employer'
-      fullPath: '/employer'
-      preLoaderRoute: typeof AuthenticatedEmployerRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/dashboard': {
-      id: '/_authenticated/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof AuthenticatedDashboardRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/career': {
-      id: '/_authenticated/career'
-      path: '/career'
-      fullPath: '/career'
-      preLoaderRoute: typeof AuthenticatedCareerRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/blog-editor': {
-      id: '/_authenticated/blog-editor'
-      path: '/blog-editor'
-      fullPath: '/blog-editor'
-      preLoaderRoute: typeof AuthenticatedBlogEditorRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/assessments': {
-      id: '/_authenticated/assessments'
-      path: '/assessments'
-      fullPath: '/assessments'
-      preLoaderRoute: typeof AuthenticatedAssessmentsRouteImport
+    '/_authenticated/admin': {
+      id: '/_authenticated/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AuthenticatedAdminRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/applications': {
@@ -739,12 +612,159 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedApplicationsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/admin': {
-      id: '/_authenticated/admin'
-      path: '/admin'
-      fullPath: '/admin'
-      preLoaderRoute: typeof AuthenticatedAdminRouteImport
+    '/_authenticated/assessments': {
+      id: '/_authenticated/assessments'
+      path: '/assessments'
+      fullPath: '/assessments'
+      preLoaderRoute: typeof AuthenticatedAssessmentsRouteImport
       parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/blog-editor': {
+      id: '/_authenticated/blog-editor'
+      path: '/blog-editor'
+      fullPath: '/blog-editor'
+      preLoaderRoute: typeof AuthenticatedBlogEditorRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/career': {
+      id: '/_authenticated/career'
+      path: '/career'
+      fullPath: '/career'
+      preLoaderRoute: typeof AuthenticatedCareerRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/dashboard': {
+      id: '/_authenticated/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AuthenticatedDashboardRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/employer': {
+      id: '/_authenticated/employer'
+      path: '/employer'
+      fullPath: '/employer'
+      preLoaderRoute: typeof AuthenticatedEmployerRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/feed': {
+      id: '/_authenticated/feed'
+      path: '/feed'
+      fullPath: '/feed'
+      preLoaderRoute: typeof AuthenticatedFeedRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/learn': {
+      id: '/_authenticated/learn'
+      path: '/learn'
+      fullPath: '/learn'
+      preLoaderRoute: typeof AuthenticatedLearnRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/messages': {
+      id: '/_authenticated/messages'
+      path: '/messages'
+      fullPath: '/messages'
+      preLoaderRoute: typeof AuthenticatedMessagesRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/notifications': {
+      id: '/_authenticated/notifications'
+      path: '/notifications'
+      fullPath: '/notifications'
+      preLoaderRoute: typeof AuthenticatedNotificationsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/profile': {
+      id: '/_authenticated/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof AuthenticatedProfileRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/referrals': {
+      id: '/_authenticated/referrals'
+      path: '/referrals'
+      fullPath: '/referrals'
+      preLoaderRoute: typeof AuthenticatedReferralsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/resume-builder': {
+      id: '/_authenticated/resume-builder'
+      path: '/resume-builder'
+      fullPath: '/resume-builder'
+      preLoaderRoute: typeof AuthenticatedResumeBuilderRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/resume-scanner': {
+      id: '/_authenticated/resume-scanner'
+      path: '/resume-scanner'
+      fullPath: '/resume-scanner'
+      preLoaderRoute: typeof AuthenticatedResumeScannerRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/saved': {
+      id: '/_authenticated/saved'
+      path: '/saved'
+      fullPath: '/saved'
+      preLoaderRoute: typeof AuthenticatedSavedRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/blog/': {
+      id: '/blog/'
+      path: '/blog'
+      fullPath: '/blog/'
+      preLoaderRoute: typeof BlogIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/blog/$slug': {
+      id: '/blog/$slug'
+      path: '/blog/$slug'
+      fullPath: '/blog/$slug'
+      preLoaderRoute: typeof BlogSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/checkout/$plan': {
+      id: '/checkout/$plan'
+      path: '/checkout/$plan'
+      fullPath: '/checkout/$plan'
+      preLoaderRoute: typeof CheckoutPlanRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/companies/': {
+      id: '/companies/'
+      path: '/companies'
+      fullPath: '/companies/'
+      preLoaderRoute: typeof CompaniesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/companies/$slug': {
+      id: '/companies/$slug'
+      path: '/companies/$slug'
+      fullPath: '/companies/$slug'
+      preLoaderRoute: typeof CompaniesSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/google-calendar/callback': {
+      id: '/google-calendar/callback'
+      path: '/google-calendar/callback'
+      fullPath: '/google-calendar/callback'
+      preLoaderRoute: typeof GoogleCalendarCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/jobs/': {
+      id: '/jobs/'
+      path: '/jobs'
+      fullPath: '/jobs/'
+      preLoaderRoute: typeof JobsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/jobs/$jobId': {
+      id: '/jobs/$jobId'
+      path: '/jobs/$jobId'
+      fullPath: '/jobs/$jobId'
+      preLoaderRoute: typeof JobsJobIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_authenticated/employer/': {
       id: '/_authenticated/employer/'
@@ -760,18 +780,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedEmployerCompanyRouteImport
       parentRoute: typeof AuthenticatedEmployerRoute
     }
-    '/_authenticated/employer/jobs/new': {
-      id: '/_authenticated/employer/jobs/new'
-      path: '/jobs/new'
-      fullPath: '/employer/jobs/new'
-      preLoaderRoute: typeof AuthenticatedEmployerJobsNewRouteImport
-      parentRoute: typeof AuthenticatedEmployerRoute
-    }
     '/_authenticated/employer/jobs/$jobId': {
       id: '/_authenticated/employer/jobs/$jobId'
       path: '/jobs/$jobId'
       fullPath: '/employer/jobs/$jobId'
       preLoaderRoute: typeof AuthenticatedEmployerJobsJobIdRouteImport
+      parentRoute: typeof AuthenticatedEmployerRoute
+    }
+    '/_authenticated/employer/jobs/new': {
+      id: '/_authenticated/employer/jobs/new'
+      path: '/jobs/new'
+      fullPath: '/employer/jobs/new'
+      preLoaderRoute: typeof AuthenticatedEmployerJobsNewRouteImport
       parentRoute: typeof AuthenticatedEmployerRoute
     }
   }
@@ -853,6 +873,7 @@ const rootRouteChildren: RootRouteChildren = {
   BlogSlugRoute: BlogSlugRoute,
   CheckoutPlanRoute: CheckoutPlanRoute,
   CompaniesSlugRoute: CompaniesSlugRoute,
+  GoogleCalendarCallbackRoute: GoogleCalendarCallbackRoute,
   JobsJobIdRoute: JobsJobIdRoute,
   BlogIndexRoute: BlogIndexRoute,
   CompaniesIndexRoute: CompaniesIndexRoute,
@@ -861,3 +882,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

@@ -2,7 +2,6 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable/index";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { toast } from "sonner";
-import { Briefcase, Loader2 } from "lucide-react";
+import { Briefcase, Loader as Loader2 } from "lucide-react";
 
 const authSchema = z.object({
   email: z.string().trim().email("Invalid email").max(255),
@@ -21,6 +20,7 @@ const authSchema = z.object({
 const searchSchema = z.object({
   mode: z.enum(["signin", "signup"]).optional().default("signin"),
   redirect: z.string().optional(),
+  ref: z.string().optional(),
 });
 
 export const Route = createFileRoute("/auth")({
@@ -102,6 +102,7 @@ function SignInForm() {
 }
 
 function SignUpForm() {
+  const search = Route.useSearch();
   const [loading, setLoading] = useState(false);
   const [role, setRole] = useState<"job_seeker" | "employer">("job_seeker");
   async function handle(e: React.FormEvent<HTMLFormElement>) {
@@ -111,12 +112,12 @@ function SignUpForm() {
     const parsed = authSchema.safeParse({ email: fd.get("email"), password: fd.get("password") });
     if (!parsed.success) { toast.error(parsed.error.issues[0].message); setLoading(false); return; }
     const fullName = String(fd.get("full_name") ?? "").trim();
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email: parsed.data.email,
       password: parsed.data.password,
       options: {
         emailRedirectTo: `${window.location.origin}/`,
-        data: { full_name: fullName, role },
+        data: { full_name: fullName, role, referral_code: search.ref ?? null },
       },
     });
     setLoading(false);
@@ -150,9 +151,12 @@ function GoogleButton() {
   const [loading, setLoading] = useState(false);
   async function handle() {
     setLoading(true);
-    const result = await lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin });
-    if (result.error) { toast.error(String(result.error)); setLoading(false); return; }
-    if (result.redirected) return;
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: `${window.location.origin}/dashboard` },
+    });
+    setLoading(false);
+    if (error) toast.error(error.message);
   }
   return (
     <Button type="button" onClick={handle} disabled={loading} variant="outline" className="w-full">
