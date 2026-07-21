@@ -6,7 +6,7 @@ import { SiteFooter } from "@/components/layout/site-footer";
 import { Card, CardContent } from "@/components/ui/card";
 import { Building2 } from "lucide-react";
 
-export const Route = createFileRoute("/companies")({ component: Companies });
+export const Route = createFileRoute("/companies/")({ component: Companies });
 
 function Companies() {
   const { data } = useQuery({
