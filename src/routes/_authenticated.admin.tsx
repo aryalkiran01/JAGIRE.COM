@@ -35,14 +35,18 @@ function Admin() {
   const { data: users } = useQuery({
     queryKey: ["admin-users"],
     enabled: role === "admin",
-    queryFn: async () =>
-      (
-        await supabase
-          .from("profiles")
-          .select("*, roles:user_roles(role)")
-          .order("created_at", { ascending: false })
-          .limit(100)
-      ).data ?? [],
+    queryFn: async () => {
+      const [{ data: profiles }, { data: roles }] = await Promise.all([
+        supabase.from("profiles").select("*").order("created_at", { ascending: false }).limit(100),
+
+        supabase.from("user_roles").select("user_id, role"),
+      ]);
+
+      return (profiles ?? []).map((profile: any) => ({
+        ...profile,
+        role: roles?.find((r) => r.user_id === profile.id)?.role ?? "job_seeker",
+      }));
+    },
   });
   const { data: jobs } = useQuery({
     queryKey: ["admin-jobs"],

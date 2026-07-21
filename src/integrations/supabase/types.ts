@@ -135,6 +135,7 @@ export type Database = {
           answers: Json;
           assessment_id: string;
           created_at: string;
+          completed_at: string;
           id: string;
           passed: boolean;
           score: number;

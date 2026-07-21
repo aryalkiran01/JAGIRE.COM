@@ -22,16 +22,22 @@ function Assessments() {
   const [answers, setAnswers] = useState<number[]>([]);
   const [creating, setCreating] = useState(false);
 
-  const { data: list } = useQuery({
+  const { data: list, error } = useQuery({
     queryKey: ["assessments"],
     enabled: !!user,
-    queryFn: async () =>
-      (
-        await supabase
-          .from("assessments_catalog" as any)
-          .select("*")
-          .order("created_at", { ascending: false })
-      ).data ?? [],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("assessments")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      console.log("Assessments:", data);
+      console.log("Assessment error:", error);
+
+      if (error) throw error;
+
+      return data ?? [];
+    },
   });
   const { data: attempts } = useQuery({
     queryKey: ["attempts", user?.id],
@@ -40,20 +46,44 @@ function Assessments() {
       (
         await supabase
           .from("assessment_attempts")
-          .select("assessment_id, score, passed, created_at")
+          .select("assessment_id, score, created_at")
           .eq("user_id", user!.id)
       ).data ?? [],
   });
 
   async function submit() {
     if (!taking || !user) return;
-    const { data, error } = await supabase.rpc("submit_assessment" as any, {
-      _assessment_id: taking.id,
-      _answers: answers as any,
+
+    const questions = taking.questions as Q[];
+
+    let correct = 0;
+
+    questions.forEach((q, i) => {
+      if (answers[i] === q.correct) {
+        correct++;
+      }
     });
-    if (error) return toast.error(error.message);
-    const row: any = Array.isArray(data) ? data[0] : data;
-    toast.success(`Score: ${row?.score ?? 0}% — ${row?.passed ? "Passed 🎉" : "Try again"}`);
+
+    const score = Math.round((correct / questions.length) * 100);
+    const passed = score >= taking.passing_score;
+
+    const { error } = await supabase.from("assessment_attempts").insert([
+      {
+        user_id: user.id,
+        assessment_id: taking.id,
+        score,
+        answers,
+        completed_at: new Date().toISOString(),
+      } as any,
+    ]);
+
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+
+    toast.success(`Score: ${score}% — ${passed ? "Passed 🎉" : "Try again"}`);
+
     setTaking(null);
     setAnswers([]);
     qc.invalidateQueries({ queryKey: ["attempts"] });
@@ -155,23 +185,20 @@ function Assessments() {
               <CardContent className="space-y-3">
                 <p className="text-sm text-muted-foreground line-clamp-2">{a.description}</p>
                 <div className="text-xs text-muted-foreground">
-                  {a.question_count ?? 0} questions · {a.duration_minutes} min · pass{" "}
+                  {a.questions?.length ?? 0} questions · {a.duration_minutes} min · pass{" "}
                   {a.passing_score}%
                 </div>
                 {best && (
                   <div className="flex items-center gap-1 text-sm">
                     <Award className="h-4 w-4 text-primary" />
-                    Best: {best.score}% {best.passed && <Badge className="ml-1">Passed</Badge>}
+                    Best: {best.score}%
+                    {best.score >= a.passing_score && <Badge className="ml-1">Passed</Badge>}
                   </div>
                 )}
                 <Button
                   className="w-full"
-                  onClick={async () => {
-                    const { data, error } = await supabase.rpc("get_assessment_questions" as any, {
-                      _assessment_id: a.id,
-                    });
-                    if (error) return toast.error(error.message);
-                    const qs = (data ?? []) as any[];
+                  onClick={() => {
+                    const qs = a.questions ?? [];
                     setTaking({ ...a, questions: qs });
                     setAnswers(new Array(qs.length).fill(-1));
                   }}
