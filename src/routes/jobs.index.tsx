@@ -19,7 +19,7 @@ const searchSchema = z.object({
   location: z.string().optional(),
 });
 
-export const Route = createFileRoute("/jobs")({
+export const Route = createFileRoute("/jobs/")({
   validateSearch: searchSchema,
   component: JobsPage,
 });

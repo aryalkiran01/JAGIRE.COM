@@ -6,7 +6,7 @@ import { SiteFooter } from "@/components/layout/site-footer";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
-export const Route = createFileRoute("/blog")({
+export const Route = createFileRoute("/blog/")({
   head: () => ({ meta: [{ title: "Blog — Jagire" }, { name: "description", content: "Career advice, hiring insights, and AI in recruitment." }] }),
   component: Blog,
 });
