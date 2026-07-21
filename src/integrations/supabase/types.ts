@@ -310,6 +310,8 @@ export type Database = {
           cover_url: string | null;
           published: boolean | null;
           published_at: string | null;
+          comments_count: number | null;
+          likes_count: number | null;
         };
         Insert: {
           id?: string;
@@ -328,6 +330,8 @@ export type Database = {
           cover_url?: string | null;
           published?: boolean | null;
           published_at?: string | null;
+          comments_count?: number | null;
+          likes_count?: number | null;
         };
         Update: {
           id?: string;
@@ -346,6 +350,56 @@ export type Database = {
           cover_url?: string | null;
           published?: boolean | null;
           published_at?: string | null;
+          comments_count?: number | null;
+          likes_count?: number | null;
+        };
+        Relationships: [];
+      };
+      blog_comments: {
+        Row: {
+          id: string;
+          blog_id: string;
+          author_id: string;
+          content: string;
+          created_at: string | null;
+          updated_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          blog_id: string;
+          author_id?: string;
+          content: string;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          blog_id?: string;
+          author_id?: string;
+          content?: string;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Relationships: [];
+      };
+      blog_likes: {
+        Row: {
+          id: string;
+          blog_id: string;
+          user_id: string;
+          created_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          blog_id: string;
+          user_id?: string;
+          created_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          blog_id?: string;
+          user_id?: string;
+          created_at?: string | null;
         };
         Relationships: [];
       };
@@ -1636,6 +1690,7 @@ export type Database = {
           is_default: boolean | null;
           created_at: string | null;
           updated_at: string | null;
+          career_roadmap: Json | null;
         };
         Insert: {
           id?: string;
@@ -1657,6 +1712,7 @@ export type Database = {
           is_default?: boolean | null;
           created_at?: string | null;
           updated_at?: string | null;
+          career_roadmap?: Json | null;
         };
         Update: {
           id?: string;
@@ -1678,6 +1734,7 @@ export type Database = {
           is_default?: boolean | null;
           created_at?: string | null;
           updated_at?: string | null;
+          career_roadmap?: Json | null;
         };
         Relationships: [];
       };

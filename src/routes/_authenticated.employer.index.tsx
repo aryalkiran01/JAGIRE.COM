@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Briefcase, Users, TrendingUp, Sparkles, Loader2 } from "lucide-react";
+import { Plus, Briefcase, Users, TrendingUp, Sparkles, Loader as Loader2, Video } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { seedDemoData } from "@/lib/demo-seed";
@@ -90,6 +90,12 @@ function EmployerDashboard() {
           <p className="text-muted-foreground">Employer dashboard</p>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" asChild>
+            <Link to="/employer/interviews">
+              <Video className="mr-2 h-4 w-4" />
+              Interviews
+            </Link>
+          </Button>
           <Button variant="outline" onClick={runSeed} disabled={seeding}>
             {seeding ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />

@@ -187,7 +187,35 @@ export const scheduleInterview = createServerFn({ method: "POST" })
       null;
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin.from("interview_events" as any).insert({
+
+    // Look up the application to get candidate_id
+    const { data: application } = await supabaseAdmin
+      .from("applications")
+      .select("id, applicant_id, job:jobs(title, company:companies(name))")
+      .eq("id", data.applicationId)
+      .maybeSingle();
+
+    const candidateId = (application as any)?.applicant_id ?? null;
+
+    // Insert into the main interviews table (candidate dashboard reads from here)
+    const { error: interviewError } = await supabaseAdmin.from("interviews").insert({
+      application_id: data.applicationId,
+      employer_id: context.userId,
+      candidate_id: candidateId,
+      candidate_email: data.candidateEmail,
+      title: data.title,
+      scheduled_at: start.toISOString(),
+      duration_minutes: data.durationMinutes,
+      meeting_link: meetLink,
+      meet_link: meetLink,
+      google_event_id: event.id,
+      status: "scheduled",
+      notes: null,
+    });
+    if (interviewError) throw interviewError;
+
+    // Also log to interview_events audit trail
+    const { error: eventError } = await supabaseAdmin.from("interview_events").insert({
       application_id: data.applicationId,
       employer_id: context.userId,
       candidate_email: data.candidateEmail,
@@ -197,7 +225,7 @@ export const scheduleInterview = createServerFn({ method: "POST" })
       google_event_id: event.id,
       meet_link: meetLink,
     });
-    if (error) throw error;
+    if (eventError) throw eventError;
 
     return { eventId: event.id, meetLink };
   });
