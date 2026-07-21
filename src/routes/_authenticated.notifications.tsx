@@ -33,7 +33,7 @@ function Notifications() {
       .from("notifications")
       .update({ read: true })
       .eq("user_id", user.id)
-      .eq("read", false)
+      .eq("is_read", false)
       .then(() => {
         qc.invalidateQueries({ queryKey: ["notif-unread"] });
       });
@@ -50,7 +50,7 @@ function Notifications() {
       <h1 className="text-3xl font-bold mb-6">Notifications</h1>
       <div className="space-y-2">
         {data?.map((n) => (
-          <Card key={n.id} className={n.read ? "" : "border-primary"}>
+          <Card key={n.id} className={n.is_read ? "" : "border-primary"}>
             <CardContent className="p-4 flex items-start justify-between gap-3">
               <div className="flex-1">
                 <div className="font-medium">{n.title}</div>
@@ -59,7 +59,7 @@ function Notifications() {
                   {new Date(n.created_at).toLocaleString()}
                 </div>
               </div>
-              {!n.read && (
+              {!n.is_read && (
                 <Button size="icon" variant="ghost" onClick={() => markRead(n.id)}>
                   <Check className="h-4 w-4" />
                 </Button>

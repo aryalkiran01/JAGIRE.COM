@@ -43,7 +43,7 @@ export function SiteHeader() {
           .from("notifications")
           .select("*", { count: "exact", head: true })
           .eq("user_id", user!.id)
-          .eq("read", false)
+          .eq("is_read", false)
       ).count ?? 0,
   });
 

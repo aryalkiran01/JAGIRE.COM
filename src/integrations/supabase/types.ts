@@ -787,7 +787,7 @@ export type Database = {
           id: string;
           link: string | null;
           metadata: Json | null;
-          read: boolean;
+          is_read: boolean;
           title: string;
           type: Database["public"]["Enums"]["notification_type"];
           user_id: string;
@@ -1403,7 +1403,7 @@ export type Database = {
       application_status:
         "applied" | "viewed" | "shortlisted" | "interview" | "selected" | "rejected" | "withdrawn";
       experience_level: "entry" | "junior" | "mid" | "senior" | "lead" | "executive";
-      job_status: "draft" | "active" | "paused" | "closed";
+      job_status: "draft" | "active" | "published" | "paused" | "closed";
       job_type: "full_time" | "part_time" | "contract" | "internship" | "freelance";
       meeting_status: "scheduled" | "completed" | "cancelled" | "no_show";
       notification_type: "application" | "message" | "interview" | "job_match" | "system";

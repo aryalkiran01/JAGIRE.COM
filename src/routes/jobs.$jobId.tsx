@@ -164,7 +164,7 @@ function JobDetail() {
                 <ApplyJobDialog
                   jobId={jobId}
                   applied={hasApplied}
-                  jobClosed={job.status !== "active"}
+                  jobClosed={!["active", "published"].includes(job.status)}
                   deadlinePassed={
                     !!job.application_deadline && new Date(job.application_deadline) < new Date()
                   }

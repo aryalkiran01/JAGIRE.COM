@@ -43,7 +43,7 @@ function JobsPage() {
         .select(
           "id, title, slug, description, location, job_type, experience_level, salary_min, salary_max, salary_currency, required_skills, created_at, company:companies(id, name, slug, logo_url)",
         )
-        .eq("status", "active")
+        .in("status", ["published", "active"])
         .order("created_at", { ascending: false })
         .limit(50);
       if (q) query = query.ilike("title", `%${q}%`);

@@ -17,7 +17,7 @@ function Applications() {
         await supabase
           .from("applications")
           .select(
-            "*, job:jobs(id, title, company:companies(name)), events:application_events(status, created_at, note)",
+            "*, job:jobs(id, title, company:companies(name)), events:application_events(event_type, created_at, message)",
           )
           .eq("applicant_id", user!.id)
           .order("applied_at", { ascending: false })
@@ -47,7 +47,7 @@ function Applications() {
                     .map((e: any, i: number) => (
                       <div key={i} className="text-xs relative">
                         <div className="absolute -left-[21px] top-1 h-3 w-3 rounded-full gradient-brand" />
-                        <span className="font-medium capitalize">{e.status}</span>{" "}
+                        <span className="font-medium capitalize">{e.event_type}</span>{" "}
                         <span className="text-muted-foreground">
                           — {new Date(e.created_at).toLocaleDateString()}
                         </span>

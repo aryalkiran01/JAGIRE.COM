@@ -32,8 +32,14 @@ function CompanyDetail() {
     queryKey: ["company-jobs", company?.id],
     enabled: !!company?.id,
     queryFn: async () =>
-      (await supabase.from("jobs").select("*").eq("company_id", company!.id).eq("status", "active"))
-        .data ?? [],
+      (
+        await supabase
+          .from("jobs")
+          .select("*")
+          .eq("company_id", company!.id)
+          .in("status", ["published", "active"])
+          .order("created_at", { ascending: false })
+      ).data ?? [],
   });
   const { data: reviews } = useQuery({
     queryKey: ["company-reviews", company?.id],

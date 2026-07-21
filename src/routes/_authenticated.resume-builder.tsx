@@ -52,13 +52,39 @@ function ResumeBuilder() {
 
   async function exportPdf() {
     if (!previewRef.current) return;
+
     const html2pdf = (await import("html2pdf.js")).default;
+
     html2pdf()
       .set({
         margin: 10,
         filename: `${title || "resume"}.pdf`,
-        html2canvas: { scale: 2 },
-        jsPDF: { unit: "mm", format: "a4" },
+        html2canvas: {
+          scale: 2,
+          useCORS: true,
+          onclone: (doc: Document) => {
+            doc.querySelectorAll("*").forEach((el) => {
+              const element = el as HTMLElement;
+              const style = window.getComputedStyle(element);
+
+              if (style.color.includes("oklch")) {
+                element.style.color = "#000000";
+              }
+
+              if (style.backgroundColor.includes("oklch")) {
+                element.style.backgroundColor = "#ffffff";
+              }
+
+              if (style.borderColor.includes("oklch")) {
+                element.style.borderColor = "#000000";
+              }
+            });
+          },
+        },
+        jsPDF: {
+          unit: "mm",
+          format: "a4",
+        },
       })
       .from(previewRef.current)
       .save();
@@ -274,10 +300,10 @@ function ResumeBuilder() {
           <CardContent>
             <div
               ref={previewRef}
-              className={`bg-white text-black p-8 rounded ${template === "modern" ? "border-l-4 border-primary" : template === "minimal" ? "" : "border"}`}
+              className={`bg-white text-black p-8 rounded ${template === "modern" ? "border-l-4 border-blue-600" : template === "minimal" ? "" : "border"}`}
             >
               <h1
-                className={`${template === "modern" ? "text-3xl font-bold text-primary" : "text-3xl font-bold"}`}
+                className={`${template === "modern" ? "text-3xl font-bold text-blue-600" : "text-3xl font-bold"}`}
               >
                 {data.full_name || "Your Name"}
               </h1>
