@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Briefcase, FileText, Bookmark, Sparkles, TrendingUp } from "lucide-react";
+import { Briefcase, FileText, Bookmark, Sparkles, TrendingUp, Video } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
@@ -130,13 +130,13 @@ function Dashboard() {
         </Card>
         <Card className="gradient-hero text-primary-foreground">
           <CardContent className="p-6">
-            <Sparkles className="h-8 w-8 mb-3" />
-            <h3 className="text-xl font-bold mb-2">Boost your profile</h3>
+            <Video className="h-8 w-8 mb-3" />
+            <h3 className="text-xl font-bold mb-2">Upcoming interviews</h3>
             <p className="text-sm text-primary-foreground/90 mb-4">
-              Upload your resume and get AI-powered scoring + suggestions.
+              View your scheduled interviews and join with one click.
             </p>
             <Button variant="secondary" asChild>
-              <Link to="/resume-scanner">Scan resume</Link>
+              <Link to="/interviews">View interviews</Link>
             </Button>
           </CardContent>
         </Card>

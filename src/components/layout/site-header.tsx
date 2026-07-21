@@ -27,6 +27,7 @@ import {
   Pencil,
   Rss,
   BookOpen,
+  Video,
 } from "lucide-react";
 
 export function SiteHeader() {
@@ -175,6 +176,12 @@ export function SiteHeader() {
                     <Link to="/messages">
                       <MessageSquare className="mr-2 h-4 w-4" />
                       Messages
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/interviews">
+                      <Video className="mr-2 h-4 w-4" />
+                      Interviews
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>

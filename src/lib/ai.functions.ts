@@ -6,7 +6,7 @@ const RESUME_SYSTEM =
   "You are an expert ATS and resume reviewer. Score the resume from 0-100 on each dimension and return ONLY strict JSON with keys: overall_score, ats_score, grammar_score, formatting_score, keyword_score, professionalism_score, suggestions (array of short actionable strings, max 8), summary (2-3 sentences), extracted_skills (array of strings, max 20).";
 
 const CAREER_SYSTEM =
-  "You are a senior career coach. Return ONLY strict JSON with keys: career_paths (array of {title, why, next_steps[]}), skill_gaps (array of strings), recommended_certifications (array of {name, provider}), suggested_search_keywords (array of strings). Keep each list to 3-5 items.";
+  "You are a senior career coach. Return ONLY strict JSON with keys: career_paths (array of {title, why, next_steps[]}), skill_gaps (array of strings), missing_skills (array of strings), recommended_certifications (array of {name, provider}), suggested_projects (array of {title, description}), recommended_jobs (array of {title, why}), companies_hiring (array of {name, sector}), salary_prediction (object: {low, mid, high, currency}), resume_improvements (array of strings), interview_prep_plan (object: {thirty_days[], sixty_days[], ninety_days[], one_eighty_days[]}). Keep each list to 3-5 items.";
 
 const LINKEDIN_SYSTEM =
   "Extract a professional profile from the pasted LinkedIn text. Return ONLY strict JSON with keys: full_name (string or null), headline (string or null), about (string), location (string or null), current_position (string or null), experience_years (integer estimate, 0 if unknown), skills (array of strings, max 20).";
@@ -193,7 +193,49 @@ export const scanResumeFromStorage = createServerFn({ method: "POST" })
         .slice(0, 8);
     }
 
-    return { ...update, matches };
+    // Generate career roadmap
+    let careerRoadmap: Record<string, any> | null = null;
+    try {
+      const roadmap = await generateJson<{
+        career_paths?: Array<{ title: string; why: string; next_steps: string[] }>;
+        skill_gaps?: string[];
+        missing_skills?: string[];
+        recommended_certifications?: Array<{ name: string; provider: string }>;
+        suggested_projects?: Array<{ title: string; description: string }>;
+        recommended_jobs?: Array<{ title: string; why: string }>;
+        companies_hiring?: Array<{ name: string; sector: string }>;
+        salary_prediction?: { low: number; mid: number; high: number; currency: string };
+        resume_improvements?: string[];
+        interview_prep_plan?: {
+          thirty_days: string[];
+          sixty_days: string[];
+          ninety_days: string[];
+          one_eighty_days: string[];
+        };
+      }>(
+        `Resume text:\n\n${text}\n\nExtracted skills: ${(parsed.extracted_skills ?? []).join(", ")}`,
+        CAREER_SYSTEM,
+      );
+      careerRoadmap = {
+        career_paths: roadmap.career_paths ?? [],
+        skill_gaps: roadmap.skill_gaps ?? [],
+        missing_skills: roadmap.missing_skills ?? [],
+        recommended_certifications: roadmap.recommended_certifications ?? [],
+        suggested_projects: roadmap.suggested_projects ?? [],
+        recommended_jobs: roadmap.recommended_jobs ?? [],
+        companies_hiring: roadmap.companies_hiring ?? [],
+        salary_prediction: roadmap.salary_prediction ?? null,
+        resume_improvements: roadmap.resume_improvements ?? [],
+        interview_prep_plan: roadmap.interview_prep_plan ?? null,
+      };
+      await context.supabase
+        .from("resumes")
+        .update({ career_roadmap: careerRoadmap })
+        .eq("id", resume.id)
+        .eq("user_id", context.userId);
+    } catch {}
+
+    return { ...update, matches, career_roadmap: careerRoadmap };
   });
 
 export const importFromGitHub = createServerFn({ method: "POST" })
