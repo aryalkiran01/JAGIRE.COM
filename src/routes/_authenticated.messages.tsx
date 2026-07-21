@@ -6,7 +6,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { MessageSquare, Send, Loader2 } from "lucide-react";
+import { MessageSquare, Send, Loader as Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 type ChatSearch = { chat?: string; with?: string };
@@ -65,7 +65,7 @@ function Messages() {
         .or(`user_a.eq.${user!.id},user_b.eq.${user!.id}`)
         .order("last_message_at", { ascending: false, nullsFirst: false });
       const ids = Array.from(
-        new Set((data ?? []).map((c) => (c.user_a === user!.id ? c.user_b : c.user_a))),
+        new Set((data ?? []).map((c) => (c.user_a === user!.id ? c.user_b : c.user_a)).filter((id): id is string => !!id)),
       );
       const profiles = ids.length
         ? ((
@@ -74,7 +74,7 @@ function Messages() {
         : [];
       const pmap = new Map(profiles.map((p) => [p.id, p]));
       return (data ?? []).map((c) => {
-        const otherId = c.user_a === user!.id ? c.user_b : c.user_a;
+        const otherId = (c.user_a === user!.id ? c.user_b : c.user_a) ?? "";
         return { ...c, other: pmap.get(otherId) };
       });
     },
@@ -188,10 +188,10 @@ function Messages() {
                   >
                     {m.body}
                     <div className="text-[10px] opacity-70 mt-1">
-                      {new Date(m.created_at).toLocaleTimeString([], {
+                      {m.created_at ? new Date(m.created_at).toLocaleTimeString([], {
                         hour: "2-digit",
                         minute: "2-digit",
-                      })}
+                      }) : ""}
                     </div>
                   </div>
                 ))}

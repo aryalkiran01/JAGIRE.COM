@@ -167,8 +167,8 @@ function Assessments() {
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
         {list?.map((a: any) => {
           const best = attempts
-            ?.filter((x) => x.assessment_id === a.id)
-            .sort((x, y) => y.score - x.score)[0];
+            ?.filter((x) => x.assessment_id === a.id && x.score != null)
+            .sort((x, y) => (y.score ?? 0) - (x.score ?? 0))[0];
           return (
             <Card key={a.id} className="hover:shadow-glow transition-shadow">
               <CardHeader>
@@ -191,8 +191,8 @@ function Assessments() {
                 {best && (
                   <div className="flex items-center gap-1 text-sm">
                     <Award className="h-4 w-4 text-primary" />
-                    Best: {best.score}%
-                    {best.score >= a.passing_score && <Badge className="ml-1">Passed</Badge>}
+                    Best: {best.score ?? 0}%
+                    {(best.score ?? 0) >= (a.passing_score ?? 0) && <Badge className="ml-1">Passed</Badge>}
                   </div>
                 )}
                 <Button

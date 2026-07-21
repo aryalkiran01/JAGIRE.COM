@@ -116,14 +116,14 @@ function Referrals() {
               <div>
                 <div className="font-medium">{r.referred_email}</div>
                 <div className="text-xs text-muted-foreground">
-                  {new Date(r.created_at).toLocaleDateString()}
+                  {r.created_at ? new Date(r.created_at).toLocaleDateString() : ""}
                 </div>
               </div>
               <div className="flex items-center gap-2">
                 <Badge variant={r.status === "completed" ? "default" : "secondary"}>
                   {r.status}
                 </Badge>
-                {r.reward_credits > 0 && (
+                {(r.reward_credits ?? 0) > 0 && (
                   <Badge className="gradient-brand text-primary-foreground">
                     +{r.reward_credits}
                   </Badge>

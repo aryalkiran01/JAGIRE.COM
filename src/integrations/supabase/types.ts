@@ -1,440 +1,667 @@
-export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[];
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "14.5";
+  graphql_public: {
+    Tables: {
+      [_ in never]: never;
+    };
+    Views: {
+      [_ in never]: never;
+    };
+    Functions: {
+      graphql: {
+        Args: {
+          operationName?: string;
+          query?: string;
+          variables?: Json;
+          extensions?: Json;
+        };
+        Returns: Json;
+      };
+    };
+    Enums: {
+      [_ in never]: never;
+    };
+    CompositeTypes: {
+      [_ in never]: never;
+    };
   };
   public: {
     Tables: {
       activity_logs: {
         Row: {
-          action: string;
-          created_at: string;
-          entity_id: string | null;
-          entity_type: string | null;
           id: string;
-          ip_address: string | null;
-          metadata: Json | null;
-          user_id: string | null;
+          user_id: string;
+          action: string;
+          entity_type: string | null;
+          entity_id: string | null;
+          details: Json | null;
+          created_at: string | null;
         };
         Insert: {
-          action: string;
-          created_at?: string;
-          entity_id?: string | null;
-          entity_type?: string | null;
           id?: string;
-          ip_address?: string | null;
-          metadata?: Json | null;
-          user_id?: string | null;
+          user_id?: string;
+          action: string;
+          entity_type?: string | null;
+          entity_id?: string | null;
+          details?: Json | null;
+          created_at?: string | null;
         };
         Update: {
-          action?: string;
-          created_at?: string;
-          entity_id?: string | null;
-          entity_type?: string | null;
           id?: string;
-          ip_address?: string | null;
+          user_id?: string;
+          action?: string;
+          entity_type?: string | null;
+          entity_id?: string | null;
+          details?: Json | null;
+          created_at?: string | null;
+        };
+        Relationships: [];
+      };
+      admin_users: {
+        Row: {
+          id: string | null;
+          full_name: string | null;
+          headline: string | null;
+          bio: string | null;
+        };
+        Insert: {
+          id?: string | null;
+          full_name?: string | null;
+          headline?: string | null;
+          bio?: string | null;
+        };
+        Update: {
+          id?: string | null;
+          full_name?: string | null;
+          headline?: string | null;
+          bio?: string | null;
+        };
+        Relationships: [];
+      };
+      app_user_connections: {
+        Row: {
+          id: string;
+          user_id: string;
+          provider: string;
+          access_token: string | null;
+          refresh_token: string | null;
+          token_expires_at: string | null;
+          scopes: string[] | null;
+          metadata: Json | null;
+          created_at: string | null;
+          updated_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          user_id?: string;
+          provider: string;
+          access_token?: string | null;
+          refresh_token?: string | null;
+          token_expires_at?: string | null;
+          scopes?: string[] | null;
           metadata?: Json | null;
-          user_id?: string | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          provider?: string;
+          access_token?: string | null;
+          refresh_token?: string | null;
+          token_expires_at?: string | null;
+          scopes?: string[] | null;
+          metadata?: Json | null;
+          created_at?: string | null;
+          updated_at?: string | null;
         };
         Relationships: [];
       };
       application_events: {
         Row: {
-          actor_id: string | null;
-          application_id: string;
-          created_at: string;
           id: string;
-          note: string | null;
-          status: Database["public"]["Enums"]["application_status"];
+          application_id: string;
+          event_type: string;
+          message: string | null;
+          created_at: string | null;
         };
         Insert: {
-          actor_id?: string | null;
-          application_id: string;
-          created_at?: string;
           id?: string;
-          note?: string | null;
-          status: Database["public"]["Enums"]["application_status"];
+          application_id: string;
+          event_type: string;
+          message?: string | null;
+          created_at?: string | null;
         };
         Update: {
-          actor_id?: string | null;
-          application_id?: string;
-          created_at?: string;
           id?: string;
-          note?: string | null;
-          status?: Database["public"]["Enums"]["application_status"];
+          application_id?: string;
+          event_type?: string;
+          message?: string | null;
+          created_at?: string | null;
         };
-        Relationships: [
-          {
-            foreignKeyName: "application_events_application_id_fkey";
-            columns: ["application_id"];
-            isOneToOne: false;
-            referencedRelation: "applications";
-            referencedColumns: ["id"];
-          },
-        ];
+        Relationships: [];
       };
       applications: {
         Row: {
-          applicant_id: string;
-          applied_at: string;
-          cover_letter: string | null;
-          employer_notes: string | null;
           id: string;
           job_id: string;
-          match_score: number | null;
+          seeker_id: string | null;
           resume_id: string | null;
           status: Database["public"]["Enums"]["application_status"];
+          match_score: string | null;
+          cover_letter: string | null;
+          timeline: Json;
+          created_at: string;
           updated_at: string;
+          match_breakdown: Json | null;
+          applicant_id: string | null;
+          ai_match_score: number | null;
+          ai_match_data: Json | null;
+          employer_notes: string | null;
+          status_text: string | null;
+          applied_at: string | null;
         };
         Insert: {
-          applicant_id: string;
-          applied_at?: string;
-          cover_letter?: string | null;
-          employer_notes?: string | null;
           id?: string;
           job_id: string;
-          match_score?: number | null;
+          seeker_id?: string | null;
           resume_id?: string | null;
           status?: Database["public"]["Enums"]["application_status"];
+          match_score?: string | null;
+          cover_letter?: string | null;
+          timeline?: Json;
+          created_at?: string;
           updated_at?: string;
+          match_breakdown?: Json | null;
+          applicant_id?: string | null;
+          ai_match_score?: number | null;
+          ai_match_data?: Json | null;
+          employer_notes?: string | null;
+          status_text?: string | null;
+          applied_at?: string | null;
         };
         Update: {
-          applicant_id?: string;
-          applied_at?: string;
-          cover_letter?: string | null;
-          employer_notes?: string | null;
           id?: string;
           job_id?: string;
-          match_score?: number | null;
+          seeker_id?: string | null;
           resume_id?: string | null;
           status?: Database["public"]["Enums"]["application_status"];
+          match_score?: string | null;
+          cover_letter?: string | null;
+          timeline?: Json;
+          created_at?: string;
           updated_at?: string;
+          match_breakdown?: Json | null;
+          applicant_id?: string | null;
+          ai_match_score?: number | null;
+          ai_match_data?: Json | null;
+          employer_notes?: string | null;
+          status_text?: string | null;
+          applied_at?: string | null;
         };
-        Relationships: [
-          {
-            foreignKeyName: "applications_job_id_fkey";
-            columns: ["job_id"];
-            isOneToOne: false;
-            referencedRelation: "jobs";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "applications_resume_id_fkey";
-            columns: ["resume_id"];
-            isOneToOne: false;
-            referencedRelation: "resumes";
-            referencedColumns: ["id"];
-          },
-        ];
+        Relationships: [];
       };
       assessment_attempts: {
         Row: {
-          answers: Json;
-          assessment_id: string;
-          created_at: string;
-          completed_at: string;
           id: string;
+          user_id: string | null;
+          assessment_id: string | null;
+          score: number | null;
+          answers: Json | null;
+          started_at: string | null;
+          completed_at: string | null;
+          created_at: string | null;
           passed: boolean;
-          score: number;
-          user_id: string;
+          status: string;
         };
         Insert: {
-          answers?: Json;
-          assessment_id: string;
-          created_at?: string;
           id?: string;
+          user_id?: string | null;
+          assessment_id?: string | null;
+          score?: number | null;
+          answers?: Json | null;
+          started_at?: string | null;
+          completed_at?: string | null;
+          created_at?: string | null;
           passed?: boolean;
-          score?: number;
-          user_id: string;
+          status?: string;
         };
         Update: {
-          answers?: Json;
-          assessment_id?: string;
-          created_at?: string;
           id?: string;
+          user_id?: string | null;
+          assessment_id?: string | null;
+          score?: number | null;
+          answers?: Json | null;
+          started_at?: string | null;
+          completed_at?: string | null;
+          created_at?: string | null;
           passed?: boolean;
-          score?: number;
-          user_id?: string;
+          status?: string;
         };
-        Relationships: [
-          {
-            foreignKeyName: "assessment_attempts_assessment_id_fkey";
-            columns: ["assessment_id"];
-            isOneToOne: false;
-            referencedRelation: "assessments";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "assessment_attempts_assessment_id_fkey";
-            columns: ["assessment_id"];
-            isOneToOne: false;
-            referencedRelation: "assessments_catalog";
-            referencedColumns: ["id"];
-          },
-        ];
+        Relationships: [];
       };
       assessments: {
         Row: {
-          category: string | null;
-          created_at: string;
-          created_by: string | null;
+          id: string;
+          title: string;
           description: string | null;
+          category: string | null;
           difficulty: string | null;
           duration_minutes: number | null;
-          id: string;
-          passing_score: number;
+          passing_score: number | null;
+          is_active: boolean | null;
+          created_at: string | null;
+          created_by: string | null;
           questions: Json;
-          title: string;
-          updated_at: string;
+          updated_at: string | null;
         };
         Insert: {
-          category?: string | null;
-          created_at?: string;
-          created_by?: string | null;
+          id?: string;
+          title: string;
           description?: string | null;
+          category?: string | null;
           difficulty?: string | null;
           duration_minutes?: number | null;
-          id?: string;
-          passing_score?: number;
+          passing_score?: number | null;
+          is_active?: boolean | null;
+          created_at?: string | null;
+          created_by?: string | null;
           questions?: Json;
-          title: string;
-          updated_at?: string;
+          updated_at?: string | null;
         };
         Update: {
-          category?: string | null;
-          created_at?: string;
-          created_by?: string | null;
+          id?: string;
+          title?: string;
           description?: string | null;
+          category?: string | null;
           difficulty?: string | null;
           duration_minutes?: number | null;
-          id?: string;
-          passing_score?: number;
+          passing_score?: number | null;
+          is_active?: boolean | null;
+          created_at?: string | null;
+          created_by?: string | null;
           questions?: Json;
-          title?: string;
-          updated_at?: string;
+          updated_at?: string | null;
         };
         Relationships: [];
       };
       badges: {
         Row: {
-          created_at: string;
           id: string;
+          user_id: string;
           kind: string;
           name: string;
-          user_id: string;
+          created_at: string | null;
         };
         Insert: {
-          created_at?: string;
           id?: string;
+          user_id: string;
           kind: string;
           name: string;
-          user_id: string;
+          created_at?: string | null;
         };
         Update: {
-          created_at?: string;
           id?: string;
+          user_id?: string;
           kind?: string;
           name?: string;
-          user_id?: string;
+          created_at?: string | null;
         };
         Relationships: [];
       };
       blogs: {
         Row: {
-          author_id: string;
-          content: string;
-          cover_url: string | null;
-          created_at: string;
-          excerpt: string | null;
           id: string;
-          published: boolean;
-          published_at: string | null;
-          slug: string;
-          tags: string[] | null;
+          author_id: string | null;
           title: string;
-          updated_at: string;
+          slug: string;
+          excerpt: string | null;
+          content: string;
+          cover_image: string | null;
+          category: string | null;
+          tags: string[] | null;
+          status: string | null;
+          views_count: number | null;
+          created_at: string | null;
+          updated_at: string | null;
+          cover_url: string | null;
+          published: boolean | null;
+          published_at: string | null;
         };
         Insert: {
-          author_id: string;
-          content: string;
-          cover_url?: string | null;
-          created_at?: string;
-          excerpt?: string | null;
           id?: string;
-          published?: boolean;
-          published_at?: string | null;
-          slug: string;
-          tags?: string[] | null;
+          author_id?: string | null;
           title: string;
-          updated_at?: string;
+          slug: string;
+          excerpt?: string | null;
+          content: string;
+          cover_image?: string | null;
+          category?: string | null;
+          tags?: string[] | null;
+          status?: string | null;
+          views_count?: number | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+          cover_url?: string | null;
+          published?: boolean | null;
+          published_at?: string | null;
         };
         Update: {
-          author_id?: string;
-          content?: string;
-          cover_url?: string | null;
-          created_at?: string;
-          excerpt?: string | null;
           id?: string;
-          published?: boolean;
-          published_at?: string | null;
-          slug?: string;
-          tags?: string[] | null;
+          author_id?: string | null;
           title?: string;
-          updated_at?: string;
+          slug?: string;
+          excerpt?: string | null;
+          content?: string;
+          cover_image?: string | null;
+          category?: string | null;
+          tags?: string[] | null;
+          status?: string | null;
+          views_count?: number | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+          cover_url?: string | null;
+          published?: boolean | null;
+          published_at?: string | null;
+        };
+        Relationships: [];
+      };
+      bookmarks: {
+        Row: {
+          id: string;
+          user_id: string;
+          job_id: string;
+          created_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          user_id?: string;
+          job_id: string;
+          created_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          job_id?: string;
+          created_at?: string | null;
         };
         Relationships: [];
       };
       categories: {
         Row: {
-          created_at: string;
-          description: string | null;
-          icon: string | null;
           id: string;
           name: string;
           slug: string;
+          created_at: string | null;
+          description: string | null;
+          icon: string | null;
         };
         Insert: {
-          created_at?: string;
-          description?: string | null;
-          icon?: string | null;
           id?: string;
           name: string;
           slug: string;
-        };
-        Update: {
-          created_at?: string;
+          created_at?: string | null;
           description?: string | null;
           icon?: string | null;
+        };
+        Update: {
           id?: string;
           name?: string;
           slug?: string;
+          created_at?: string | null;
+          description?: string | null;
+          icon?: string | null;
+        };
+        Relationships: [];
+      };
+      chat_participants: {
+        Row: {
+          id: string;
+          chat_id: string | null;
+          user_id: string | null;
+          created_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          chat_id?: string | null;
+          user_id?: string | null;
+          created_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          chat_id?: string | null;
+          user_id?: string | null;
+          created_at?: string | null;
         };
         Relationships: [];
       };
       chats: {
         Row: {
-          created_at: string;
           id: string;
+          created_at: string | null;
+          updated_at: string | null;
+          user_a: string | null;
+          user_b: string | null;
           last_message_at: string | null;
-          user_a: string;
-          user_b: string;
         };
         Insert: {
-          created_at?: string;
           id?: string;
+          created_at?: string | null;
+          updated_at?: string | null;
+          user_a?: string | null;
+          user_b?: string | null;
           last_message_at?: string | null;
-          user_a: string;
-          user_b: string;
         };
         Update: {
-          created_at?: string;
           id?: string;
+          created_at?: string | null;
+          updated_at?: string | null;
+          user_a?: string | null;
+          user_b?: string | null;
           last_message_at?: string | null;
-          user_a?: string;
-          user_b?: string;
         };
         Relationships: [];
       };
       companies: {
         Row: {
-          benefits: string[] | null;
-          cover_url: string | null;
-          created_at: string;
-          culture: string | null;
-          description: string | null;
-          facebook_url: string | null;
-          founded_year: number | null;
-          headquarters: string | null;
-          hiring_process: string | null;
           id: string;
-          industry: string | null;
-          locations: string[] | null;
-          logo_url: string | null;
-          mission: string | null;
-          name: string;
           owner_id: string;
-          size: string | null;
+          name: string;
           slug: string;
-          tagline: string | null;
-          technologies: string[] | null;
-          twitter_url: string | null;
-          updated_at: string;
-          verified: boolean;
-          vision: string | null;
+          logo_url: string | null;
           website: string | null;
+          description: string | null;
+          location: string | null;
+          industry: string | null;
+          size: string | null;
+          created_at: string;
+          updated_at: string;
+          banner_url: string | null;
+          company_size: string | null;
+          linkedin_url: string | null;
+          twitter_url: string | null;
+          is_verified: boolean | null;
+          mission: string | null;
+          vision: string | null;
+          culture: Json | null;
+          benefits: Json | null;
+          technologies: Json | null;
+          office_photos: Json | null;
+          hiring_process: Json | null;
+          locations: Json | null;
+          facebook_url: string | null;
+          instagram_url: string | null;
+          verification_status: string | null;
+          pan_number: string | null;
+          vat_number: string | null;
+          hr_contact_name: string | null;
+          hr_contact_email: string | null;
+          hr_contact_phone: string | null;
+          work_model: string | null;
+          founded_year: number | null;
+          rating_avg: string | null;
+          review_count: number | null;
+          follower_count: number | null;
+          headquarters: string | null;
+          tagline: string | null;
+          cover_url: string | null;
+          verified: boolean | null;
         };
         Insert: {
-          benefits?: string[] | null;
-          cover_url?: string | null;
-          created_at?: string;
-          culture?: string | null;
-          description?: string | null;
-          facebook_url?: string | null;
-          founded_year?: number | null;
-          headquarters?: string | null;
-          hiring_process?: string | null;
           id?: string;
-          industry?: string | null;
-          locations?: string[] | null;
-          logo_url?: string | null;
-          mission?: string | null;
-          name: string;
           owner_id: string;
-          size?: string | null;
+          name: string;
           slug: string;
-          tagline?: string | null;
-          technologies?: string[] | null;
-          twitter_url?: string | null;
-          updated_at?: string;
-          verified?: boolean;
-          vision?: string | null;
+          logo_url?: string | null;
           website?: string | null;
+          description?: string | null;
+          location?: string | null;
+          industry?: string | null;
+          size?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          banner_url?: string | null;
+          company_size?: string | null;
+          linkedin_url?: string | null;
+          twitter_url?: string | null;
+          is_verified?: boolean | null;
+          mission?: string | null;
+          vision?: string | null;
+          culture?: Json | null;
+          benefits?: Json | null;
+          technologies?: Json | null;
+          office_photos?: Json | null;
+          hiring_process?: Json | null;
+          locations?: Json | null;
+          facebook_url?: string | null;
+          instagram_url?: string | null;
+          verification_status?: string | null;
+          pan_number?: string | null;
+          vat_number?: string | null;
+          hr_contact_name?: string | null;
+          hr_contact_email?: string | null;
+          hr_contact_phone?: string | null;
+          work_model?: string | null;
+          founded_year?: number | null;
+          rating_avg?: string | null;
+          review_count?: number | null;
+          follower_count?: number | null;
+          headquarters?: string | null;
+          tagline?: string | null;
+          cover_url?: string | null;
+          verified?: boolean | null;
         };
         Update: {
-          benefits?: string[] | null;
-          cover_url?: string | null;
-          created_at?: string;
-          culture?: string | null;
-          description?: string | null;
-          facebook_url?: string | null;
-          founded_year?: number | null;
-          headquarters?: string | null;
-          hiring_process?: string | null;
           id?: string;
-          industry?: string | null;
-          locations?: string[] | null;
-          logo_url?: string | null;
-          mission?: string | null;
-          name?: string;
           owner_id?: string;
-          size?: string | null;
+          name?: string;
           slug?: string;
-          tagline?: string | null;
-          technologies?: string[] | null;
-          twitter_url?: string | null;
-          updated_at?: string;
-          verified?: boolean;
-          vision?: string | null;
+          logo_url?: string | null;
           website?: string | null;
+          description?: string | null;
+          location?: string | null;
+          industry?: string | null;
+          size?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          banner_url?: string | null;
+          company_size?: string | null;
+          linkedin_url?: string | null;
+          twitter_url?: string | null;
+          is_verified?: boolean | null;
+          mission?: string | null;
+          vision?: string | null;
+          culture?: Json | null;
+          benefits?: Json | null;
+          technologies?: Json | null;
+          office_photos?: Json | null;
+          hiring_process?: Json | null;
+          locations?: Json | null;
+          facebook_url?: string | null;
+          instagram_url?: string | null;
+          verification_status?: string | null;
+          pan_number?: string | null;
+          vat_number?: string | null;
+          hr_contact_name?: string | null;
+          hr_contact_email?: string | null;
+          hr_contact_phone?: string | null;
+          work_model?: string | null;
+          founded_year?: number | null;
+          rating_avg?: string | null;
+          review_count?: number | null;
+          follower_count?: number | null;
+          headquarters?: string | null;
+          tagline?: string | null;
+          cover_url?: string | null;
+          verified?: boolean | null;
+        };
+        Relationships: [];
+      };
+      company_reviews: {
+        Row: {
+          id: string;
+          company_id: string;
+          reviewer_id: string;
+          rating: number;
+          title: string;
+          body: string | null;
+          pros: string | null;
+          cons: string | null;
+          is_current_employee: boolean | null;
+          job_title: string | null;
+          created_at: string | null;
+          updated_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          reviewer_id?: string;
+          rating: number;
+          title: string;
+          body?: string | null;
+          pros?: string | null;
+          cons?: string | null;
+          is_current_employee?: boolean | null;
+          job_title?: string | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          reviewer_id?: string;
+          rating?: number;
+          title?: string;
+          body?: string | null;
+          pros?: string | null;
+          cons?: string | null;
+          is_current_employee?: boolean | null;
+          job_title?: string | null;
+          created_at?: string | null;
+          updated_at?: string | null;
         };
         Relationships: [];
       };
       follows: {
         Row: {
-          created_at: string;
+          created_at: string | null;
           follower_id: string;
           following_id: string;
         };
         Insert: {
-          created_at?: string;
+          created_at?: string | null;
           follower_id: string;
           following_id: string;
         };
         Update: {
-          created_at?: string;
+          created_at?: string | null;
           follower_id?: string;
           following_id?: string;
         };
@@ -442,973 +669,1403 @@ export type Database = {
       };
       interview_events: {
         Row: {
-          application_id: string;
-          candidate_email: string;
-          created_at: string;
-          employer_id: string;
-          end_time: string;
-          google_event_id: string | null;
           id: string;
-          meet_link: string | null;
-          start_time: string;
+          application_id: string;
+          employer_id: string;
+          candidate_email: string | null;
           title: string;
+          start_time: string;
+          end_time: string;
+          meet_link: string | null;
+          google_event_id: string | null;
+          message: string | null;
+          created_at: string | null;
         };
         Insert: {
-          application_id: string;
-          candidate_email: string;
-          created_at?: string;
-          employer_id: string;
-          end_time: string;
-          google_event_id?: string | null;
           id?: string;
-          meet_link?: string | null;
+          application_id: string;
+          employer_id: string;
+          candidate_email?: string | null;
+          title?: string;
           start_time: string;
-          title: string;
+          end_time: string;
+          meet_link?: string | null;
+          google_event_id?: string | null;
+          message?: string | null;
+          created_at?: string | null;
         };
         Update: {
-          application_id?: string;
-          candidate_email?: string;
-          created_at?: string;
-          employer_id?: string;
-          end_time?: string;
-          google_event_id?: string | null;
           id?: string;
-          meet_link?: string | null;
-          start_time?: string;
+          application_id?: string;
+          employer_id?: string;
+          candidate_email?: string | null;
           title?: string;
+          start_time?: string;
+          end_time?: string;
+          meet_link?: string | null;
+          google_event_id?: string | null;
+          message?: string | null;
+          created_at?: string | null;
         };
         Relationships: [];
       };
       interview_slots: {
         Row: {
-          application_id: string | null;
-          created_at: string;
-          employer_id: string;
-          ends_at: string;
           id: string;
-          meet_url: string | null;
-          starts_at: string;
-          taken_by: string | null;
+          job_id: string;
+          employer_id: string;
+          start_time: string;
+          end_time: string;
+          is_booked: boolean | null;
+          booked_by: string | null;
+          application_id: string | null;
+          meeting_link: string | null;
+          calendar_event_id: string | null;
+          notes: string | null;
+          created_at: string | null;
         };
         Insert: {
-          application_id?: string | null;
-          created_at?: string;
-          employer_id: string;
-          ends_at: string;
           id?: string;
-          meet_url?: string | null;
-          starts_at: string;
-          taken_by?: string | null;
+          job_id: string;
+          employer_id?: string;
+          start_time: string;
+          end_time: string;
+          is_booked?: boolean | null;
+          booked_by?: string | null;
+          application_id?: string | null;
+          meeting_link?: string | null;
+          calendar_event_id?: string | null;
+          notes?: string | null;
+          created_at?: string | null;
         };
         Update: {
-          application_id?: string | null;
-          created_at?: string;
-          employer_id?: string;
-          ends_at?: string;
           id?: string;
-          meet_url?: string | null;
-          starts_at?: string;
-          taken_by?: string | null;
+          job_id?: string;
+          employer_id?: string;
+          start_time?: string;
+          end_time?: string;
+          is_booked?: boolean | null;
+          booked_by?: string | null;
+          application_id?: string | null;
+          meeting_link?: string | null;
+          calendar_event_id?: string | null;
+          notes?: string | null;
+          created_at?: string | null;
         };
-        Relationships: [
-          {
-            foreignKeyName: "interview_slots_application_id_fkey";
-            columns: ["application_id"];
-            isOneToOne: false;
-            referencedRelation: "applications";
-            referencedColumns: ["id"];
-          },
-        ];
+        Relationships: [];
+      };
+      interviews: {
+        Row: {
+          id: string;
+          application_id: string;
+          scheduled_at: string;
+          duration_minutes: number | null;
+          location: string | null;
+          meeting_link: string | null;
+          status: string | null;
+          notes: string | null;
+          created_at: string | null;
+          employer_id: string | null;
+          candidate_id: string | null;
+          candidate_email: string | null;
+          title: string | null;
+          message: string | null;
+          accepted_at: string | null;
+          declined_at: string | null;
+          google_event_id: string | null;
+          meet_link: string | null;
+          updated_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          application_id: string;
+          scheduled_at: string;
+          duration_minutes?: number | null;
+          location?: string | null;
+          meeting_link?: string | null;
+          status?: string | null;
+          notes?: string | null;
+          created_at?: string | null;
+          employer_id?: string | null;
+          candidate_id?: string | null;
+          candidate_email?: string | null;
+          title?: string | null;
+          message?: string | null;
+          accepted_at?: string | null;
+          declined_at?: string | null;
+          google_event_id?: string | null;
+          meet_link?: string | null;
+          updated_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          application_id?: string;
+          scheduled_at?: string;
+          duration_minutes?: number | null;
+          location?: string | null;
+          meeting_link?: string | null;
+          status?: string | null;
+          notes?: string | null;
+          created_at?: string | null;
+          employer_id?: string | null;
+          candidate_id?: string | null;
+          candidate_email?: string | null;
+          title?: string | null;
+          message?: string | null;
+          accepted_at?: string | null;
+          declined_at?: string | null;
+          google_event_id?: string | null;
+          meet_link?: string | null;
+          updated_at?: string | null;
+        };
+        Relationships: [];
+      };
+      job_matches: {
+        Row: {
+          id: string;
+          job_id: string;
+          user_id: string;
+          match_score: string | null;
+          match_reasons: Json | null;
+          created_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          job_id: string;
+          user_id?: string;
+          match_score?: string | null;
+          match_reasons?: Json | null;
+          created_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          job_id?: string;
+          user_id?: string;
+          match_score?: string | null;
+          match_reasons?: Json | null;
+          created_at?: string | null;
+        };
+        Relationships: [];
       };
       jobs: {
         Row: {
-          application_deadline: string | null;
-          applications_count: number | null;
-          benefits: string | null;
-          category_id: string | null;
-          company_id: string;
-          created_at: string;
-          description: string;
-          experience_level: Database["public"]["Enums"]["experience_level"];
           id: string;
-          is_remote: boolean | null;
-          job_type: Database["public"]["Enums"]["job_type"];
-          location: string | null;
+          company_id: string;
           posted_by: string;
-          required_skills: string[] | null;
+          title: string;
+          description: string;
           requirements: string | null;
-          responsibilities: string | null;
-          salary_currency: string | null;
-          salary_max: number | null;
-          salary_min: number | null;
-          slug: string;
-          status: Database["public"]["Enums"]["job_status"];
-          title: string;
-          updated_at: string;
-          views_count: number | null;
-        };
-        Insert: {
-          application_deadline?: string | null;
-          applications_count?: number | null;
-          benefits?: string | null;
-          category_id?: string | null;
-          company_id: string;
-          created_at?: string;
-          description: string;
-          experience_level?: Database["public"]["Enums"]["experience_level"];
-          id?: string;
-          is_remote?: boolean | null;
-          job_type?: Database["public"]["Enums"]["job_type"];
-          location?: string | null;
-          posted_by: string;
-          required_skills?: string[] | null;
-          requirements?: string | null;
-          responsibilities?: string | null;
-          salary_currency?: string | null;
-          salary_max?: number | null;
-          salary_min?: number | null;
-          slug: string;
-          status?: Database["public"]["Enums"]["job_status"];
-          title: string;
-          updated_at?: string;
-          views_count?: number | null;
-        };
-        Update: {
-          application_deadline?: string | null;
-          applications_count?: number | null;
-          benefits?: string | null;
-          category_id?: string | null;
-          company_id?: string;
-          created_at?: string;
-          description?: string;
-          experience_level?: Database["public"]["Enums"]["experience_level"];
-          id?: string;
-          is_remote?: boolean | null;
-          job_type?: Database["public"]["Enums"]["job_type"];
-          location?: string | null;
-          posted_by?: string;
-          required_skills?: string[] | null;
-          requirements?: string | null;
-          responsibilities?: string | null;
-          salary_currency?: string | null;
-          salary_max?: number | null;
-          salary_min?: number | null;
-          slug?: string;
-          status?: Database["public"]["Enums"]["job_status"];
-          title?: string;
-          updated_at?: string;
-          views_count?: number | null;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "jobs_category_id_fkey";
-            columns: ["category_id"];
-            isOneToOne: false;
-            referencedRelation: "categories";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "jobs_company_id_fkey";
-            columns: ["company_id"];
-            isOneToOne: false;
-            referencedRelation: "companies";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-      learning_items: {
-        Row: {
-          created_at: string;
-          description: string | null;
-          id: string;
-          kind: string;
-          provider: string | null;
           skills: string[];
-          title: string;
-          url: string;
+          location: string | null;
+          job_type: Database["public"]["Enums"]["job_type"];
+          experience_level: Database["public"]["Enums"]["experience_level"];
+          salary_min: number | null;
+          salary_max: number | null;
+          currency: string | null;
+          status: Database["public"]["Enums"]["job_status"];
+          created_at: string;
+          updated_at: string;
+          employer_id: string | null;
+          responsibilities: Json | null;
+          skills_required: Json | null;
+          technologies: Json | null;
+          job_category: string | null;
+          is_remote: boolean | null;
+          industry: string | null;
+          keywords: Json | null;
+          applications_count: number | null;
+          views_count: number | null;
+          salary_min_usd: number | null;
+          salary_max_usd: number | null;
+          employment_type: string | null;
+          requirements_list: Json | null;
+          is_featured: boolean | null;
+          featured_until: string | null;
+          benefits: string | null;
+          required_skills: string[] | null;
+          slug: string | null;
+          salary_currency: string | null;
+          category_id: string | null;
+          application_deadline: string | null;
+          responsibilities_text: string | null;
         };
         Insert: {
-          created_at?: string;
-          description?: string | null;
           id?: string;
-          kind: string;
-          provider?: string | null;
-          skills?: string[];
+          company_id: string;
+          posted_by: string;
           title: string;
-          url: string;
+          description: string;
+          requirements?: string | null;
+          skills?: string[];
+          location?: string | null;
+          job_type?: Database["public"]["Enums"]["job_type"];
+          experience_level?: Database["public"]["Enums"]["experience_level"];
+          salary_min?: number | null;
+          salary_max?: number | null;
+          currency?: string | null;
+          status?: Database["public"]["Enums"]["job_status"];
+          created_at?: string;
+          updated_at?: string;
+          employer_id?: string | null;
+          responsibilities?: Json | null;
+          skills_required?: Json | null;
+          technologies?: Json | null;
+          job_category?: string | null;
+          is_remote?: boolean | null;
+          industry?: string | null;
+          keywords?: Json | null;
+          applications_count?: number | null;
+          views_count?: number | null;
+          salary_min_usd?: number | null;
+          salary_max_usd?: number | null;
+          employment_type?: string | null;
+          requirements_list?: Json | null;
+          is_featured?: boolean | null;
+          featured_until?: string | null;
+          benefits?: string | null;
+          required_skills?: string[] | null;
+          slug?: string | null;
+          salary_currency?: string | null;
+          category_id?: string | null;
+          application_deadline?: string | null;
+          responsibilities_text?: string | null;
         };
         Update: {
-          created_at?: string;
-          description?: string | null;
           id?: string;
-          kind?: string;
-          provider?: string | null;
-          skills?: string[];
+          company_id?: string;
+          posted_by?: string;
           title?: string;
-          url?: string;
+          description?: string;
+          requirements?: string | null;
+          skills?: string[];
+          location?: string | null;
+          job_type?: Database["public"]["Enums"]["job_type"];
+          experience_level?: Database["public"]["Enums"]["experience_level"];
+          salary_min?: number | null;
+          salary_max?: number | null;
+          currency?: string | null;
+          status?: Database["public"]["Enums"]["job_status"];
+          created_at?: string;
+          updated_at?: string;
+          employer_id?: string | null;
+          responsibilities?: Json | null;
+          skills_required?: Json | null;
+          technologies?: Json | null;
+          job_category?: string | null;
+          is_remote?: boolean | null;
+          industry?: string | null;
+          keywords?: Json | null;
+          applications_count?: number | null;
+          views_count?: number | null;
+          salary_min_usd?: number | null;
+          salary_max_usd?: number | null;
+          employment_type?: string | null;
+          requirements_list?: Json | null;
+          is_featured?: boolean | null;
+          featured_until?: string | null;
+          benefits?: string | null;
+          required_skills?: string[] | null;
+          slug?: string | null;
+          salary_currency?: string | null;
+          category_id?: string | null;
+          application_deadline?: string | null;
+          responsibilities_text?: string | null;
+        };
+        Relationships: [];
+      };
+      learning_courses: {
+        Row: {
+          id: string;
+          title: string;
+          description: string | null;
+          provider: string | null;
+          url: string | null;
+          skills: string[] | null;
+          kind: string | null;
+          created_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          title: string;
+          description?: string | null;
+          provider?: string | null;
+          url?: string | null;
+          skills?: string[] | null;
+          kind?: string | null;
+          created_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          title?: string;
+          description?: string | null;
+          provider?: string | null;
+          url?: string | null;
+          skills?: string[] | null;
+          kind?: string | null;
+          created_at?: string | null;
         };
         Relationships: [];
       };
       learning_progress: {
         Row: {
           id: string;
-          item_id: string;
-          progress: number;
-          status: string;
-          updated_at: string;
           user_id: string;
+          item_id: string;
+          progress: number | null;
+          status: string | null;
+          updated_at: string | null;
         };
         Insert: {
           id?: string;
+          user_id?: string;
           item_id: string;
-          progress?: number;
-          status?: string;
-          updated_at?: string;
-          user_id: string;
+          progress?: number | null;
+          status?: string | null;
+          updated_at?: string | null;
         };
         Update: {
           id?: string;
-          item_id?: string;
-          progress?: number;
-          status?: string;
-          updated_at?: string;
           user_id?: string;
+          item_id?: string;
+          progress?: number | null;
+          status?: string | null;
+          updated_at?: string | null;
         };
-        Relationships: [
-          {
-            foreignKeyName: "learning_progress_item_id_fkey";
-            columns: ["item_id"];
-            isOneToOne: false;
-            referencedRelation: "learning_items";
-            referencedColumns: ["id"];
-          },
-        ];
+        Relationships: [];
       };
       meetings: {
         Row: {
-          application_id: string;
-          candidate_id: string;
-          created_at: string;
-          description: string | null;
-          duration_minutes: number | null;
-          google_event_id: string | null;
           id: string;
-          meeting_url: string | null;
-          scheduled_at: string;
+          application_id: string;
+          candidate_id: string | null;
           scheduled_by: string;
-          status: Database["public"]["Enums"]["meeting_status"];
           title: string;
-          updated_at: string;
+          description: string | null;
+          scheduled_at: string;
+          duration_minutes: number | null;
+          meeting_url: string | null;
+          google_event_id: string | null;
+          status: string;
+          created_at: string | null;
+          updated_at: string | null;
         };
         Insert: {
-          application_id: string;
-          candidate_id: string;
-          created_at?: string;
-          description?: string | null;
-          duration_minutes?: number | null;
-          google_event_id?: string | null;
           id?: string;
-          meeting_url?: string | null;
-          scheduled_at: string;
+          application_id: string;
+          candidate_id?: string | null;
           scheduled_by: string;
-          status?: Database["public"]["Enums"]["meeting_status"];
-          title: string;
-          updated_at?: string;
+          title?: string;
+          description?: string | null;
+          scheduled_at: string;
+          duration_minutes?: number | null;
+          meeting_url?: string | null;
+          google_event_id?: string | null;
+          status?: string;
+          created_at?: string | null;
+          updated_at?: string | null;
         };
         Update: {
-          application_id?: string;
-          candidate_id?: string;
-          created_at?: string;
-          description?: string | null;
-          duration_minutes?: number | null;
-          google_event_id?: string | null;
           id?: string;
-          meeting_url?: string | null;
-          scheduled_at?: string;
+          application_id?: string;
+          candidate_id?: string | null;
           scheduled_by?: string;
-          status?: Database["public"]["Enums"]["meeting_status"];
           title?: string;
-          updated_at?: string;
+          description?: string | null;
+          scheduled_at?: string;
+          duration_minutes?: number | null;
+          meeting_url?: string | null;
+          google_event_id?: string | null;
+          status?: string;
+          created_at?: string | null;
+          updated_at?: string | null;
         };
-        Relationships: [
-          {
-            foreignKeyName: "meetings_application_id_fkey";
-            columns: ["application_id"];
-            isOneToOne: false;
-            referencedRelation: "applications";
-            referencedColumns: ["id"];
-          },
-        ];
+        Relationships: [];
       };
       messages: {
         Row: {
-          attachment_type: string | null;
-          attachment_url: string | null;
-          body: string | null;
-          chat_id: string;
-          created_at: string;
           id: string;
-          read_at: string | null;
           sender_id: string;
+          receiver_id: string | null;
+          job_id: string | null;
+          subject: string | null;
+          body: string | null;
+          is_read: boolean | null;
+          created_at: string | null;
+          conversation_id: string | null;
+          attachment_url: string | null;
+          attachment_name: string | null;
+          attachment_type: string | null;
+          read_at: string | null;
+          chat_id: string | null;
         };
         Insert: {
-          attachment_type?: string | null;
-          attachment_url?: string | null;
-          body?: string | null;
-          chat_id: string;
-          created_at?: string;
           id?: string;
+          sender_id?: string;
+          receiver_id?: string | null;
+          job_id?: string | null;
+          subject?: string | null;
+          body?: string | null;
+          is_read?: boolean | null;
+          created_at?: string | null;
+          conversation_id?: string | null;
+          attachment_url?: string | null;
+          attachment_name?: string | null;
+          attachment_type?: string | null;
           read_at?: string | null;
-          sender_id: string;
+          chat_id?: string | null;
         };
         Update: {
-          attachment_type?: string | null;
-          attachment_url?: string | null;
-          body?: string | null;
-          chat_id?: string;
-          created_at?: string;
           id?: string;
-          read_at?: string | null;
           sender_id?: string;
+          receiver_id?: string | null;
+          job_id?: string | null;
+          subject?: string | null;
+          body?: string | null;
+          is_read?: boolean | null;
+          created_at?: string | null;
+          conversation_id?: string | null;
+          attachment_url?: string | null;
+          attachment_name?: string | null;
+          attachment_type?: string | null;
+          read_at?: string | null;
+          chat_id?: string | null;
         };
-        Relationships: [
-          {
-            foreignKeyName: "messages_chat_id_fkey";
-            columns: ["chat_id"];
-            isOneToOne: false;
-            referencedRelation: "chats";
-            referencedColumns: ["id"];
-          },
-        ];
+        Relationships: [];
       };
       notifications: {
         Row: {
-          body: string | null;
-          created_at: string;
           id: string;
+          user_id: string;
+          type: string;
+          title: string;
+          message: string | null;
+          data: Json | null;
+          is_read: boolean | null;
+          created_at: string | null;
           link: string | null;
           metadata: Json | null;
-          is_read: boolean;
-          title: string;
-          type: Database["public"]["Enums"]["notification_type"];
-          user_id: string;
         };
         Insert: {
-          body?: string | null;
-          created_at?: string;
           id?: string;
+          user_id?: string;
+          type: string;
+          title: string;
+          message?: string | null;
+          data?: Json | null;
+          is_read?: boolean | null;
+          created_at?: string | null;
           link?: string | null;
           metadata?: Json | null;
-          read?: boolean;
-          title: string;
-          type: Database["public"]["Enums"]["notification_type"];
-          user_id: string;
         };
         Update: {
-          body?: string | null;
-          created_at?: string;
           id?: string;
+          user_id?: string;
+          type?: string;
+          title?: string;
+          message?: string | null;
+          data?: Json | null;
+          is_read?: boolean | null;
+          created_at?: string | null;
           link?: string | null;
           metadata?: Json | null;
-          read?: boolean;
-          title?: string;
-          type?: Database["public"]["Enums"]["notification_type"];
+        };
+        Relationships: [];
+      };
+      payments: {
+        Row: {
+          id: string;
+          user_id: string;
+          amount: string | null;
+          currency: string | null;
+          status: string | null;
+          stripe_session_id: string | null;
+          created_at: string | null;
+          updated_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          amount?: string | null;
+          currency?: string | null;
+          status?: string | null;
+          stripe_session_id?: string | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Update: {
+          id?: string;
           user_id?: string;
+          amount?: string | null;
+          currency?: string | null;
+          status?: string | null;
+          stripe_session_id?: string | null;
+          created_at?: string | null;
+          updated_at?: string | null;
         };
         Relationships: [];
       };
       post_comments: {
         Row: {
-          author_id: string;
-          content: string;
-          created_at: string;
           id: string;
           post_id: string;
+          author_id: string;
+          body: string | null;
+          parent_id: string | null;
+          created_at: string | null;
+          content: string | null;
         };
         Insert: {
-          author_id: string;
-          content: string;
-          created_at?: string;
           id?: string;
           post_id: string;
-        };
-        Update: {
           author_id?: string;
-          content?: string;
-          created_at?: string;
+          body?: string | null;
+          parent_id?: string | null;
+          created_at?: string | null;
+          content?: string | null;
+        };
+        Update: {
           id?: string;
           post_id?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "post_comments_post_id_fkey";
-            columns: ["post_id"];
-            isOneToOne: false;
-            referencedRelation: "posts";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-      post_likes: {
-        Row: {
-          created_at: string;
-          post_id: string;
-          user_id: string;
-        };
-        Insert: {
-          created_at?: string;
-          post_id: string;
-          user_id: string;
-        };
-        Update: {
-          created_at?: string;
-          post_id?: string;
-          user_id?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "post_likes_post_id_fkey";
-            columns: ["post_id"];
-            isOneToOne: false;
-            referencedRelation: "posts";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-      post_saves: {
-        Row: {
-          created_at: string;
-          post_id: string;
-          user_id: string;
-        };
-        Insert: {
-          created_at?: string;
-          post_id: string;
-          user_id: string;
-        };
-        Update: {
-          created_at?: string;
-          post_id?: string;
-          user_id?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "post_saves_post_id_fkey";
-            columns: ["post_id"];
-            isOneToOne: false;
-            referencedRelation: "posts";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-      posts: {
-        Row: {
-          author_id: string;
-          comments_count: number;
-          content: string;
-          created_at: string;
-          id: string;
-          image_url: string | null;
-          likes_count: number;
-          updated_at: string;
-        };
-        Insert: {
-          author_id: string;
-          comments_count?: number;
-          content: string;
-          created_at?: string;
-          id?: string;
-          image_url?: string | null;
-          likes_count?: number;
-          updated_at?: string;
-        };
-        Update: {
           author_id?: string;
-          comments_count?: number;
-          content?: string;
-          created_at?: string;
-          id?: string;
-          image_url?: string | null;
-          likes_count?: number;
-          updated_at?: string;
+          body?: string | null;
+          parent_id?: string | null;
+          created_at?: string | null;
+          content?: string | null;
         };
         Relationships: [];
       };
-      profile_skills: {
+      post_likes: {
         Row: {
-          proficiency: number | null;
-          profile_id: string;
-          skill_id: string;
+          id: string;
+          post_id: string;
+          user_id: string;
+          created_at: string | null;
         };
         Insert: {
-          proficiency?: number | null;
-          profile_id: string;
-          skill_id: string;
+          id?: string;
+          post_id: string;
+          user_id?: string;
+          created_at?: string | null;
         };
         Update: {
-          proficiency?: number | null;
-          profile_id?: string;
-          skill_id?: string;
+          id?: string;
+          post_id?: string;
+          user_id?: string;
+          created_at?: string | null;
         };
-        Relationships: [
-          {
-            foreignKeyName: "profile_skills_profile_id_fkey";
-            columns: ["profile_id"];
-            isOneToOne: false;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "profile_skills_skill_id_fkey";
-            columns: ["skill_id"];
-            isOneToOne: false;
-            referencedRelation: "skills";
-            referencedColumns: ["id"];
-          },
-        ];
+        Relationships: [];
+      };
+      post_reports: {
+        Row: {
+          id: string;
+          post_id: string;
+          reporter_id: string;
+          reason: string;
+          details: string | null;
+          status: string;
+          created_at: string | null;
+          updated_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          post_id: string;
+          reporter_id?: string;
+          reason: string;
+          details?: string | null;
+          status?: string;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          post_id?: string;
+          reporter_id?: string;
+          reason?: string;
+          details?: string | null;
+          status?: string;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Relationships: [];
+      };
+      post_saves: {
+        Row: {
+          id: string;
+          post_id: string;
+          user_id: string;
+          created_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          post_id: string;
+          user_id?: string;
+          created_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          post_id?: string;
+          user_id?: string;
+          created_at?: string | null;
+        };
+        Relationships: [];
+      };
+      posts: {
+        Row: {
+          id: string;
+          author_id: string;
+          type: string;
+          title: string | null;
+          body: string | null;
+          media_urls: Json | null;
+          tags: Json | null;
+          blog_content: string | null;
+          likes_count: number | null;
+          comments_count: number | null;
+          shares_count: number | null;
+          views_count: number | null;
+          is_published: boolean | null;
+          created_at: string | null;
+          updated_at: string | null;
+          content: string | null;
+          image_url: string | null;
+        };
+        Insert: {
+          id?: string;
+          author_id?: string;
+          type?: string;
+          title?: string | null;
+          body?: string | null;
+          media_urls?: Json | null;
+          tags?: Json | null;
+          blog_content?: string | null;
+          likes_count?: number | null;
+          comments_count?: number | null;
+          shares_count?: number | null;
+          views_count?: number | null;
+          is_published?: boolean | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+          content?: string | null;
+          image_url?: string | null;
+        };
+        Update: {
+          id?: string;
+          author_id?: string;
+          type?: string;
+          title?: string | null;
+          body?: string | null;
+          media_urls?: Json | null;
+          tags?: Json | null;
+          blog_content?: string | null;
+          likes_count?: number | null;
+          comments_count?: number | null;
+          shares_count?: number | null;
+          views_count?: number | null;
+          is_published?: boolean | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+          content?: string | null;
+          image_url?: string | null;
+        };
+        Relationships: [];
       };
       profiles: {
         Row: {
-          about: string | null;
-          avatar_url: string | null;
-          banner_url: string | null;
-          bio: string | null;
-          certifications: Json;
-          created_at: string;
-          current_position: string | null;
-          education: Json;
-          email: string | null;
-          expected_salary: number | null;
-          experience: Json;
-          experience_years: number | null;
-          full_name: string | null;
-          github_url: string | null;
-          github_username: string | null;
-          headline: string | null;
           id: string;
-          languages: string[] | null;
-          linkedin_url: string | null;
+          full_name: string | null;
+          headline: string | null;
+          bio: string | null;
+          avatar_url: string | null;
           location: string | null;
-          onboarding_completed: boolean | null;
-          phone: string | null;
-          preferred_job_type: Database["public"]["Enums"]["job_type"] | null;
-          preferred_location: string | null;
-          projects: Json;
-          referral_code: string | null;
-          skills: string[];
+          created_at: string;
           updated_at: string;
+          user_role: string;
+          current_position: string | null;
+          years_experience: number | null;
+          current_company: string | null;
+          preferred_location: string | null;
+          remote_preference: string | null;
+          expected_salary_usd: number | null;
+          phone: string | null;
+          email: string | null;
           website: string | null;
+          portfolio_url: string | null;
+          github_url: string | null;
+          linkedin_url: string | null;
+          twitter_url: string | null;
+          skills: Json | null;
+          technologies: Json | null;
+          languages: Json | null;
+          education: Json | null;
+          experience: Json | null;
+          projects: Json | null;
+          certifications: Json | null;
+          cover_letter: string | null;
+          availability: string | null;
+          notice_period: string | null;
+          employment_type_preference: string | null;
+          job_type_preference: Json | null;
+          industry_preference: Json | null;
+          profile_completion: number | null;
+          profile_visibility: string | null;
+          public_url: string | null;
+          is_admin: boolean | null;
+          banner_url: string | null;
+          followers_count: number | null;
+          following_count: number | null;
+          recommendations: Json | null;
+          volunteer_experience: Json | null;
+          awards: Json | null;
+          interests: Json | null;
+          is_premium: boolean | null;
+          premium_expires_at: string | null;
+          linkedin_imported: boolean | null;
+          github_username: string | null;
+          referral_code: string | null;
+          about: string | null;
+          experience_years: number | null;
+          expected_salary: number | null;
+          preferred_job_type: string | null;
+          onboarding_completed: boolean | null;
         };
         Insert: {
-          about?: string | null;
-          avatar_url?: string | null;
-          banner_url?: string | null;
-          bio?: string | null;
-          certifications?: Json;
-          created_at?: string;
-          current_position?: string | null;
-          education?: Json;
-          email?: string | null;
-          expected_salary?: number | null;
-          experience?: Json;
-          experience_years?: number | null;
-          full_name?: string | null;
-          github_url?: string | null;
-          github_username?: string | null;
-          headline?: string | null;
           id: string;
-          languages?: string[] | null;
-          linkedin_url?: string | null;
+          full_name?: string | null;
+          headline?: string | null;
+          bio?: string | null;
+          avatar_url?: string | null;
           location?: string | null;
-          onboarding_completed?: boolean | null;
-          phone?: string | null;
-          preferred_job_type?: Database["public"]["Enums"]["job_type"] | null;
-          preferred_location?: string | null;
-          projects?: Json;
-          referral_code?: string | null;
-          skills?: string[];
+          created_at?: string;
           updated_at?: string;
+          user_role?: string;
+          current_position?: string | null;
+          years_experience?: number | null;
+          current_company?: string | null;
+          preferred_location?: string | null;
+          remote_preference?: string | null;
+          expected_salary_usd?: number | null;
+          phone?: string | null;
+          email?: string | null;
           website?: string | null;
+          portfolio_url?: string | null;
+          github_url?: string | null;
+          linkedin_url?: string | null;
+          twitter_url?: string | null;
+          skills?: Json | null;
+          technologies?: Json | null;
+          languages?: Json | null;
+          education?: Json | null;
+          experience?: Json | null;
+          projects?: Json | null;
+          certifications?: Json | null;
+          cover_letter?: string | null;
+          availability?: string | null;
+          notice_period?: string | null;
+          employment_type_preference?: string | null;
+          job_type_preference?: Json | null;
+          industry_preference?: Json | null;
+          profile_completion?: number | null;
+          profile_visibility?: string | null;
+          public_url?: string | null;
+          is_admin?: boolean | null;
+          banner_url?: string | null;
+          followers_count?: number | null;
+          following_count?: number | null;
+          recommendations?: Json | null;
+          volunteer_experience?: Json | null;
+          awards?: Json | null;
+          interests?: Json | null;
+          is_premium?: boolean | null;
+          premium_expires_at?: string | null;
+          linkedin_imported?: boolean | null;
+          github_username?: string | null;
+          referral_code?: string | null;
+          about?: string | null;
+          experience_years?: number | null;
+          expected_salary?: number | null;
+          preferred_job_type?: string | null;
+          onboarding_completed?: boolean | null;
         };
         Update: {
-          about?: string | null;
-          avatar_url?: string | null;
-          banner_url?: string | null;
-          bio?: string | null;
-          certifications?: Json;
-          created_at?: string;
-          current_position?: string | null;
-          education?: Json;
-          email?: string | null;
-          expected_salary?: number | null;
-          experience?: Json;
-          experience_years?: number | null;
-          full_name?: string | null;
-          github_url?: string | null;
-          github_username?: string | null;
-          headline?: string | null;
           id?: string;
-          languages?: string[] | null;
-          linkedin_url?: string | null;
+          full_name?: string | null;
+          headline?: string | null;
+          bio?: string | null;
+          avatar_url?: string | null;
           location?: string | null;
-          onboarding_completed?: boolean | null;
-          phone?: string | null;
-          preferred_job_type?: Database["public"]["Enums"]["job_type"] | null;
-          preferred_location?: string | null;
-          projects?: Json;
-          referral_code?: string | null;
-          skills?: string[];
+          created_at?: string;
           updated_at?: string;
+          user_role?: string;
+          current_position?: string | null;
+          years_experience?: number | null;
+          current_company?: string | null;
+          preferred_location?: string | null;
+          remote_preference?: string | null;
+          expected_salary_usd?: number | null;
+          phone?: string | null;
+          email?: string | null;
           website?: string | null;
+          portfolio_url?: string | null;
+          github_url?: string | null;
+          linkedin_url?: string | null;
+          twitter_url?: string | null;
+          skills?: Json | null;
+          technologies?: Json | null;
+          languages?: Json | null;
+          education?: Json | null;
+          experience?: Json | null;
+          projects?: Json | null;
+          certifications?: Json | null;
+          cover_letter?: string | null;
+          availability?: string | null;
+          notice_period?: string | null;
+          employment_type_preference?: string | null;
+          job_type_preference?: Json | null;
+          industry_preference?: Json | null;
+          profile_completion?: number | null;
+          profile_visibility?: string | null;
+          public_url?: string | null;
+          is_admin?: boolean | null;
+          banner_url?: string | null;
+          followers_count?: number | null;
+          following_count?: number | null;
+          recommendations?: Json | null;
+          volunteer_experience?: Json | null;
+          awards?: Json | null;
+          interests?: Json | null;
+          is_premium?: boolean | null;
+          premium_expires_at?: string | null;
+          linkedin_imported?: boolean | null;
+          github_username?: string | null;
+          referral_code?: string | null;
+          about?: string | null;
+          experience_years?: number | null;
+          expected_salary?: number | null;
+          preferred_job_type?: string | null;
+          onboarding_completed?: boolean | null;
         };
         Relationships: [];
       };
       referrals: {
         Row: {
-          code: string;
-          created_at: string;
           id: string;
+          code: string;
+          referrer_id: string;
           referred_email: string;
           referred_user_id: string | null;
-          referrer_id: string;
-          reward_credits: number;
-          status: string;
-          updated_at: string;
+          reward_credits: number | null;
+          status: string | null;
+          created_at: string | null;
+          updated_at: string | null;
         };
         Insert: {
-          code: string;
-          created_at?: string;
           id?: string;
+          code: string;
+          referrer_id: string;
           referred_email: string;
           referred_user_id?: string | null;
-          referrer_id: string;
-          reward_credits?: number;
-          status?: string;
-          updated_at?: string;
+          reward_credits?: number | null;
+          status?: string | null;
+          created_at?: string | null;
+          updated_at?: string | null;
         };
         Update: {
-          code?: string;
-          created_at?: string;
           id?: string;
+          code?: string;
+          referrer_id?: string;
           referred_email?: string;
           referred_user_id?: string | null;
-          referrer_id?: string;
-          reward_credits?: number;
-          status?: string;
-          updated_at?: string;
+          reward_credits?: number | null;
+          status?: string | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Relationships: [];
+      };
+      reports: {
+        Row: {
+          id: string;
+          reporter_id: string;
+          target_type: string;
+          target_id: string;
+          reason: string;
+          details: string | null;
+          status: string | null;
+          created_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          reporter_id?: string;
+          target_type: string;
+          target_id: string;
+          reason: string;
+          details?: string | null;
+          status?: string | null;
+          created_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          reporter_id?: string;
+          target_type?: string;
+          target_id?: string;
+          reason?: string;
+          details?: string | null;
+          status?: string | null;
+          created_at?: string | null;
         };
         Relationships: [];
       };
       resumes: {
         Row: {
-          ats_score: number | null;
-          created_at: string;
+          id: string;
+          user_id: string;
           file_name: string | null;
           file_path: string | null;
           file_size: number | null;
-          formatting_score: number | null;
-          grammar_score: number | null;
-          id: string;
-          is_default: boolean | null;
-          keyword_score: number | null;
           mime_type: string | null;
-          overall_score: number | null;
-          parsed_data: Json | null;
-          professionalism_score: number | null;
-          resume_data: Json | null;
-          suggestions: Json | null;
           title: string | null;
-          updated_at: string;
-          user_id: string;
+          resume_data: Json | null;
+          parsed_data: Json | null;
+          overall_score: number | null;
+          ats_score: number | null;
+          keyword_score: number | null;
+          grammar_score: number | null;
+          formatting_score: number | null;
+          professionalism_score: number | null;
+          suggestions: Json | null;
+          is_default: boolean | null;
+          created_at: string | null;
+          updated_at: string | null;
         };
         Insert: {
-          ats_score?: number | null;
-          created_at?: string;
+          id?: string;
+          user_id: string;
           file_name?: string | null;
           file_path?: string | null;
           file_size?: number | null;
-          formatting_score?: number | null;
-          grammar_score?: number | null;
-          id?: string;
-          is_default?: boolean | null;
-          keyword_score?: number | null;
           mime_type?: string | null;
-          overall_score?: number | null;
-          parsed_data?: Json | null;
-          professionalism_score?: number | null;
-          resume_data?: Json | null;
-          suggestions?: Json | null;
           title?: string | null;
-          updated_at?: string;
-          user_id: string;
+          resume_data?: Json | null;
+          parsed_data?: Json | null;
+          overall_score?: number | null;
+          ats_score?: number | null;
+          keyword_score?: number | null;
+          grammar_score?: number | null;
+          formatting_score?: number | null;
+          professionalism_score?: number | null;
+          suggestions?: Json | null;
+          is_default?: boolean | null;
+          created_at?: string | null;
+          updated_at?: string | null;
         };
         Update: {
-          ats_score?: number | null;
-          created_at?: string;
+          id?: string;
+          user_id?: string;
           file_name?: string | null;
           file_path?: string | null;
           file_size?: number | null;
-          formatting_score?: number | null;
-          grammar_score?: number | null;
-          id?: string;
-          is_default?: boolean | null;
-          keyword_score?: number | null;
           mime_type?: string | null;
-          overall_score?: number | null;
-          parsed_data?: Json | null;
-          professionalism_score?: number | null;
-          resume_data?: Json | null;
-          suggestions?: Json | null;
           title?: string | null;
-          updated_at?: string;
-          user_id?: string;
+          resume_data?: Json | null;
+          parsed_data?: Json | null;
+          overall_score?: number | null;
+          ats_score?: number | null;
+          keyword_score?: number | null;
+          grammar_score?: number | null;
+          formatting_score?: number | null;
+          professionalism_score?: number | null;
+          suggestions?: Json | null;
+          is_default?: boolean | null;
+          created_at?: string | null;
+          updated_at?: string | null;
         };
         Relationships: [];
       };
       review_replies: {
         Row: {
-          author_id: string;
-          content: string;
-          created_at: string;
           id: string;
           review_id: string;
-        };
-        Insert: {
           author_id: string;
           content: string;
-          created_at?: string;
+          created_at: string | null;
+        };
+        Insert: {
           id?: string;
           review_id: string;
+          author_id: string;
+          content: string;
+          created_at?: string | null;
         };
         Update: {
-          author_id?: string;
-          content?: string;
-          created_at?: string;
           id?: string;
           review_id?: string;
+          author_id?: string;
+          content?: string;
+          created_at?: string | null;
         };
-        Relationships: [
-          {
-            foreignKeyName: "review_replies_review_id_fkey";
-            columns: ["review_id"];
-            isOneToOne: false;
-            referencedRelation: "reviews";
-            referencedColumns: ["id"];
-          },
-        ];
+        Relationships: [];
       };
       reviews: {
         Row: {
-          company_id: string;
-          content: string | null;
-          created_at: string;
           id: string;
-          rating: number;
+          company_id: string;
           reviewer_id: string;
-          title: string | null;
+          rating: number;
+          title: string;
+          body: string | null;
+          pros: string | null;
+          cons: string | null;
+          is_current_employee: boolean | null;
+          job_title: string | null;
+          created_at: string | null;
+          updated_at: string | null;
+          content: string | null;
         };
         Insert: {
-          company_id: string;
-          content?: string | null;
-          created_at?: string;
           id?: string;
+          company_id: string;
+          reviewer_id?: string;
           rating: number;
-          reviewer_id: string;
-          title?: string | null;
+          title: string;
+          body?: string | null;
+          pros?: string | null;
+          cons?: string | null;
+          is_current_employee?: boolean | null;
+          job_title?: string | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+          content?: string | null;
         };
         Update: {
-          company_id?: string;
-          content?: string | null;
-          created_at?: string;
           id?: string;
-          rating?: number;
+          company_id?: string;
           reviewer_id?: string;
-          title?: string | null;
+          rating?: number;
+          title?: string;
+          body?: string | null;
+          pros?: string | null;
+          cons?: string | null;
+          is_current_employee?: boolean | null;
+          job_title?: string | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+          content?: string | null;
         };
-        Relationships: [
-          {
-            foreignKeyName: "reviews_company_id_fkey";
-            columns: ["company_id"];
-            isOneToOne: false;
-            referencedRelation: "companies";
-            referencedColumns: ["id"];
-          },
-        ];
+        Relationships: [];
       };
       saved_jobs: {
         Row: {
-          created_at: string;
-          job_id: string;
+          id: string;
           user_id: string;
+          job_id: string;
+          created_at: string | null;
         };
         Insert: {
-          created_at?: string;
+          id?: string;
+          user_id?: string;
           job_id: string;
-          user_id: string;
+          created_at?: string | null;
         };
         Update: {
-          created_at?: string;
-          job_id?: string;
+          id?: string;
           user_id?: string;
+          job_id?: string;
+          created_at?: string | null;
         };
-        Relationships: [
-          {
-            foreignKeyName: "saved_jobs_job_id_fkey";
-            columns: ["job_id"];
-            isOneToOne: false;
-            referencedRelation: "jobs";
-            referencedColumns: ["id"];
-          },
-        ];
+        Relationships: [];
       };
       skills: {
         Row: {
-          category: string | null;
-          created_at: string;
           id: string;
           name: string;
+          category: string | null;
+          created_at: string | null;
         };
         Insert: {
-          category?: string | null;
-          created_at?: string;
           id?: string;
           name: string;
+          category?: string | null;
+          created_at?: string | null;
         };
         Update: {
-          category?: string | null;
-          created_at?: string;
           id?: string;
           name?: string;
+          category?: string | null;
+          created_at?: string | null;
         };
         Relationships: [];
       };
       support_tickets: {
         Row: {
-          admin_reply: string | null;
-          created_at: string;
           id: string;
-          message: string;
-          status: Database["public"]["Enums"]["ticket_status"];
+          user_id: string | null;
           subject: string;
+          message: string;
+          admin_reply: string | null;
+          status: string;
+          created_at: string;
           updated_at: string;
-          user_id: string;
         };
         Insert: {
-          admin_reply?: string | null;
-          created_at?: string;
           id?: string;
-          message: string;
-          status?: Database["public"]["Enums"]["ticket_status"];
+          user_id?: string | null;
           subject: string;
+          message: string;
+          admin_reply?: string | null;
+          status?: string;
+          created_at?: string;
           updated_at?: string;
-          user_id: string;
         };
         Update: {
-          admin_reply?: string | null;
-          created_at?: string;
           id?: string;
-          message?: string;
-          status?: Database["public"]["Enums"]["ticket_status"];
+          user_id?: string | null;
           subject?: string;
+          message?: string;
+          admin_reply?: string | null;
+          status?: string;
+          created_at?: string;
           updated_at?: string;
-          user_id?: string;
         };
         Relationships: [];
       };
       user_roles: {
         Row: {
-          created_at: string;
           id: string;
-          role: Database["public"]["Enums"]["app_role"];
           user_id: string;
+          role: Database["public"]["Enums"]["app_role"];
+          created_at: string;
         };
         Insert: {
-          created_at?: string;
           id?: string;
-          role: Database["public"]["Enums"]["app_role"];
           user_id: string;
+          role: Database["public"]["Enums"]["app_role"];
+          created_at?: string;
         };
         Update: {
-          created_at?: string;
           id?: string;
-          role?: Database["public"]["Enums"]["app_role"];
           user_id?: string;
+          role?: Database["public"]["Enums"]["app_role"];
+          created_at?: string;
         };
         Relationships: [];
       };
     };
     Views: {
-      assessments_catalog: {
-        Row: {
-          category: string | null;
-          created_at: string | null;
-          description: string | null;
-          difficulty: string | null;
-          duration_minutes: number | null;
-          id: string | null;
-          passing_score: number | null;
-          question_count: number | null;
-          title: string | null;
-        };
-        Insert: {
-          category?: string | null;
-          created_at?: string | null;
-          description?: string | null;
-          difficulty?: string | null;
-          duration_minutes?: number | null;
-          id?: string | null;
-          passing_score?: number | null;
-          question_count?: never;
-          title?: string | null;
-        };
-        Update: {
-          category?: string | null;
-          created_at?: string | null;
-          description?: string | null;
-          difficulty?: string | null;
-          duration_minutes?: number | null;
-          id?: string | null;
-          passing_score?: number | null;
-          question_count?: never;
-          title?: string | null;
-        };
-        Relationships: [];
-      };
+      [_ in never]: never;
     };
     Functions: {
+      create_notification: {
+        Args: {
+          _user_id: string;
+          _type: string;
+          _title: string;
+          _message: string;
+          _link: string;
+          _metadata: Json;
+        };
+        Returns: string;
+      };
       get_assessment_questions: {
-        Args: { _assessment_id: string };
+        Args: {
+          _assessment_id: string;
+        };
         Returns: Json;
       };
+      get_or_create_chat: {
+        Args: {
+          _user_a: string;
+          _user_b: string;
+        };
+        Returns: string;
+      };
       get_user_role: {
-        Args: { _user_id: string };
+        Args: {
+          _user_id: string;
+        };
         Returns: Database["public"]["Enums"]["app_role"];
       };
       has_role: {
         Args: {
-          _role: Database["public"]["Enums"]["app_role"];
           _user_id: string;
+          _role: Database["public"]["Enums"]["app_role"];
         };
         Returns: boolean;
       };
       submit_assessment: {
-        Args: { _answers: Json; _assessment_id: string };
+        Args: {
+          _assessment_id: string;
+          _answers: Json;
+        };
         Returns: {
           passed: boolean;
           score: number;
         }[];
       };
+      update_application_status: {
+        Args: {
+          _application_id: string;
+          _new_status: Database["public"]["Enums"]["application_status"];
+          _actor_id: string;
+          _note: string;
+        };
+        Returns: undefined;
+      };
     };
     Enums: {
-      app_role: "job_seeker" | "employer" | "admin";
+      app_role: "job_seeker" | "seeker" | "employer" | "admin";
       application_status:
-        "applied" | "viewed" | "shortlisted" | "interview" | "selected" | "rejected" | "withdrawn";
+        | "applied"
+        | "viewed"
+        | "reviewing"
+        | "shortlisted"
+        | "interview"
+        | "interview_scheduled"
+        | "interview_completed"
+        | "selected"
+        | "rejected"
+        | "offer"
+        | "withdrawn";
       experience_level: "entry" | "junior" | "mid" | "senior" | "lead" | "executive";
-      job_status: "draft" | "active" | "published" | "paused" | "closed";
-      job_type: "full_time" | "part_time" | "contract" | "internship" | "freelance";
-      meeting_status: "scheduled" | "completed" | "cancelled" | "no_show";
-      notification_type: "application" | "message" | "interview" | "job_match" | "system";
-      ticket_status: "open" | "in_progress" | "resolved" | "closed";
+      job_status: "draft" | "published" | "closed" | "active" | "paused";
+      job_type: "full_time" | "part_time" | "contract" | "internship" | "remote" | "freelance";
+    };
+    CompositeTypes: {
+      [_ in never]: never;
+    };
+  };
+  storage: {
+    Tables: {
+      buckets: {
+        Row: {
+          id: string;
+          name: string;
+          owner: string | null;
+          created_at: string | null;
+          updated_at: string | null;
+          public: boolean | null;
+          file_size_limit: number | null;
+          allowed_mime_types: string[] | null;
+          owner_id: string | null;
+        };
+        Insert: {
+          id: string;
+          name: string;
+          owner?: string | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+          public?: boolean | null;
+          file_size_limit?: number | null;
+          allowed_mime_types?: string[] | null;
+          owner_id?: string | null;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          owner?: string | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+          public?: boolean | null;
+          file_size_limit?: number | null;
+          allowed_mime_types?: string[] | null;
+          owner_id?: string | null;
+        };
+        Relationships: [];
+      };
+      objects: {
+        Row: {
+          id: string;
+          bucket_id: string;
+          name: string;
+          owner: string | null;
+          created_at: string | null;
+          updated_at: string | null;
+          last_accessed_at: string | null;
+          metadata: Json | null;
+          path_tokens: string[] | null;
+          owner_id: string | null;
+          version: string | null;
+        };
+        Insert: {
+          id?: string;
+          bucket_id: string;
+          name: string;
+          owner?: string | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+          last_accessed_at?: string | null;
+          metadata?: Json | null;
+          path_tokens?: string[] | null;
+          owner_id?: string | null;
+          version?: string | null;
+        };
+        Update: {
+          id?: string;
+          bucket_id?: string;
+          name?: string;
+          owner?: string | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+          last_accessed_at?: string | null;
+          metadata?: Json | null;
+          path_tokens?: string[] | null;
+          owner_id?: string | null;
+          version?: string | null;
+        };
+        Relationships: [];
+      };
+    };
+    Views: {
+      [_ in never]: never;
+    };
+    Functions: {
+      extension: {
+        Args: {
+          name: string;
+        };
+        Returns: string;
+      };
+      filename: {
+        Args: {
+          name: string;
+        };
+        Returns: string;
+      };
+      folder: {
+        Args: {
+          name: string;
+        };
+        Returns: string;
+      };
+      get_size_by_bucket: {
+        Args: Record<string, never>;
+        Returns: {
+          size: number;
+          bucket_id: string;
+        }[];
+      };
+      search: {
+        Args: {
+          prefix: string;
+          bucketname: string;
+          levels?: number;
+          limits?: number;
+          offsets?: number;
+          search?: string;
+          sortcolumn?: string;
+          sortorder?: string;
+        };
+        Returns: {
+          name: string;
+          id: string;
+          updated_at: string;
+          created_at: string;
+          last_accessed_at: string;
+          metadata: Json;
+        }[];
+      };
+    };
+    Enums: {
+      [_ in never]: never;
     };
     CompositeTypes: {
       [_ in never]: never;
@@ -1416,136 +2073,110 @@ export type Database = {
   };
 };
 
-type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">;
-
-type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">];
+type DefaultSchema = Database[Extract<keyof Database, "public">];
 
 export type Tables<
-  DefaultSchemaTableNameOrOptions extends
-    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-    | { schema: keyof DatabaseWithoutInternals },
-  TableName extends (DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals;
-  }
-    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never) = never,
-> = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals;
+  DefaultSchema extends keyof Database = "public",
+  SchemaOverrides extends { [K in DefaultSchema]?: Database[K] } = {},
+> = (SchemaOverrides[DefaultSchema] extends {
+  Tables: infer T;
 }
-  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
-      Row: infer R;
-    }
-    ? R
+  ? T
+  : DefaultSchema extends keyof Database
+    ? Database[DefaultSchema]["Tables"]
+    : never) extends infer T
+  ? T extends Record<string, any>
+    ? T[keyof T]
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-    ? (DefaultSchema["Tables"] & DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
-        Row: infer R;
-      }
-      ? R
-      : never
-    : never;
+  : never;
 
 export type TablesInsert<
-  DefaultSchemaTableNameOrOptions extends
-    keyof DefaultSchema["Tables"] | { schema: keyof DatabaseWithoutInternals },
-  TableName extends (DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals;
-  }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never) = never,
-> = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals;
+  DefaultSchema extends keyof Database = "public",
+  SchemaOverrides extends { [K in DefaultSchema]?: Database[K] } = {},
+> = (SchemaOverrides[DefaultSchema] extends {
+  Tables: infer T;
 }
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Insert: infer I;
-    }
-    ? I
+  ? T
+  : DefaultSchema extends keyof Database
+    ? Database[DefaultSchema]["Tables"]
+    : never) extends infer T
+  ? T extends Record<string, any>
+    ? T[keyof T]["Insert"]
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-        Insert: infer I;
-      }
-      ? I
-      : never
-    : never;
+  : never;
 
 export type TablesUpdate<
-  DefaultSchemaTableNameOrOptions extends
-    keyof DefaultSchema["Tables"] | { schema: keyof DatabaseWithoutInternals },
-  TableName extends (DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals;
-  }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never) = never,
-> = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals;
+  DefaultSchema extends keyof Database = "public",
+  SchemaOverrides extends { [K in DefaultSchema]?: Database[K] } = {},
+> = (SchemaOverrides[DefaultSchema] extends {
+  Tables: infer T;
 }
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Update: infer U;
-    }
-    ? U
+  ? T
+  : DefaultSchema extends keyof Database
+    ? Database[DefaultSchema]["Tables"]
+    : never) extends infer T
+  ? T extends Record<string, any>
+    ? T[keyof T]["Update"]
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-        Update: infer U;
-      }
-      ? U
-      : never
-    : never;
+  : never;
 
 export type Enums<
-  DefaultSchemaEnumNameOrOptions extends
-    keyof DefaultSchema["Enums"] | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals;
-  }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never) = never,
-> = DefaultSchemaEnumNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals;
+  DefaultSchema extends keyof Database = "public",
+  SchemaOverrides extends { [K in DefaultSchema]?: Database[K] } = {},
+> = (SchemaOverrides[DefaultSchema] extends {
+  Enums: infer E;
 }
-  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
-  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
-    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
-    : never;
+  ? E
+  : DefaultSchema extends keyof Database
+    ? Database[DefaultSchema]["Enums"]
+    : never) extends infer E
+  ? E extends Record<string, any>
+    ? E[keyof E]
+    : never
+  : never;
 
 export type CompositeTypes<
-  PublicCompositeTypeNameOrOptions extends
-    keyof DefaultSchema["CompositeTypes"] | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals;
-  }
-    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never) = never,
-> = PublicCompositeTypeNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals;
+  DefaultSchema extends keyof Database = "public",
+  SchemaOverrides extends { [K in DefaultSchema]?: Database[K] } = {},
+> = (SchemaOverrides[DefaultSchema] extends {
+  CompositeTypes: infer C;
 }
-  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
-  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
-    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
-    : never;
+  ? C
+  : DefaultSchema extends keyof Database
+    ? Database[DefaultSchema]["CompositeTypes"]
+    : never) extends infer C
+  ? C extends Record<string, any>
+    ? C[keyof C]
+    : never
+  : never;
 
-export const Constants = {
-  public: {
-    Enums: {
-      app_role: ["job_seeker", "employer", "admin"],
-      application_status: [
-        "applied",
-        "viewed",
-        "shortlisted",
-        "interview",
-        "selected",
-        "rejected",
-        "withdrawn",
-      ],
-      experience_level: ["entry", "junior", "mid", "senior", "lead", "executive"],
-      job_status: ["draft", "active", "paused", "closed"],
-      job_type: ["full_time", "part_time", "contract", "internship", "freelance"],
-      meeting_status: ["scheduled", "completed", "cancelled", "no_show"],
-      notification_type: ["application", "message", "interview", "job_match", "system"],
-      ticket_status: ["open", "in_progress", "resolved", "closed"],
-    },
-  },
-} as const;
+export type Constants<
+  PublicSchemaOrSchemaOptions extends
+    | keyof Database
+    | Record<string, { Enums: Record<string, any> }> = "public",
+  SchemaOptions extends { [K in keyof Database]?: { Enums: Record<string, any> } } = {},
+> = {
+  [Schema in Extract<
+    PublicSchemaOrSchemaOptions,
+    keyof Database
+  >]: Database[Schema]["Enums"] extends infer E
+    ? E extends Record<string, any>
+      ? {
+          [K in keyof E]: E[K] extends string
+            ? {
+                [V in E[K]]: V;
+              }
+            : never;
+        }
+      : never
+    : never;
+};
+
+type InternalSupabase = {
+  PostgrestVersion: "14.5";
+  Feature: {
+    [K in "schemas" | "deletableTableColumns" | "insertableTableColumns" | "updatableTableColumns" | "updatableViews" | "scalarArraysToJsArrays" | "returningMinimalRelationColumnNames" | "returningMinimalTableColumnNames" | "overloadedFunctionArgs" | "emptyStringToNull" | "computedColumns" | "pgVector" | "jsonbNumericToJsNumber"]: boolean;
+  };
+};
+
+declare const __InternalSupabase: InternalSupabase;

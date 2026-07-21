@@ -31,7 +31,7 @@ function Notifications() {
     if (!user) return;
     supabase
       .from("notifications")
-      .update({ read: true })
+      .update({ is_read: true })
       .eq("user_id", user.id)
       .eq("is_read", false)
       .then(() => {
@@ -40,7 +40,7 @@ function Notifications() {
   }, [user, data, qc]);
 
   async function markRead(id: string) {
-    await supabase.from("notifications").update({ read: true }).eq("id", id);
+    await supabase.from("notifications").update({ is_read: true }).eq("id", id);
     qc.invalidateQueries({ queryKey: ["notif"] });
     qc.invalidateQueries({ queryKey: ["notif-unread"] });
   }
@@ -54,9 +54,9 @@ function Notifications() {
             <CardContent className="p-4 flex items-start justify-between gap-3">
               <div className="flex-1">
                 <div className="font-medium">{n.title}</div>
-                {n.body && <div className="text-sm text-muted-foreground">{n.body}</div>}
+                {n.message && <div className="text-sm text-muted-foreground">{n.message}</div>}
                 <div className="text-xs text-muted-foreground mt-1">
-                  {new Date(n.created_at).toLocaleString()}
+                  {n.created_at ? new Date(n.created_at).toLocaleString() : ""}
                 </div>
               </div>
               {!n.is_read && (

@@ -29,14 +29,14 @@ export async function saveConnectionKeyForUser(
   connectionAPIKey: string,
 ) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { error } = await supabaseAdmin.from("app_user_connections" as any).upsert(
+  const { error } = await supabaseAdmin.from("app_user_connections").upsert(
     {
       user_id: userId,
-      connector_id: connectorId,
-      connection_key_ciphertext: encryptConnectionKey(connectionAPIKey),
+      provider: connectorId,
+      refresh_token: encryptConnectionKey(connectionAPIKey),
       updated_at: new Date().toISOString(),
     },
-    { onConflict: "user_id,connector_id" },
+    { onConflict: "user_id,provider" },
   );
   if (error) throw error;
 }
@@ -47,20 +47,20 @@ export async function getConnectionKeyForUser(
 ): Promise<string | null> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data, error } = await supabaseAdmin
-    .from("app_user_connections" as any)
-    .select("connection_key_ciphertext")
+    .from("app_user_connections")
+    .select("refresh_token")
     .eq("user_id", userId)
-    .eq("connector_id", connectorId)
+    .eq("provider", connectorId)
     .maybeSingle();
   if (error) throw error;
-  return data ? decryptConnectionKey((data as any).connection_key_ciphertext) : null;
+  return data ? decryptConnectionKey(data.refresh_token!) : null;
 }
 
 export async function deleteConnectionKeyForUser(userId: string, connectorId: string) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   await supabaseAdmin
-    .from("app_user_connections" as any)
+    .from("app_user_connections")
     .delete()
     .eq("user_id", userId)
-    .eq("connector_id", connectorId);
+    .eq("provider", connectorId);
 }

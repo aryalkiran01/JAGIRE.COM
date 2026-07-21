@@ -7,16 +7,7 @@ import { SiteFooter } from "@/components/layout/site-footer";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Building2,
-  MapPin,
-  Briefcase,
-  Clock,
-  DollarSign,
-  Bookmark,
-  Loader2,
-  MessageSquare,
-} from "lucide-react";
+import { Building2, MapPin, Briefcase, Clock, DollarSign, Bookmark, Loader as Loader2, MessageSquare } from "lucide-react";
 import { toast } from "sonner";
 import { useState } from "react";
 import { ApplyJobDialog } from "@/components/apply-job-dialog";
@@ -126,7 +117,11 @@ function JobDetail() {
                 {job.responsibilities && (
                   <>
                     <h3>Responsibilities</h3>
-                    <p className="whitespace-pre-wrap">{job.responsibilities}</p>
+                    <p className="whitespace-pre-wrap">
+                      {Array.isArray(job.responsibilities)
+                        ? (job.responsibilities as string[]).join("\n")
+                        : String(job.responsibilities)}
+                    </p>
                   </>
                 )}
                 {job.requirements && (
