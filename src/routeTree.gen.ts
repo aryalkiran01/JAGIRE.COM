@@ -118,14 +118,14 @@ const BlogIndexRoute = BlogIndexRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const JobsJobIdRoute = JobsJobIdRouteImport.update({
-  id: '/$jobId',
-  path: '/$jobId',
-  getParentRoute: () => JobsRoute,
+  id: '/jobs/$jobId',
+  path: '/jobs/$jobId',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const CompaniesSlugRoute = CompaniesSlugRouteImport.update({
-  id: '/$slug',
-  path: '/$slug',
-  getParentRoute: () => CompaniesRoute,
+  id: '/companies/$slug',
+  path: '/companies/$slug',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const CheckoutPlanRoute = CheckoutPlanRouteImport.update({
   id: '/checkout/$plan',
@@ -133,9 +133,9 @@ const CheckoutPlanRoute = CheckoutPlanRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const BlogSlugRoute = BlogSlugRouteImport.update({
-  id: '/$slug',
-  path: '/$slug',
-  getParentRoute: () => BlogRoute,
+  id: '/blog/$slug',
+  path: '/blog/$slug',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedSavedRoute = AuthenticatedSavedRouteImport.update({
   id: '/saved',
@@ -497,7 +497,10 @@ export interface RootRouteChildren {
   PricingRoute: typeof PricingRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SupportRoute: typeof SupportRoute
+  BlogSlugRoute: typeof BlogSlugRoute
   CheckoutPlanRoute: typeof CheckoutPlanRoute
+  CompaniesSlugRoute: typeof CompaniesSlugRoute
+  JobsJobIdRoute: typeof JobsJobIdRoute
   BlogIndexRoute: typeof BlogIndexRoute
   CompaniesIndexRoute: typeof CompaniesIndexRoute
   JobsIndexRoute: typeof JobsIndexRoute
@@ -605,17 +608,17 @@ declare module '@tanstack/react-router' {
     }
     '/jobs/$jobId': {
       id: '/jobs/$jobId'
-      path: '/$jobId'
+      path: '/jobs/$jobId'
       fullPath: '/jobs/$jobId'
       preLoaderRoute: typeof JobsJobIdRouteImport
-      parentRoute: typeof JobsRoute
+      parentRoute: typeof rootRouteImport
     }
     '/companies/$slug': {
       id: '/companies/$slug'
-      path: '/$slug'
+      path: '/companies/$slug'
       fullPath: '/companies/$slug'
       preLoaderRoute: typeof CompaniesSlugRouteImport
-      parentRoute: typeof CompaniesRoute
+      parentRoute: typeof rootRouteImport
     }
     '/checkout/$plan': {
       id: '/checkout/$plan'
@@ -626,10 +629,10 @@ declare module '@tanstack/react-router' {
     }
     '/blog/$slug': {
       id: '/blog/$slug'
-      path: '/$slug'
+      path: '/blog/$slug'
       fullPath: '/blog/$slug'
       preLoaderRoute: typeof BlogSlugRouteImport
-      parentRoute: typeof BlogRoute
+      parentRoute: typeof rootRouteImport
     }
     '/_authenticated/saved': {
       id: '/_authenticated/saved'
@@ -847,7 +850,10 @@ const rootRouteChildren: RootRouteChildren = {
   PricingRoute: PricingRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SupportRoute: SupportRoute,
+  BlogSlugRoute: BlogSlugRoute,
   CheckoutPlanRoute: CheckoutPlanRoute,
+  CompaniesSlugRoute: CompaniesSlugRoute,
+  JobsJobIdRoute: JobsJobIdRoute,
   BlogIndexRoute: BlogIndexRoute,
   CompaniesIndexRoute: CompaniesIndexRoute,
   JobsIndexRoute: JobsIndexRoute,
@@ -855,13 +861,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
