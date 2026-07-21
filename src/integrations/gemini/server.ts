@@ -1,6 +1,6 @@
 /**
  * Gemini API helper — SERVER ONLY.
- * Direct calls to Google's Generative AI REST API. No Lovable gateway.
+ * Direct calls to Google's Generative AI REST API.
  * Requires GEMINI_API_KEY environment variable.
  */
 

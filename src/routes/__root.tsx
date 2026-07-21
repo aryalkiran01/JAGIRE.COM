@@ -84,8 +84,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: "Jagire — AI Smart Job Portal" },
       { name: "twitter:description", content: "AI-powered job search, resume scoring, and career matching. Find your dream role or hire top talent with Jagire." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/697c7f11-2a79-4b8b-bf25-e09a9caf36ff/id-preview-43997c9a--446bbd19-9a25-4401-9305-329d1d3032f0.lovable.app-1784461129375.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/697c7f11-2a79-4b8b-bf25-e09a9caf36ff/id-preview-43997c9a--446bbd19-9a25-4401-9305-329d1d3032f0.lovable.app-1784461129375.png" },
+      { property: "og:image", content: "/og-image.png" },
+      { name: "twitter:image", content: "/og-image.png" },
     ],
     links: [
       {
