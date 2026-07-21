@@ -1,13 +1,25 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Clock, Video, CircleAlert as AlertCircle, CircleCheck as CheckCircle2, Circle as XCircle, Loader as Loader2, Camera, Mic, ExternalLink } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Calendar, Clock, Video, CircleAlert as AlertCircle, CircleCheck as CheckCircle2, Circle as XCircle, Loader as Loader2, Camera, Mic, ExternalLink, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
+import { updateInterviewStatus, rescheduleInterview } from "@/lib/google-calendar.functions";
 
 export const Route = createFileRoute("/_authenticated/interviews")({
   component: InterviewsPage,
@@ -26,9 +38,11 @@ type Interview = {
   notes: string | null;
   employer_id: string | null;
   candidate_id: string | null;
+  candidate_email: string | null;
   created_at: string | null;
   updated_at: string | null;
   application?: {
+    applicant_id: string | null;
     job?: { id: string; title: string | null; company?: { name: string | null } | null } | null;
   } | null;
 };
@@ -41,6 +55,7 @@ const STATUS_CONFIG: Record<string, { color: string; icon: any; label: string }>
   cancelled: { color: "bg-red-500", icon: XCircle, label: "Cancelled" },
   missed: { color: "bg-gray-500", icon: AlertCircle, label: "Missed" },
   expired: { color: "bg-gray-400", icon: AlertCircle, label: "Expired" },
+  reschedule_requested: { color: "bg-amber-500", icon: RefreshCw, label: "Reschedule requested" },
 };
 
 function CountdownTimer({ target }: { target: string }) {
@@ -49,21 +64,18 @@ function CountdownTimer({ target }: { target: string }) {
     const interval = setInterval(() => setRemaining(getRemaining(target)), 1000);
     return () => clearInterval(interval);
   }, [target]);
-  if (remaining === null) return <span className="text-xs text-muted-foreground">Started</span>;
-  if (remaining.started) return <span className="text-xs text-orange-500 font-medium">In progress</span>;
+  if (remaining.started)
+    return <span className="text-xs text-orange-500 font-medium">Starting soon</span>;
   return (
     <span className="text-xs font-mono text-muted-foreground">
-      {remaining.d}d {remaining.h}h {remaining.m}m {remaining.s}s
+      Starts in {remaining.d}d {remaining.h}h {remaining.m}m {remaining.s}s
     </span>
   );
 }
 
 function getRemaining(target: string) {
   const diff = new Date(target).getTime() - Date.now();
-  if (diff <= 0) {
-    // If within duration window, show "in progress"
-    return { started: true, d: 0, h: 0, m: 0, s: 0 };
-  }
+  if (diff <= 0) return { started: true, d: 0, h: 0, m: 0, s: 0 };
   const d = Math.floor(diff / 86400000);
   const h = Math.floor((diff % 86400000) / 3600000);
   const m = Math.floor((diff % 3600000) / 60000);
@@ -75,15 +87,23 @@ function InterviewsPage() {
   const { user } = useAuth();
   const qc = useQueryClient();
   const [joinOpen, setJoinOpen] = useState<string | null>(null);
+  const [rescheduleOpen, setRescheduleOpen] = useState<Interview | null>(null);
+  const [proposedTime, setProposedTime] = useState("");
+  const [rescheduleReason, setRescheduleReason] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const updateStatusFn = useServerFn(updateInterviewStatus);
+  const rescheduleFn = useServerFn(rescheduleInterview);
 
   const { data: interviews, isLoading } = useQuery<Interview[]>({
     queryKey: ["my-interviews", user?.id],
     enabled: !!user,
     queryFn: async () => {
+      // Candidate sees interviews where they are the candidate
       const { data, error } = await supabase
         .from("interviews")
         .select(
-          "id, application_id, title, scheduled_at, duration_minutes, meeting_link, meet_link, location, status, notes, employer_id, candidate_id, created_at, updated_at, application:applications!interviews_application_id_fkey(job:jobs(id, title, company:companies(name)))",
+          "id, application_id, title, scheduled_at, duration_minutes, meeting_link, meet_link, location, status, notes, employer_id, candidate_id, candidate_email, created_at, updated_at, application:applications!interviews_application_id_fkey(applicant_id, job:jobs(id, title, company:companies(name)))",
         )
         .or(`candidate_id.eq.${user!.id},employer_id.eq.${user!.id}`)
         .order("scheduled_at", { ascending: true });
@@ -92,41 +112,96 @@ function InterviewsPage() {
     },
   });
 
-  // Realtime
+  // Realtime subscription
   useEffect(() => {
+    if (!user) return;
     const ch = supabase
       .channel("interviews-realtime")
-      .on("postgres_changes", { event: "*", schema: "public", table: "interviews" }, () => {
-        qc.invalidateQueries({ queryKey: ["my-interviews"] });
-      })
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "interviews",
+          filter: `candidate_id=eq.${user.id}`,
+        },
+        () => qc.invalidateQueries({ queryKey: ["my-interviews"] }),
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "interviews",
+          filter: `employer_id=eq.${user.id}`,
+        },
+        () => qc.invalidateQueries({ queryKey: ["my-interviews"] }),
+      )
       .subscribe();
     return () => supabase.removeChannel(ch);
-  }, [qc]);
+  }, [user, qc]);
 
   async function confirmInterview(id: string) {
-    const { error } = await supabase
-      .from("interviews")
-      .update({ status: "confirmed", accepted_at: new Date().toISOString() })
-      .eq("id", id);
-    if (error) return toast.error(error.message);
-    toast.success("Interview confirmed");
-    qc.invalidateQueries({ queryKey: ["my-interviews"] });
+    try {
+      await updateStatusFn({ data: { interviewId: id, status: "confirmed" } });
+      toast.success("Interview confirmed");
+      qc.invalidateQueries({ queryKey: ["my-interviews"] });
+    } catch (e: any) {
+      toast.error(e.message);
+    }
   }
 
   async function cancelInterview(id: string) {
-    if (!confirm("Cancel this interview?")) return;
-    const { error } = await supabase
-      .from("interviews")
-      .update({ status: "cancelled", declined_at: new Date().toISOString() })
-      .eq("id", id);
-    if (error) return toast.error(error.message);
-    toast.success("Interview cancelled");
-    qc.invalidateQueries({ queryKey: ["my-interviews"] });
+    if (!confirm("Cancel this interview? The other party will be notified.")) return;
+    try {
+      await updateStatusFn({ data: { interviewId: id, status: "cancelled" } });
+      toast.success("Interview cancelled");
+      qc.invalidateQueries({ queryKey: ["my-interviews"] });
+    } catch (e: any) {
+      toast.error(e.message);
+    }
   }
 
-  const isEmployer = interviews?.some((i) => i.employer_id === user?.id);
+  async function markCompleted(id: string) {
+    try {
+      await updateStatusFn({ data: { interviewId: id, status: "completed" } });
+      toast.success("Interview marked as completed");
+      qc.invalidateQueries({ queryKey: ["my-interviews"] });
+    } catch (e: any) {
+      toast.error(e.message);
+    }
+  }
+
+  async function submitReschedule() {
+    if (!rescheduleOpen || !proposedTime) return;
+    setBusy(true);
+    try {
+      await rescheduleFn({
+        data: {
+          interviewId: rescheduleOpen.id,
+          proposedTimeISO: new Date(proposedTime).toISOString(),
+          reason: rescheduleReason || undefined,
+        },
+      });
+      toast.success("Reschedule request sent");
+      setRescheduleOpen(null);
+      setProposedTime("");
+      setRescheduleReason("");
+      qc.invalidateQueries({ queryKey: ["my-interviews"] });
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const isEmployerView = interviews?.some((i) => i.employer_id === user?.id);
   const upcoming = interviews?.filter(
-    (i) => i.status === "scheduled" || i.status === "confirmed",
+    (i) =>
+      i.status === "scheduled" ||
+      i.status === "confirmed" ||
+      i.status === "ongoing" ||
+      i.status === "reschedule_requested",
   ) ?? [];
   const past =
     interviews?.filter(
@@ -150,7 +225,7 @@ function InterviewsPage() {
       <div>
         <h1 className="text-3xl font-bold">Interviews</h1>
         <p className="text-muted-foreground">
-          {isEmployer ? "Manage your candidate interviews" : "Your scheduled interviews"}
+          {isEmployerView ? "Manage your candidate interviews" : "Your scheduled interviews"}
         </p>
       </div>
 
@@ -174,12 +249,16 @@ function InterviewsPage() {
             const companyName = iv.application?.job?.company?.name ?? "";
             const canJoin =
               iv.status === "confirmed" || iv.status === "scheduled" || iv.status === "ongoing";
+            const isCandidate = iv.candidate_id === user?.id;
+            const isEmployer = iv.employer_id === user?.id;
             return (
               <Card key={iv.id} id={`interview-${iv.id}`}>
                 <CardContent className="p-4 space-y-3">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <div className="font-semibold text-lg">{iv.title ?? `Interview — ${jobTitle}`}</div>
+                      <div className="font-semibold text-lg">
+                        {iv.title ?? `Interview — ${jobTitle}`}
+                      </div>
                       <div className="text-sm text-muted-foreground">
                         {jobTitle}
                         {companyName && ` · ${companyName}`}
@@ -237,10 +316,16 @@ function InterviewsPage() {
                         </Button>
                       </>
                     )}
-                    {iv.status === "scheduled" && iv.candidate_id === user?.id && (
+                    {iv.status === "scheduled" && isCandidate && (
                       <Button variant="outline" size="sm" onClick={() => confirmInterview(iv.id)}>
                         <CheckCircle2 className="h-4 w-4 mr-1" />
                         Confirm
+                      </Button>
+                    )}
+                    {isEmployer && iv.status !== "completed" && iv.status !== "cancelled" && (
+                      <Button variant="outline" size="sm" onClick={() => markCompleted(iv.id)}>
+                        <CheckCircle2 className="h-4 w-4 mr-1" />
+                        Mark completed
                       </Button>
                     )}
                     {(iv.status === "scheduled" || iv.status === "confirmed") && (
@@ -252,6 +337,23 @@ function InterviewsPage() {
                       >
                         <XCircle className="h-4 w-4 mr-1" />
                         Cancel
+                      </Button>
+                    )}
+                    {(iv.status === "scheduled" || iv.status === "confirmed") && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setRescheduleOpen(iv);
+                          setProposedTime(
+                            iv.scheduled_at
+                              ? new Date(iv.scheduled_at).toISOString().slice(0, 16)
+                              : "",
+                          );
+                        }}
+                      >
+                        <RefreshCw className="h-4 w-4 mr-1" />
+                        Request reschedule
                       </Button>
                     )}
                   </div>
@@ -298,6 +400,43 @@ function InterviewsPage() {
           })}
         </div>
       )}
+
+      {/* Reschedule dialog */}
+      <Dialog open={!!rescheduleOpen} onOpenChange={(o) => !o && setRescheduleOpen(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Request reschedule</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label>Proposed new time</Label>
+              <Input
+                type="datetime-local"
+                value={proposedTime}
+                onChange={(e) => setProposedTime(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label>Reason (optional)</Label>
+              <Textarea
+                rows={2}
+                placeholder="Reason for rescheduling"
+                value={rescheduleReason}
+                onChange={(e) => setRescheduleReason(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setRescheduleOpen(null)}>
+              Cancel
+            </Button>
+            <Button onClick={submitReschedule} disabled={busy || !proposedTime}>
+              {busy ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}
+              Send request
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -348,10 +487,8 @@ function JoinInterviewPanel({
 
   async function joinNow() {
     setJoining(true);
-    await supabase
-      .from("interviews")
-      .update({ status: "ongoing" })
-      .eq("id", interviewId);
+    // Mark as ongoing via direct update (candidate can do this)
+    await supabase.from("interviews").update({ status: "ongoing" }).eq("id", interviewId);
     onStatusUpdate();
     window.open(link, "_blank", "noopener,noreferrer");
     setJoining(false);
@@ -409,7 +546,11 @@ function JoinInterviewPanel({
             onClick={joinNow}
             disabled={joining}
           >
-            {joining ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Video className="h-4 w-4 mr-1" />}
+            {joining ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-1" />
+            ) : (
+              <Video className="h-4 w-4 mr-1" />
+            )}
             Join now
           </Button>
         </div>
