@@ -7,14 +7,26 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
 export const Route = createFileRoute("/blog/")({
-  head: () => ({ meta: [{ title: "Blog — Jagire" }, { name: "description", content: "Career advice, hiring insights, and AI in recruitment." }] }),
+  head: () => ({
+    meta: [
+      { title: "Blog — Jagire" },
+      { name: "description", content: "Career advice, hiring insights, and AI in recruitment." },
+    ],
+  }),
   component: Blog,
 });
 
 function Blog() {
   const { data: posts } = useQuery({
     queryKey: ["blogs"],
-    queryFn: async () => (await supabase.from("blogs").select("*").eq("published", true).order("published_at", { ascending: false })).data ?? [],
+    queryFn: async () =>
+      (
+        await supabase
+          .from("blogs")
+          .select("*")
+          .eq("published", true)
+          .order("published_at", { ascending: false })
+      ).data ?? [],
   });
   return (
     <div className="min-h-screen bg-background">
@@ -26,12 +38,18 @@ function Blog() {
             {posts.map((p) => (
               <Link key={p.id} to="/blog/$slug" params={{ slug: p.slug }}>
                 <Card className="hover:shadow-glow transition h-full overflow-hidden">
-                  {p.cover_url && <img src={p.cover_url} alt="" className="w-full h-40 object-cover" />}
+                  {p.cover_url && (
+                    <img src={p.cover_url} alt="" className="w-full h-40 object-cover" />
+                  )}
                   <CardContent className="p-6">
                     <h2 className="font-bold text-xl mb-2">{p.title}</h2>
                     {p.excerpt && <p className="text-sm text-muted-foreground mb-3">{p.excerpt}</p>}
                     <div className="flex flex-wrap gap-1">
-                      {p.tags?.map((t) => <Badge key={t} variant="secondary" className="text-xs">{t}</Badge>)}
+                      {p.tags?.map((t) => (
+                        <Badge key={t} variant="secondary" className="text-xs">
+                          {t}
+                        </Badge>
+                      ))}
                     </div>
                   </CardContent>
                 </Card>
@@ -39,7 +57,11 @@ function Blog() {
             ))}
           </div>
         ) : (
-          <Card><CardContent className="p-12 text-center text-muted-foreground">No posts yet. Check back soon!</CardContent></Card>
+          <Card>
+            <CardContent className="p-12 text-center text-muted-foreground">
+              No posts yet. Check back soon!
+            </CardContent>
+          </Card>
         )}
       </div>
       <SiteFooter />

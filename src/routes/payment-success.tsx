@@ -11,12 +11,16 @@ export const Route = createFileRoute("/payment-success")({
     <div className="min-h-screen bg-background">
       <SiteHeader />
       <div className="container mx-auto px-4 py-24 max-w-lg">
-        <Card><CardContent className="p-10 text-center">
-          <CheckCircle2 className="h-16 w-16 text-primary mx-auto mb-4" />
-          <h1 className="text-2xl font-bold mb-2">Payment successful</h1>
-          <p className="text-muted-foreground mb-6">Your plan has been activated.</p>
-          <Button asChild className="gradient-brand text-primary-foreground"><Link to="/dashboard">Go to dashboard</Link></Button>
-        </CardContent></Card>
+        <Card>
+          <CardContent className="p-10 text-center">
+            <CheckCircle2 className="h-16 w-16 text-primary mx-auto mb-4" />
+            <h1 className="text-2xl font-bold mb-2">Payment successful</h1>
+            <p className="text-muted-foreground mb-6">Your plan has been activated.</p>
+            <Button asChild className="gradient-brand text-primary-foreground">
+              <Link to="/dashboard">Go to dashboard</Link>
+            </Button>
+          </CardContent>
+        </Card>
       </div>
       <SiteFooter />
     </div>

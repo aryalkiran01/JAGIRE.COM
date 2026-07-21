@@ -16,7 +16,8 @@ function AuthLayout() {
       </div>
     );
   }
-  if (!user) return <Navigate to="/auth" search={{ mode: "signin", redirect: window.location.pathname }} />;
+  if (!user)
+    return <Navigate to="/auth" search={{ mode: "signin", redirect: window.location.pathname }} />;
   return (
     <div className="min-h-screen bg-background">
       <SiteHeader />

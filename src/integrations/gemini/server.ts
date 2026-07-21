@@ -4,8 +4,7 @@
  * Requires GEMINI_API_KEY environment variable.
  */
 
-const GEMINI_URL =
-  "https://generativelanguage.googleapis.com/v1beta/models";
+const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models";
 
 function apiKey(): string {
   const key = process.env.GEMINI_API_KEY;

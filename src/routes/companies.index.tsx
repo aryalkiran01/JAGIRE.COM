@@ -11,7 +11,9 @@ export const Route = createFileRoute("/companies/")({ component: Companies });
 function Companies() {
   const { data } = useQuery({
     queryKey: ["companies-list"],
-    queryFn: async () => (await supabase.from("companies").select("*").order("created_at", { ascending: false })).data ?? [],
+    queryFn: async () =>
+      (await supabase.from("companies").select("*").order("created_at", { ascending: false }))
+        .data ?? [],
   });
   return (
     <div className="min-h-screen bg-background">
@@ -26,20 +28,34 @@ function Companies() {
                   <CardContent className="p-6">
                     <div className="flex items-center gap-3 mb-3">
                       <div className="h-12 w-12 rounded-lg bg-muted flex items-center justify-center overflow-hidden">
-                        {c.logo_url ? <img src={c.logo_url} alt="" className="h-full w-full object-cover" /> : <Building2 className="h-6 w-6" />}
+                        {c.logo_url ? (
+                          <img src={c.logo_url} alt="" className="h-full w-full object-cover" />
+                        ) : (
+                          <Building2 className="h-6 w-6" />
+                        )}
                       </div>
                       <div>
                         <div className="font-semibold">{c.name}</div>
-                        <div className="text-xs text-muted-foreground">{c.industry ?? "Company"}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {c.industry ?? "Company"}
+                        </div>
                       </div>
                     </div>
-                    <p className="text-sm text-muted-foreground line-clamp-2">{c.tagline ?? c.description}</p>
+                    <p className="text-sm text-muted-foreground line-clamp-2">
+                      {c.tagline ?? c.description}
+                    </p>
                   </CardContent>
                 </Card>
               </Link>
             ))}
           </div>
-        ) : <Card><CardContent className="p-12 text-center text-muted-foreground">No companies yet.</CardContent></Card>}
+        ) : (
+          <Card>
+            <CardContent className="p-12 text-center text-muted-foreground">
+              No companies yet.
+            </CardContent>
+          </Card>
+        )}
       </div>
       <SiteFooter />
     </div>

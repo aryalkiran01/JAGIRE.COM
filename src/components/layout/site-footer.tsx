@@ -13,31 +13,73 @@ export function SiteFooter() {
               </div>
               <span className="font-bold text-lg gradient-text">Jagire</span>
             </div>
-            <p className="text-sm text-muted-foreground">AI-powered job portal connecting talent with opportunity.</p>
+            <p className="text-sm text-muted-foreground">
+              AI-powered job portal connecting talent with opportunity.
+            </p>
           </div>
           <div>
             <h4 className="font-semibold mb-3 text-sm">For Job Seekers</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><Link to="/jobs" className="hover:text-foreground">Browse Jobs</Link></li>
-              <li><Link to="/companies" className="hover:text-foreground">Companies</Link></li>
-              <li><Link to="/resume-scanner" className="hover:text-foreground">AI Resume Scanner</Link></li>
-              <li><Link to="/career" className="hover:text-foreground">Career Advice</Link></li>
+              <li>
+                <Link to="/jobs" className="hover:text-foreground">
+                  Browse Jobs
+                </Link>
+              </li>
+              <li>
+                <Link to="/companies" className="hover:text-foreground">
+                  Companies
+                </Link>
+              </li>
+              <li>
+                <Link to="/resume-scanner" className="hover:text-foreground">
+                  AI Resume Scanner
+                </Link>
+              </li>
+              <li>
+                <Link to="/career" className="hover:text-foreground">
+                  Career Advice
+                </Link>
+              </li>
             </ul>
           </div>
           <div>
             <h4 className="font-semibold mb-3 text-sm">For Employers</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><Link to="/employer" className="hover:text-foreground">Post a Job</Link></li>
-              <li><Link to="/pricing" className="hover:text-foreground">Pricing</Link></li>
-              <li><Link to="/about" className="hover:text-foreground">About Us</Link></li>
+              <li>
+                <Link to="/employer" className="hover:text-foreground">
+                  Post a Job
+                </Link>
+              </li>
+              <li>
+                <Link to="/pricing" className="hover:text-foreground">
+                  Pricing
+                </Link>
+              </li>
+              <li>
+                <Link to="/about" className="hover:text-foreground">
+                  About Us
+                </Link>
+              </li>
             </ul>
           </div>
           <div>
             <h4 className="font-semibold mb-3 text-sm">Support</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><Link to="/contact" className="hover:text-foreground">Contact</Link></li>
-              <li><Link to="/support" className="hover:text-foreground">Help Center</Link></li>
-              <li><Link to="/blog" className="hover:text-foreground">Blog</Link></li>
+              <li>
+                <Link to="/contact" className="hover:text-foreground">
+                  Contact
+                </Link>
+              </li>
+              <li>
+                <Link to="/support" className="hover:text-foreground">
+                  Help Center
+                </Link>
+              </li>
+              <li>
+                <Link to="/blog" className="hover:text-foreground">
+                  Blog
+                </Link>
+              </li>
             </ul>
           </div>
         </div>

@@ -3,7 +3,14 @@ import { useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Calendar } from "lucide-react";
@@ -116,7 +123,8 @@ export function ScheduleInterviewDialog({
         ) : !status.data?.connected ? (
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              Connect your Google account to create a Calendar event with an auto-generated Meet link.
+              Connect your Google account to create a Calendar event with an auto-generated Meet
+              link.
             </p>
             <Button onClick={() => connect.mutate()} disabled={connect.isPending}>
               {connect.isPending ? "Connecting…" : "Connect Google Calendar"}
@@ -130,14 +138,25 @@ export function ScheduleInterviewDialog({
             </div>
             <div>
               <Label>Start</Label>
-              <Input type="datetime-local" value={start} onChange={(e) => setStart(e.target.value)} />
+              <Input
+                type="datetime-local"
+                value={start}
+                onChange={(e) => setStart(e.target.value)}
+              />
             </div>
             <div>
               <Label>Duration (minutes)</Label>
-              <Input type="number" min={15} max={480} value={duration} onChange={(e) => setDuration(Number(e.target.value))} />
+              <Input
+                type="number"
+                min={15}
+                max={480}
+                value={duration}
+                onChange={(e) => setDuration(Number(e.target.value))}
+              />
             </div>
             <p className="text-xs text-muted-foreground">
-              Invite goes to <span className="font-medium">{candidateEmail}</span>. A Google Meet link is created automatically.
+              Invite goes to <span className="font-medium">{candidateEmail}</span>. A Google Meet
+              link is created automatically.
             </p>
             <DialogFooter>
               <Button onClick={() => schedule.mutate()} disabled={schedule.isPending}>

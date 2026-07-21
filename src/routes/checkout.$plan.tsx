@@ -16,12 +16,22 @@ const PLANS: Record<string, { name: string; price: number; features: string[] }>
   starter: {
     name: "Employer Starter",
     price: 4900, // NPR
-    features: ["3 active job posts", "AI candidate ranking", "Applicant management", "Email support"],
+    features: [
+      "3 active job posts",
+      "AI candidate ranking",
+      "Applicant management",
+      "Email support",
+    ],
   },
   pro: {
     name: "Pro",
     price: 9900,
-    features: ["10 active job posts", "Priority AI matching", "Interview scheduling", "Priority support"],
+    features: [
+      "10 active job posts",
+      "Priority AI matching",
+      "Interview scheduling",
+      "Priority support",
+    ],
   },
 };
 
@@ -42,7 +52,12 @@ async function hmacSha256Base64(message: string, secret: string) {
 }
 
 export const Route = createFileRoute("/checkout/$plan")({
-  head: () => ({ meta: [{ title: "Checkout — Jagire" }, { name: "description", content: "Complete your purchase with eSewa." }] }),
+  head: () => ({
+    meta: [
+      { title: "Checkout — Jagire" },
+      { name: "description", content: "Complete your purchase with eSewa." },
+    ],
+  }),
   component: Checkout,
 });
 
@@ -58,7 +73,9 @@ function Checkout() {
         <SiteHeader />
         <div className="container mx-auto px-4 py-16 max-w-lg text-center">
           <h1 className="text-3xl font-bold mb-4">Plan not found</h1>
-          <Button asChild><Link to="/pricing">Back to pricing</Link></Button>
+          <Button asChild>
+            <Link to="/pricing">Back to pricing</Link>
+          </Button>
         </div>
         <SiteFooter />
       </div>
@@ -84,8 +101,10 @@ function Checkout() {
     (form.elements.namedItem("total_amount") as HTMLInputElement).value = totalAmount;
     (form.elements.namedItem("transaction_uuid") as HTMLInputElement).value = txnId;
     (form.elements.namedItem("product_code") as HTMLInputElement).value = MERCHANT_CODE;
-    (form.elements.namedItem("product_service_charge") as HTMLInputElement).value = productServiceCharge;
-    (form.elements.namedItem("product_delivery_charge") as HTMLInputElement).value = productDeliveryCharge;
+    (form.elements.namedItem("product_service_charge") as HTMLInputElement).value =
+      productServiceCharge;
+    (form.elements.namedItem("product_delivery_charge") as HTMLInputElement).value =
+      productDeliveryCharge;
     (form.elements.namedItem("success_url") as HTMLInputElement).value = successUrl;
     (form.elements.namedItem("failure_url") as HTMLInputElement).value = failureUrl;
     (form.elements.namedItem("signed_field_names") as HTMLInputElement).value = signedFieldNames;
@@ -100,10 +119,15 @@ function Checkout() {
         <Card>
           <CardContent className="p-8">
             <h1 className="text-2xl font-bold mb-2">{p.name}</h1>
-            <div className="text-4xl font-bold my-4 gradient-text">Rs. {p.price.toLocaleString()}</div>
+            <div className="text-4xl font-bold my-4 gradient-text">
+              Rs. {p.price.toLocaleString()}
+            </div>
             <ul className="space-y-2 mb-6 text-sm">
               {p.features.map((f) => (
-                <li key={f} className="flex gap-2"><Check className="h-4 w-4 text-primary" />{f}</li>
+                <li key={f} className="flex gap-2">
+                  <Check className="h-4 w-4 text-primary" />
+                  {f}
+                </li>
               ))}
             </ul>
             <div className="text-xs text-muted-foreground mb-4">

@@ -76,14 +76,26 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "Jagire — AI Smart Job Portal" },
-      { name: "description", content: "AI-powered job search, resume scoring, and career matching. Find your dream role or hire top talent with Jagire." },
+      {
+        name: "description",
+        content:
+          "AI-powered job search, resume scoring, and career matching. Find your dream role or hire top talent with Jagire.",
+      },
       { name: "author", content: "Jagire" },
       { property: "og:title", content: "Jagire — AI Smart Job Portal" },
-      { property: "og:description", content: "AI-powered job search, resume scoring, and career matching. Find your dream role or hire top talent with Jagire." },
+      {
+        property: "og:description",
+        content:
+          "AI-powered job search, resume scoring, and career matching. Find your dream role or hire top talent with Jagire.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: "Jagire — AI Smart Job Portal" },
-      { name: "twitter:description", content: "AI-powered job search, resume scoring, and career matching. Find your dream role or hire top talent with Jagire." },
+      {
+        name: "twitter:description",
+        content:
+          "AI-powered job search, resume scoring, and career matching. Find your dream role or hire top talent with Jagire.",
+      },
       { property: "og:image", content: "/og-image.png" },
       { name: "twitter:image", content: "/og-image.png" },
     ],
@@ -95,7 +107,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-      { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" },
+      {
+        rel: "stylesheet",
+        href: "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap",
+      },
     ],
   }),
   shellComponent: RootShell,

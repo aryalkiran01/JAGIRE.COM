@@ -7,7 +7,18 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Search, MapPin, Briefcase, Sparkles, Target, Users, TrendingUp, Building2, ArrowRight, Star } from "lucide-react";
+import {
+  Search,
+  MapPin,
+  Briefcase,
+  Sparkles,
+  Target,
+  Users,
+  TrendingUp,
+  Building2,
+  ArrowRight,
+  Star,
+} from "lucide-react";
 import { useState } from "react";
 
 export const Route = createFileRoute("/")({
@@ -22,7 +33,9 @@ function Landing() {
     queryFn: async () => {
       const { data } = await supabase
         .from("jobs")
-        .select("id, title, slug, location, job_type, salary_min, salary_max, company:companies(id, name, slug, logo_url)")
+        .select(
+          "id, title, slug, location, job_type, salary_min, salary_max, company:companies(id, name, slug, logo_url)",
+        )
         .eq("status", "active")
         .order("created_at", { ascending: false })
         .limit(6);
@@ -64,10 +77,12 @@ function Landing() {
             </Badge>
             <h1 className="mb-6 text-5xl font-extrabold tracking-tight md:text-7xl">
               Find your <span className="gradient-text">dream career</span>
-              <br />with AI precision
+              <br />
+              with AI precision
             </h1>
             <p className="mb-10 text-lg text-muted-foreground md:text-xl max-w-2xl mx-auto">
-              Upload your resume, get instant AI scoring, and match with jobs tailored to your skills, experience, and ambitions.
+              Upload your resume, get instant AI scoring, and match with jobs tailored to your
+              skills, experience, and ambitions.
             </p>
 
             <form
@@ -104,12 +119,26 @@ function Landing() {
       <section className="container mx-auto px-4 py-20">
         <div className="text-center mb-12">
           <h2 className="text-4xl font-bold mb-3">Powered by AI, built for humans</h2>
-          <p className="text-muted-foreground text-lg">Every feature designed to accelerate your journey</p>
+          <p className="text-muted-foreground text-lg">
+            Every feature designed to accelerate your journey
+          </p>
         </div>
         <div className="grid md:grid-cols-3 gap-6">
-          <FeatureCard icon={Sparkles} title="AI Resume Scanner" desc="Upload your CV and get instant scoring across ATS compatibility, grammar, formatting, keywords, and professionalism." />
-          <FeatureCard icon={Target} title="Smart Job Matching" desc="Our AI ranks every job by fit — skills, experience, location, salary — so you focus on opportunities that matter." />
-          <FeatureCard icon={TrendingUp} title="Career Recommendations" desc="Personalized paths, certifications, and trending skills to help you grow into your next role." />
+          <FeatureCard
+            icon={Sparkles}
+            title="AI Resume Scanner"
+            desc="Upload your CV and get instant scoring across ATS compatibility, grammar, formatting, keywords, and professionalism."
+          />
+          <FeatureCard
+            icon={Target}
+            title="Smart Job Matching"
+            desc="Our AI ranks every job by fit — skills, experience, location, salary — so you focus on opportunities that matter."
+          />
+          <FeatureCard
+            icon={TrendingUp}
+            title="Career Recommendations"
+            desc="Personalized paths, certifications, and trending skills to help you grow into your next role."
+          />
         </div>
       </section>
 
@@ -120,7 +149,11 @@ function Landing() {
             <h2 className="text-3xl font-bold">Explore by category</h2>
             <p className="text-muted-foreground">Discover roles across every industry</p>
           </div>
-          <Button variant="ghost" asChild><Link to="/jobs">All jobs <ArrowRight className="ml-1 h-4 w-4" /></Link></Button>
+          <Button variant="ghost" asChild>
+            <Link to="/jobs">
+              All jobs <ArrowRight className="ml-1 h-4 w-4" />
+            </Link>
+          </Button>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           {categories?.map((c) => (
@@ -145,7 +178,11 @@ function Landing() {
             <h2 className="text-3xl font-bold">Featured opportunities</h2>
             <p className="text-muted-foreground">Fresh roles from top companies</p>
           </div>
-          <Button variant="ghost" asChild><Link to="/jobs">View all <ArrowRight className="ml-1 h-4 w-4" /></Link></Button>
+          <Button variant="ghost" asChild>
+            <Link to="/jobs">
+              View all <ArrowRight className="ml-1 h-4 w-4" />
+            </Link>
+          </Button>
         </div>
         {featuredJobs && featuredJobs.length > 0 ? (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -155,17 +192,34 @@ function Landing() {
                   <CardContent className="p-6">
                     <div className="flex items-start gap-3 mb-4">
                       <div className="h-12 w-12 rounded-lg bg-muted flex items-center justify-center overflow-hidden">
-                        {job.company?.logo_url ? <img src={job.company.logo_url} alt="" className="h-full w-full object-cover" /> : <Building2 className="h-6 w-6 text-muted-foreground" />}
+                        {job.company?.logo_url ? (
+                          <img
+                            src={job.company.logo_url}
+                            alt=""
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <Building2 className="h-6 w-6 text-muted-foreground" />
+                        )}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="font-semibold truncate">{job.title}</div>
-                        <div className="text-sm text-muted-foreground truncate">{job.company?.name}</div>
+                        <div className="text-sm text-muted-foreground truncate">
+                          {job.company?.name}
+                        </div>
                       </div>
                     </div>
                     <div className="flex flex-wrap gap-2 text-xs">
-                      {job.location && <Badge variant="secondary"><MapPin className="mr-1 h-3 w-3" />{job.location}</Badge>}
+                      {job.location && (
+                        <Badge variant="secondary">
+                          <MapPin className="mr-1 h-3 w-3" />
+                          {job.location}
+                        </Badge>
+                      )}
                       <Badge variant="secondary">{String(job.job_type).replace("_", " ")}</Badge>
-                      {job.salary_min && <Badge variant="outline">${Math.round(job.salary_min / 1000)}k+</Badge>}
+                      {job.salary_min && (
+                        <Badge variant="outline">${Math.round(job.salary_min / 1000)}k+</Badge>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -173,9 +227,15 @@ function Landing() {
             ))}
           </div>
         ) : (
-          <Card><CardContent className="p-12 text-center text-muted-foreground">
-            No jobs posted yet. <Link to="/auth" className="text-primary font-medium">Sign up as an employer</Link> to be the first!
-          </CardContent></Card>
+          <Card>
+            <CardContent className="p-12 text-center text-muted-foreground">
+              No jobs posted yet.{" "}
+              <Link to="/auth" className="text-primary font-medium">
+                Sign up as an employer
+              </Link>{" "}
+              to be the first!
+            </CardContent>
+          </Card>
         )}
       </section>
 
@@ -188,7 +248,11 @@ function Landing() {
           {TESTIMONIALS.map((t, i) => (
             <Card key={i} className="glass">
               <CardContent className="p-6">
-                <div className="flex mb-3">{Array.from({ length: 5 }).map((_, s) => <Star key={s} className="h-4 w-4 fill-accent text-accent" />)}</div>
+                <div className="flex mb-3">
+                  {Array.from({ length: 5 }).map((_, s) => (
+                    <Star key={s} className="h-4 w-4 fill-accent text-accent" />
+                  ))}
+                </div>
                 <p className="text-sm mb-4">{t.quote}</p>
                 <div className="text-sm font-semibold">{t.name}</div>
                 <div className="text-xs text-muted-foreground">{t.role}</div>
@@ -201,11 +265,26 @@ function Landing() {
       {/* CTA */}
       <section className="container mx-auto px-4 py-20">
         <div className="glass rounded-3xl p-12 text-center gradient-hero shadow-glow">
-          <h2 className="text-4xl font-bold mb-4 text-primary-foreground">Ready to accelerate your career?</h2>
-          <p className="text-primary-foreground/90 mb-8 text-lg">Join thousands using AI to land better roles, faster.</p>
+          <h2 className="text-4xl font-bold mb-4 text-primary-foreground">
+            Ready to accelerate your career?
+          </h2>
+          <p className="text-primary-foreground/90 mb-8 text-lg">
+            Join thousands using AI to land better roles, faster.
+          </p>
           <div className="flex justify-center gap-3 flex-wrap">
-            <Button size="lg" variant="secondary" asChild><Link to="/auth" search={{ mode: "signup" }}>Get started free</Link></Button>
-            <Button size="lg" variant="outline" asChild className="bg-transparent border-white text-white hover:bg-white/10"><Link to="/employer">Hire talent</Link></Button>
+            <Button size="lg" variant="secondary" asChild>
+              <Link to="/auth" search={{ mode: "signup" }}>
+                Get started free
+              </Link>
+            </Button>
+            <Button
+              size="lg"
+              variant="outline"
+              asChild
+              className="bg-transparent border-white text-white hover:bg-white/10"
+            >
+              <Link to="/employer">Hire talent</Link>
+            </Button>
           </div>
         </div>
       </section>
@@ -219,7 +298,10 @@ function StatCard({ value, label, icon: Icon }: { value: number; label: string; 
   return (
     <div className="text-center">
       <div className="text-3xl md:text-4xl font-bold gradient-text">{value.toLocaleString()}+</div>
-      <div className="text-xs text-muted-foreground mt-1 flex items-center justify-center gap-1"><Icon className="h-3 w-3" />{label}</div>
+      <div className="text-xs text-muted-foreground mt-1 flex items-center justify-center gap-1">
+        <Icon className="h-3 w-3" />
+        {label}
+      </div>
     </div>
   );
 }
@@ -239,7 +321,19 @@ function FeatureCard({ icon: Icon, title, desc }: { icon: any; title: string; de
 }
 
 const TESTIMONIALS = [
-  { name: "Sarah Chen", role: "Senior Engineer at Stripe", quote: "The AI resume feedback was uncannily accurate. Landed 3 offers in a month." },
-  { name: "Marcus Ade", role: "Product Manager", quote: "Job matching actually works — every recommendation felt hand-picked for me." },
-  { name: "Priya Patel", role: "Talent Lead", quote: "As an employer, the candidate ranking cut our hiring time in half." },
+  {
+    name: "Sarah Chen",
+    role: "Senior Engineer at Stripe",
+    quote: "The AI resume feedback was uncannily accurate. Landed 3 offers in a month.",
+  },
+  {
+    name: "Marcus Ade",
+    role: "Product Manager",
+    quote: "Job matching actually works — every recommendation felt hand-picked for me.",
+  },
+  {
+    name: "Priya Patel",
+    role: "Talent Lead",
+    quote: "As an employer, the candidate ranking cut our hiring time in half.",
+  },
 ];

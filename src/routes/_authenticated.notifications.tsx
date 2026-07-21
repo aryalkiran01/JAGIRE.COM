@@ -15,15 +15,28 @@ function Notifications() {
   const { data } = useQuery({
     queryKey: ["notif", user?.id],
     enabled: !!user,
-    queryFn: async () => (await supabase.from("notifications").select("*").eq("user_id", user!.id).order("created_at", { ascending: false }).limit(100)).data ?? [],
+    queryFn: async () =>
+      (
+        await supabase
+          .from("notifications")
+          .select("*")
+          .eq("user_id", user!.id)
+          .order("created_at", { ascending: false })
+          .limit(100)
+      ).data ?? [],
   });
 
   // Mark all as read on view
   useEffect(() => {
     if (!user) return;
-    supabase.from("notifications").update({ read: true }).eq("user_id", user.id).eq("read", false).then(() => {
-      qc.invalidateQueries({ queryKey: ["notif-unread"] });
-    });
+    supabase
+      .from("notifications")
+      .update({ read: true })
+      .eq("user_id", user.id)
+      .eq("read", false)
+      .then(() => {
+        qc.invalidateQueries({ queryKey: ["notif-unread"] });
+      });
   }, [user, data, qc]);
 
   async function markRead(id: string) {
@@ -42,7 +55,9 @@ function Notifications() {
               <div className="flex-1">
                 <div className="font-medium">{n.title}</div>
                 {n.body && <div className="text-sm text-muted-foreground">{n.body}</div>}
-                <div className="text-xs text-muted-foreground mt-1">{new Date(n.created_at).toLocaleString()}</div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  {new Date(n.created_at).toLocaleString()}
+                </div>
               </div>
               {!n.read && (
                 <Button size="icon" variant="ghost" onClick={() => markRead(n.id)}>
@@ -52,7 +67,13 @@ function Notifications() {
             </CardContent>
           </Card>
         ))}
-        {!data?.length && <Card><CardContent className="p-12 text-center text-muted-foreground">No notifications yet.</CardContent></Card>}
+        {!data?.length && (
+          <Card>
+            <CardContent className="p-12 text-center text-muted-foreground">
+              No notifications yet.
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );

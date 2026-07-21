@@ -121,24 +121,25 @@ async function getValidAccessToken(userId: string): Promise<string> {
 
 export const scheduleInterview = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: {
-    applicationId: string;
-    candidateEmail: string;
-    candidateName?: string;
-    title: string;
-    startISO: string;
-    durationMinutes: number;
-  }) =>
-    z
-      .object({
-        applicationId: z.string().uuid(),
-        candidateEmail: z.string().email(),
-        candidateName: z.string().optional(),
-        title: z.string().min(1).max(200),
-        startISO: z.string(),
-        durationMinutes: z.number().int().min(15).max(480),
-      })
-      .parse(input),
+  .inputValidator(
+    (input: {
+      applicationId: string;
+      candidateEmail: string;
+      candidateName?: string;
+      title: string;
+      startISO: string;
+      durationMinutes: number;
+    }) =>
+      z
+        .object({
+          applicationId: z.string().uuid(),
+          candidateEmail: z.string().email(),
+          candidateName: z.string().optional(),
+          title: z.string().min(1).max(200),
+          startISO: z.string(),
+          durationMinutes: z.number().int().min(15).max(480),
+        })
+        .parse(input),
   )
   .handler(async ({ data, context }) => {
     const accessToken = await getValidAccessToken(context.userId);

@@ -13,7 +13,21 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Briefcase, LayoutDashboard, LogOut, User, Bookmark, MessageSquare, Bell, FileText, GraduationCap, Gift, Pencil, Rss, BookOpen } from "lucide-react";
+import {
+  Briefcase,
+  LayoutDashboard,
+  LogOut,
+  User,
+  Bookmark,
+  MessageSquare,
+  Bell,
+  FileText,
+  GraduationCap,
+  Gift,
+  Pencil,
+  Rss,
+  BookOpen,
+} from "lucide-react";
 
 export function SiteHeader() {
   const { user, role, signOut } = useAuth();
@@ -24,11 +38,13 @@ export function SiteHeader() {
     queryKey: ["notif-unread", user?.id],
     enabled: !!user,
     queryFn: async () =>
-      (await supabase
-        .from("notifications")
-        .select("*", { count: "exact", head: true })
-        .eq("user_id", user!.id)
-        .eq("read", false)).count ?? 0,
+      (
+        await supabase
+          .from("notifications")
+          .select("*", { count: "exact", head: true })
+          .eq("user_id", user!.id)
+          .eq("read", false)
+      ).count ?? 0,
   });
 
   useEffect(() => {
@@ -44,7 +60,9 @@ export function SiteHeader() {
         },
       )
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user, qc]);
 
   const dashPath = role === "admin" ? "/admin" : role === "employer" ? "/employer" : "/dashboard";
@@ -65,21 +83,36 @@ export function SiteHeader() {
         </Link>
 
         <nav className="hidden items-center gap-6 md:flex">
-          <Link to="/jobs" className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
+          <Link
+            to="/jobs"
+            className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+          >
             Browse Jobs
           </Link>
-          <Link to="/companies" className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
+          <Link
+            to="/companies"
+            className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+          >
             Companies
           </Link>
           {user && (
-            <Link to="/feed" className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
+            <Link
+              to="/feed"
+              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
               Feed
             </Link>
           )}
-          <Link to="/about" className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
+          <Link
+            to="/about"
+            className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+          >
             About
           </Link>
-          <Link to="/pricing" className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
+          <Link
+            to="/pricing"
+            className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+          >
             Pricing
           </Link>
         </nav>
@@ -111,31 +144,92 @@ export function SiteHeader() {
                 <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuLabel>
                     <div className="flex flex-col">
-                      <span className="text-sm font-medium">{user.user_metadata?.full_name ?? user.email}</span>
-                      <span className="text-xs text-muted-foreground capitalize">{role?.replace("_", " ")}</span>
+                      <span className="text-sm font-medium">
+                        {user.user_metadata?.full_name ?? user.email}
+                      </span>
+                      <span className="text-xs text-muted-foreground capitalize">
+                        {role?.replace("_", " ")}
+                      </span>
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild><Link to={dashPath}><LayoutDashboard className="mr-2 h-4 w-4" />Dashboard</Link></DropdownMenuItem>
-                  <DropdownMenuItem asChild><Link to="/profile"><User className="mr-2 h-4 w-4" />Profile</Link></DropdownMenuItem>
-                  <DropdownMenuItem asChild><Link to="/saved"><Bookmark className="mr-2 h-4 w-4" />Saved Jobs</Link></DropdownMenuItem>
-                  <DropdownMenuItem asChild><Link to="/messages"><MessageSquare className="mr-2 h-4 w-4" />Messages</Link></DropdownMenuItem>
-                  <DropdownMenuItem asChild><Link to="/resume-builder"><FileText className="mr-2 h-4 w-4" />Resume builder</Link></DropdownMenuItem>
-                  <DropdownMenuItem asChild><Link to="/assessments"><GraduationCap className="mr-2 h-4 w-4" />Assessments</Link></DropdownMenuItem>
-                  <DropdownMenuItem asChild><Link to="/learn"><BookOpen className="mr-2 h-4 w-4" />Learning Center</Link></DropdownMenuItem>
-                  <DropdownMenuItem asChild><Link to="/feed"><Rss className="mr-2 h-4 w-4" />Feed</Link></DropdownMenuItem>
-                  <DropdownMenuItem asChild><Link to="/referrals"><Gift className="mr-2 h-4 w-4" />Refer & earn</Link></DropdownMenuItem>
-                  <DropdownMenuItem asChild><Link to="/blog-editor"><Pencil className="mr-2 h-4 w-4" />Write blog</Link></DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to={dashPath}>
+                      <LayoutDashboard className="mr-2 h-4 w-4" />
+                      Dashboard
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/profile">
+                      <User className="mr-2 h-4 w-4" />
+                      Profile
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/saved">
+                      <Bookmark className="mr-2 h-4 w-4" />
+                      Saved Jobs
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/messages">
+                      <MessageSquare className="mr-2 h-4 w-4" />
+                      Messages
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/resume-builder">
+                      <FileText className="mr-2 h-4 w-4" />
+                      Resume builder
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/assessments">
+                      <GraduationCap className="mr-2 h-4 w-4" />
+                      Assessments
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/learn">
+                      <BookOpen className="mr-2 h-4 w-4" />
+                      Learning Center
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/feed">
+                      <Rss className="mr-2 h-4 w-4" />
+                      Feed
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/referrals">
+                      <Gift className="mr-2 h-4 w-4" />
+                      Refer & earn
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/blog-editor">
+                      <Pencil className="mr-2 h-4 w-4" />
+                      Write blog
+                    </Link>
+                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleSignOut}><LogOut className="mr-2 h-4 w-4" />Sign out</DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleSignOut}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Sign out
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </>
           ) : (
             <>
-              <Button variant="ghost" asChild><Link to="/auth">Sign in</Link></Button>
+              <Button variant="ghost" asChild>
+                <Link to="/auth">Sign in</Link>
+              </Button>
               <Button asChild className="gradient-brand text-primary-foreground hover:opacity-90">
-                <Link to="/auth" search={{ mode: "signup" }}>Get started</Link>
+                <Link to="/auth" search={{ mode: "signup" }}>
+                  Get started
+                </Link>
               </Button>
             </>
           )}

@@ -68,7 +68,9 @@ function Messages() {
         new Set((data ?? []).map((c) => (c.user_a === user!.id ? c.user_b : c.user_a))),
       );
       const profiles = ids.length
-        ? (await supabase.from("profiles").select("id, full_name, email, avatar_url").in("id", ids)).data ?? []
+        ? ((
+            await supabase.from("profiles").select("id, full_name, email, avatar_url").in("id", ids)
+          ).data ?? [])
         : [];
       const pmap = new Map(profiles.map((p) => [p.id, p]));
       return (data ?? []).map((c) => {
@@ -82,11 +84,8 @@ function Messages() {
     queryKey: ["msgs", activeChat],
     enabled: !!activeChat,
     queryFn: async () =>
-      (await supabase
-        .from("messages")
-        .select("*")
-        .eq("chat_id", activeChat!)
-        .order("created_at")).data ?? [],
+      (await supabase.from("messages").select("*").eq("chat_id", activeChat!).order("created_at"))
+        .data ?? [],
   });
 
   // Realtime subscription for active chat
@@ -96,7 +95,12 @@ function Messages() {
       .channel(`chat:${activeChat}`)
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "messages", filter: `chat_id=eq.${activeChat}` },
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "messages",
+          filter: `chat_id=eq.${activeChat}`,
+        },
         () => {
           qc.invalidateQueries({ queryKey: ["msgs", activeChat] });
           qc.invalidateQueries({ queryKey: ["chats"] });
@@ -124,7 +128,10 @@ function Messages() {
       setText(body);
       return;
     }
-    await supabase.from("chats").update({ last_message_at: new Date().toISOString() }).eq("id", activeChat);
+    await supabase
+      .from("chats")
+      .update({ last_message_at: new Date().toISOString() })
+      .eq("id", activeChat);
     qc.invalidateQueries({ queryKey: ["msgs", activeChat] });
     qc.invalidateQueries({ queryKey: ["chats"] });
   }
@@ -137,18 +144,25 @@ function Messages() {
       <div className="grid md:grid-cols-[300px_1fr] gap-4 h-[70vh]">
         <Card className="overflow-hidden">
           <CardContent className="p-0 h-full overflow-y-auto">
-            {chats?.length ? chats.map((c) => (
-              <button
-                key={c.id}
-                onClick={() => { setActiveChat(c.id); navigate({ search: { chat: c.id } }); }}
-                className={`w-full text-left p-3 border-b hover:bg-muted transition ${activeChat === c.id ? "bg-muted" : ""}`}
-              >
-                <div className="font-medium truncate">{c.other?.full_name ?? c.other?.email ?? "User"}</div>
-                <div className="text-xs text-muted-foreground">
-                  {c.last_message_at ? new Date(c.last_message_at).toLocaleDateString() : "New"}
-                </div>
-              </button>
-            )) : (
+            {chats?.length ? (
+              chats.map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => {
+                    setActiveChat(c.id);
+                    navigate({ search: { chat: c.id } });
+                  }}
+                  className={`w-full text-left p-3 border-b hover:bg-muted transition ${activeChat === c.id ? "bg-muted" : ""}`}
+                >
+                  <div className="font-medium truncate">
+                    {c.other?.full_name ?? c.other?.email ?? "User"}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {c.last_message_at ? new Date(c.last_message_at).toLocaleDateString() : "New"}
+                  </div>
+                </button>
+              ))
+            ) : (
               <div className="p-6 text-center text-sm text-muted-foreground">
                 <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-40" />
                 No conversations yet.
@@ -174,7 +188,10 @@ function Messages() {
                   >
                     {m.body}
                     <div className="text-[10px] opacity-70 mt-1">
-                      {new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      {new Date(m.created_at).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
                     </div>
                   </div>
                 ))}
@@ -184,7 +201,9 @@ function Messages() {
                 <Input
                   value={text}
                   onChange={(e) => setText(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") send(); }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") send();
+                  }}
                   placeholder="Type a message…"
                 />
                 <Button onClick={send} className="gradient-brand text-primary-foreground">

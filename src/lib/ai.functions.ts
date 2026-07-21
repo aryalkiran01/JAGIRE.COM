@@ -171,9 +171,7 @@ export const scanResumeFromStorage = createServerFn({ method: "POST" })
       .eq("user_id", context.userId);
     if (error) throw new Error(error.message);
 
-    const skills = (parsed.extracted_skills ?? [])
-      .map((s) => s.toLowerCase())
-      .filter(Boolean);
+    const skills = (parsed.extracted_skills ?? []).map((s) => s.toLowerCase()).filter(Boolean);
     let matches: Array<{ id: string; title: string; company: string | null; score: number }> = [];
     if (skills.length) {
       const { data: jobs } = await context.supabase
@@ -186,9 +184,7 @@ export const scanResumeFromStorage = createServerFn({ method: "POST" })
           const js = ((j.required_skills ?? []) as string[]).map((s) => s.toLowerCase());
           if (!js.length)
             return { id: j.id, title: j.title, company: j.company?.name ?? null, score: 0 };
-          const hits = js.filter((s) =>
-            skills.some((k) => s.includes(k) || k.includes(s)),
-          ).length;
+          const hits = js.filter((s) => skills.some((k) => s.includes(k) || k.includes(s))).length;
           const score = Math.round((hits / Math.max(js.length, 1)) * 100);
           return { id: j.id, title: j.title, company: j.company?.name ?? null, score };
         })
@@ -215,10 +211,9 @@ export const importFromGitHub = createServerFn({ method: "POST" })
     };
     const [uRes, rRes] = await Promise.all([
       fetch(`https://api.github.com/users/${data.username}`, { headers }),
-      fetch(
-        `https://api.github.com/users/${data.username}/repos?sort=stars&per_page=100`,
-        { headers },
-      ),
+      fetch(`https://api.github.com/users/${data.username}/repos?sort=stars&per_page=100`, {
+        headers,
+      }),
     ]);
     if (uRes.status === 404) throw new Error("GitHub user not found");
     if (!uRes.ok) throw new Error(`GitHub error (${uRes.status})`);
@@ -249,8 +244,7 @@ export const importFromGitHub = createServerFn({ method: "POST" })
     if (u.name) patch.full_name = u.name;
     if (u.bio) patch.about = u.bio;
     if (u.location) patch.location = u.location;
-    if (u.blog)
-      patch.website = u.blog.startsWith("http") ? u.blog : `https://${u.blog}`;
+    if (u.blog) patch.website = u.blog.startsWith("http") ? u.blog : `https://${u.blog}`;
     if (u.avatar_url) patch.avatar_url = u.avatar_url;
     if (skills.length) patch.skills = skills;
 
