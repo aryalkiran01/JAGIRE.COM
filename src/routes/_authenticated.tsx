@@ -1,7 +1,8 @@
 import { createFileRoute, Outlet, Navigate } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/use-auth";
 import { SiteHeader } from "@/components/layout/site-header";
-import { Loader2 } from "lucide-react";
+import { AppSidebar } from "@/components/layout/app-sidebar";
+import { Loader as Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated")({
   component: AuthLayout,
@@ -21,7 +22,12 @@ function AuthLayout() {
   return (
     <div className="min-h-screen bg-background">
       <SiteHeader />
-      <Outlet />
+      <div className="flex">
+        <AppSidebar />
+        <main className="flex-1 min-w-0">
+          <Outlet />
+        </main>
+      </div>
     </div>
   );
 }
