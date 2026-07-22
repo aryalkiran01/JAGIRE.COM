@@ -17,7 +17,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Calendar, MapPin, Users, Loader2 } from "lucide-react";
+import { Calendar, MapPin, Users, Loader as Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useState } from "react";
 
@@ -118,32 +118,6 @@ function JobDetail() {
       // Show Google Meet link if generated
       if (result.meetLink) {
         toast.info("Google Meet link created");
-      }
-
-      // --- Also send email via Resend function ---
-      if (selectedApp?.profile?.email) {
-        supabase.functions
-          .invoke("email", {
-            body: {
-              to: selectedApp.profile.email,
-              subject: `Interview invitation: ${job?.title ?? "Job"}`,
-              html: `
-                <p>Hello ${selectedApp.profile.full_name ?? "Candidate"},</p>
-                <p>You've been invited to an interview.</p>
-                <p><strong>Date:</strong> ${new Date(scheduledAt).toLocaleString()}</p>
-                <p><strong>Duration:</strong> ${duration} minutes</p>
-                ${
-                  result.meetLink
-                    ? `<p><strong>Google Meet:</strong> <a href="${result.meetLink}">${result.meetLink}</a></p>`
-                    : ""
-                }
-                <p>Please confirm your availability.</p>
-              `,
-            },
-          })
-          .catch(() => {
-            // Silently ignore email errors – they're non-critical
-          });
       }
 
       // Reset form & refresh data

@@ -31,6 +31,7 @@ export async function saveConnectionKeyForUser(
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   try {
     const encrypted = encryptConnectionKey(connectionAPIKey);
+    console.log("[saveConnectionKeyForUser] Encrypted token for user:", userId, "provider:", connectorId);
     const { error } = await supabaseAdmin.from("app_user_connections").upsert(
       {
         user_id: userId,
@@ -41,12 +42,12 @@ export async function saveConnectionKeyForUser(
       { onConflict: "user_id,provider" },
     );
     if (error) {
-      console.error("❌ Upsert error:", error);
+      console.error("[saveConnectionKeyForUser] Upsert error:", error);
       throw error;
     }
-    console.log("✅ Upsert successful for user:", userId);
+    console.log("[saveConnectionKeyForUser] Token saved successfully for user:", userId);
   } catch (err) {
-    console.error("❌ saveConnectionKeyForUser failed:", err);
+    console.error("[saveConnectionKeyForUser] Failed:", err);
     throw err;
   }
 }

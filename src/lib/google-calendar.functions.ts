@@ -209,6 +209,73 @@ async function notifyCandidate(
   });
 }
 
+async function sendInterviewEmail(
+  supabaseAdmin: any,
+  candidateEmail: string,
+  title: string,
+  start: Date,
+  end: Date,
+  meetLink: string | null,
+  candidateName?: string,
+  notes?: string,
+) {
+  const SUPABASE_URL = process.env.SUPABASE_URL;
+  const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+    console.warn("[sendInterviewEmail] Missing SUPABASE_URL or SERVICE_ROLE_KEY – skipping email");
+    return;
+  }
+
+  const fmt = (d: Date) =>
+    d.toLocaleString("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      timeZoneName: "short",
+    });
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;">
+      <h2 style="color: #1a1a1a;">Interview Scheduled</h2>
+      <p>Hi ${candidateName || "there"},</p>
+      <p>Your interview <strong>"${title}"</strong> has been scheduled.</p>
+      <table style="border-collapse: collapse; margin: 16px 0;">
+        <tr><td style="padding: 4px 16px 4px 0; color: #666;">Start</td><td style="padding: 4px 0;">${fmt(start)}</td></tr>
+        <tr><td style="padding: 4px 16px 4px 0; color: #666;">End</td><td style="padding: 4px 0;">${fmt(end)}</td></tr>
+        ${meetLink ? `<tr><td style="padding: 4px 16px 4px 0; color: #666;">Meeting Link</td><td style="padding: 4px 0;"><a href="${meetLink}">${meetLink}</a></td></tr>` : ""}
+      </table>
+      ${notes ? `<p style="background: #f5f5f5; padding: 12px; border-radius: 8px;"><strong>Notes:</strong> ${notes}</p>` : ""}
+      <p style="color: #666; font-size: 13px; margin-top: 24px;">This is an automated message from Jagire.</p>
+    </div>`;
+
+  try {
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/send-email`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        apikey: SUPABASE_SERVICE_ROLE_KEY,
+      },
+      body: JSON.stringify({
+        to: candidateEmail,
+        subject: `Interview Scheduled: ${title}`,
+        html,
+      }),
+    });
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error("[sendInterviewEmail] Edge function returned error:", res.status, errText);
+    } else {
+      console.log("[sendInterviewEmail] Email sent to", candidateEmail);
+    }
+  } catch (e) {
+    console.error("[sendInterviewEmail] Failed to send email:", e);
+  }
+}
+
 async function getApplicationDetails(supabaseAdmin: any, applicationId: string) {
   const { data, error } = await supabaseAdmin
     .from("applications")
@@ -348,6 +415,17 @@ export const scheduleInterview = createServerFn({ method: "POST" })
       "Interview Scheduled",
       "interview_scheduled",
       `Your interview "${data.title}" has been scheduled for ${start.toLocaleString()}.`,
+    );
+
+    await sendInterviewEmail(
+      supabaseAdmin,
+      data.candidateEmail,
+      data.title,
+      start,
+      end,
+      meetLink,
+      data.candidateName,
+      data.notes,
     );
 
     return { interviewId: interview.id, eventId: googleEventId, meetLink };

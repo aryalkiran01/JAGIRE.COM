@@ -68,7 +68,7 @@ export function ScheduleInterviewDialog({
       const popup = window.open(authorizationUrl, "google-oauth", "width=600,height=720");
       if (!popup) throw new Error("Popup blocked. Allow popups and try again.");
 
-      return await new Promise<string>((resolve, reject) => {
+      const code = await new Promise<string>((resolve, reject) => {
         const timer = setInterval(() => {
           if (popup.closed) {
             clearInterval(timer);
@@ -88,9 +88,10 @@ export function ScheduleInterviewDialog({
         };
         window.addEventListener("message", onMessage);
       });
-    },
-    onSuccess: async (code) => {
+
       await saveFn({ data: { code, redirectOrigin: window.location.origin } });
+    },
+    onSuccess: () => {
       toast.success("Google Calendar connected");
       qc.invalidateQueries({ queryKey: ["gcal-status"] });
     },
