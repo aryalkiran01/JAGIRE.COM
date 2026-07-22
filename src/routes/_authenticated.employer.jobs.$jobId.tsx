@@ -12,7 +12,6 @@ export const Route = createFileRoute("/_authenticated/employer/jobs/$jobId")({
   component: JobDetail,
 });
 
-// ★ Fix Application interface: allow nullable fields ★
 interface Application {
   id: string;
   status: string;
@@ -23,7 +22,7 @@ interface Application {
     full_name: string;
     email: string;
     avatar_url?: string;
-  } | null; // ✅ profile can be null
+  } | null;
 }
 
 // ★ Fix Job interface: location and is_remote can be null ★
@@ -50,7 +49,7 @@ function JobDetail() {
         .select("id, title, job_type, location, is_remote, description, status")
         .eq("id", jobId)
         .single();
-      return data as Job | null; // ✅ explicit cast to match interface
+      return data as Job | null;
     },
   });
 

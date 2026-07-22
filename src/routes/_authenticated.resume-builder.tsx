@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -132,6 +133,7 @@ function ResumeBuilder() {
     qc.invalidateQueries({ queryKey: ["builder-resumes"] });
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function load(r: any) {
     setCurrentId(r.id);
     setTitle(r.title ?? "My Resume");

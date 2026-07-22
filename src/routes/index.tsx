@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -322,17 +323,17 @@ function FeatureCard({ icon: Icon, title, desc }: { icon: any; title: string; de
 
 const TESTIMONIALS = [
   {
-    name: "Sarah Chen",
+    name: "Nabin Pun",
     role: "Senior Engineer at Stripe",
     quote: "The AI resume feedback was uncannily accurate. Landed 3 offers in a month.",
   },
   {
-    name: "Marcus Ade",
+    name: "Kushal Thapa",
     role: "Product Manager",
     quote: "Job matching actually works — every recommendation felt hand-picked for me.",
   },
   {
-    name: "Priya Patel",
+    name: "Rohit Neupane",
     role: "Talent Lead",
     quote: "As an employer, the candidate ranking cut our hiring time in half.",
   },

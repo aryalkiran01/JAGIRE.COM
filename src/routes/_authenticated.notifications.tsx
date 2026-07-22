@@ -11,6 +11,7 @@ export const Route = createFileRoute("/_authenticated/notifications")({
   component: Notifications,
 });
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const ICONS: Record<string, any> = {
   interview_scheduled: Video,
   interview_confirmed: Check,
@@ -59,7 +60,9 @@ function Notifications() {
         },
       )
       .subscribe();
-    return () => supabase.removeChannel(ch);
+    return () => {
+      supabase.removeChannel(ch);
+    };
   }, [user, qc]);
 
   // Mark all as read on view

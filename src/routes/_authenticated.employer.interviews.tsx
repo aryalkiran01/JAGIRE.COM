@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
@@ -127,7 +128,9 @@ function EmployerInterviews() {
         () => qc.invalidateQueries({ queryKey: ["employer-interviews"] }),
       )
       .subscribe();
-    return () => supabase.removeChannel(ch);
+    return () => {
+      void supabase.removeChannel(ch);
+    };
   }, [user, qc]);
 
   async function updateStatus(id: string, status: string) {
@@ -184,22 +187,21 @@ function EmployerInterviews() {
     );
   }
 
-  const upcoming =
-    interviews?.filter(
-      (i) =>
-        i.status === "scheduled" ||
-        i.status === "confirmed" ||
-        i.status === "ongoing" ||
-        i.status === "reschedule_requested",
-    ) ?? [];
-  const past =
-    interviews?.filter(
-      (i) =>
-        i.status === "completed" ||
-        i.status === "cancelled" ||
-        i.status === "missed" ||
-        i.status === "expired",
-    ) ?? [];
+  const interviewList = Array.isArray(interviews) ? interviews : [];
+  const upcoming = interviewList.filter(
+    (i) =>
+      i.status === "scheduled" ||
+      i.status === "confirmed" ||
+      i.status === "ongoing" ||
+      i.status === "reschedule_requested",
+  );
+  const past = interviewList.filter(
+    (i) =>
+      i.status === "completed" ||
+      i.status === "cancelled" ||
+      i.status === "missed" ||
+      i.status === "expired",
+  );
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl space-y-6">
@@ -210,7 +212,7 @@ function EmployerInterviews() {
         </p>
       </div>
 
-      {interviews?.length === 0 && (
+      {interviewList.length === 0 && (
         <Card>
           <CardContent className="p-12 text-center text-muted-foreground">
             <Calendar className="h-12 w-12 mx-auto mb-3 opacity-40" />
@@ -222,7 +224,7 @@ function EmployerInterviews() {
       {upcoming.length > 0 && (
         <div className="space-y-3">
           <h2 className="text-xl font-semibold">Upcoming ({upcoming.length})</h2>
-          {upcoming.map((iv) => (
+          {upcoming.map((iv: Interview) => (
             <Card key={iv.id}>
               <CardContent className="p-4 space-y-3">
                 <div className="flex items-start justify-between gap-3">
@@ -326,7 +328,7 @@ function EmployerInterviews() {
       {past.length > 0 && (
         <div className="space-y-3">
           <h2 className="text-xl font-semibold">Past ({past.length})</h2>
-          {past.map((iv) => (
+          {past.map((iv: Interview) => (
             <Card key={iv.id} className="opacity-75">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between gap-3">

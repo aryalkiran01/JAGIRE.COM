@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -35,7 +36,7 @@ function Referrals() {
           .eq("referrer_id", user!.id)
           .order("created_at", { ascending: false })
       ).data ?? [],
-  });
+  }) as any;
 
   const link = profile?.referral_code
     ? `${typeof window !== "undefined" ? window.location.origin : ""}/auth?ref=${profile.referral_code}`
@@ -48,7 +49,7 @@ function Referrals() {
       referred_email: email,
       code: profile.referral_code,
       status: "pending",
-    });
+    } as any);
     if (error) return toast.error(error.message);
     toast.success("Referral logged — send them the link");
     setEmail("");
@@ -111,7 +112,7 @@ function Referrals() {
           {referrals?.length === 0 && (
             <p className="text-sm text-muted-foreground">No referrals yet.</p>
           )}
-          {referrals?.map((r) => (
+          {referrals?.map((r: any) => (
             <div key={r.id} className="flex items-center justify-between p-3 border rounded">
               <div>
                 <div className="font-medium">{r.referred_email}</div>

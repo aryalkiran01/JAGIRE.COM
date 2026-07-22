@@ -33,6 +33,14 @@ type BlogComment = {
   author: { id: string; full_name: string | null; avatar_url: string | null } | null;
 };
 
+type RelatedBlog = {
+  id: string;
+  title: string;
+  slug: string;
+  excerpt: string | null;
+  cover_url: string | null;
+};
+
 function BlogPost() {
   const { slug } = Route.useParams();
   const { user } = useAuth();
@@ -52,33 +60,32 @@ function BlogPost() {
       ).data,
   });
 
-  const { data: related } = useQuery({
+  const { data: related = [] } = useQuery<RelatedBlog[]>({
     queryKey: ["blog-related", slug, post?.category],
     enabled: !!post?.category,
-    queryFn: async () =>
+    queryFn: async (): Promise<RelatedBlog[]> =>
       (
         await supabase
           .from("blogs")
           .select("id, title, slug, excerpt, cover_url")
           .eq("published", true)
-          .eq("category", post!.category)
+          .eq("category", post!.category!)
           .neq("slug", slug)
           .limit(3)
       ).data ?? [],
   });
 
-  const { data: comments } = useQuery<BlogComment[]>({
+  const { data: comments = [] } = useQuery<BlogComment[]>({
     queryKey: ["blog-comments", slug],
     enabled: !!post,
-    queryFn: async () => {
+    queryFn: async (): Promise<BlogComment[]> => {
       const { data } = await supabase
         .from("blog_comments")
-        .select(
-          "id, blog_id, author_id, content, created_at, author:profiles!blog_comments_author_id_fkey(id, full_name, avatar_url)",
-        )
+        .select("id, blog_id, author_id, content, created_at")
         .eq("blog_id", post!.id)
         .order("created_at", { ascending: false });
-      return data ?? [];
+
+      return (data ?? []).map((comment: any) => ({ ...comment, author: null }));
     },
   });
 
@@ -153,7 +160,7 @@ function BlogPost() {
             <div className="prose prose-sm dark:prose-invert max-w-none">
               <p className="whitespace-pre-wrap">{post.content}</p>
             </div>
-            {post.tags?.length > 0 && (
+            {post.tags && post.tags.length > 0 && (
               <div className="flex flex-wrap gap-1 mt-6">
                 {post.tags.map((t: string) => (
                   <Badge key={t} variant="outline">

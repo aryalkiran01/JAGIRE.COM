@@ -216,6 +216,7 @@ function ResumeScanner() {
 
   const suggestions = (resume?.suggestions as string[] | null) ?? [];
   const roadmap = (resume?.career_roadmap as Roadmap | null) ?? null;
+  const skillGaps = roadmap?.skill_gaps ?? [];
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl space-y-6">
@@ -306,7 +307,7 @@ function ResumeScanner() {
             </Button>
           </div>
 
-          {roadmap.career_paths?.length > 0 && (
+          {roadmap.career_paths && roadmap.career_paths.length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -332,7 +333,7 @@ function ResumeScanner() {
           )}
 
           <div className="grid md:grid-cols-2 gap-4">
-            {roadmap.skill_gaps?.length > 0 && (
+            {roadmap.skill_gaps && roadmap.skill_gaps.length > 0 && (
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg">
@@ -351,7 +352,7 @@ function ResumeScanner() {
               </Card>
             )}
 
-            {roadmap.missing_skills?.length > 0 && (
+            {roadmap.missing_skills && roadmap.missing_skills?.length > 0 && (
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg">
@@ -371,7 +372,7 @@ function ResumeScanner() {
             )}
           </div>
 
-          {roadmap.recommended_certifications?.length > 0 && (
+          {roadmap.recommended_certifications && roadmap.recommended_certifications?.length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -389,7 +390,7 @@ function ResumeScanner() {
             </Card>
           )}
 
-          {roadmap.suggested_projects?.length > 0 && (
+          {roadmap.suggested_projects && roadmap.suggested_projects?.length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -446,7 +447,7 @@ function ResumeScanner() {
           )}
 
           <div className="grid md:grid-cols-2 gap-4">
-            {roadmap.recommended_jobs?.length > 0 && (
+            {roadmap.recommended_jobs && roadmap.recommended_jobs?.length > 0 && (
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -464,7 +465,7 @@ function ResumeScanner() {
               </Card>
             )}
 
-            {roadmap.companies_hiring?.length > 0 && (
+            {roadmap.companies_hiring && roadmap.companies_hiring?.length > 0 && (
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -483,7 +484,7 @@ function ResumeScanner() {
             )}
           </div>
 
-          {roadmap.resume_improvements?.length > 0 && (
+          {roadmap.resume_improvements && roadmap.resume_improvements?.length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">

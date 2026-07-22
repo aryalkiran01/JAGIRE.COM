@@ -124,7 +124,6 @@ export async function seedDemoData(userId: string) {
         size: "51-200",
         headquarters: "San Francisco, CA",
         website: "https://example.com",
-        verified: true,
       })
       .select("id")
       .single();

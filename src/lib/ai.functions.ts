@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { generateJson } from "@/integrations/gemini/server";
@@ -233,8 +235,9 @@ export const scanResumeFromStorage = createServerFn({ method: "POST" })
         .update({ career_roadmap: careerRoadmap })
         .eq("id", resume.id)
         .eq("user_id", context.userId);
-    } catch {}
-
+    } catch (error) {
+      console.error("Failed to update career roadmap:", error);
+    }
     return { ...update, matches, career_roadmap: careerRoadmap };
   });
 

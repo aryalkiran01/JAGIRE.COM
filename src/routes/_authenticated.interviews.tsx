@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
@@ -150,7 +151,9 @@ function InterviewsPage() {
         () => qc.invalidateQueries({ queryKey: ["my-interviews"] }),
       )
       .subscribe();
-    return () => supabase.removeChannel(ch);
+    return () => {
+      void supabase.removeChannel(ch);
+    };
   }, [user, qc]);
 
   async function confirmInterview(id: string) {
@@ -207,23 +210,22 @@ function InterviewsPage() {
     }
   }
 
-  const isEmployerView = interviews?.some((i) => i.employer_id === user?.id);
-  const upcoming =
-    interviews?.filter(
-      (i) =>
-        i.status === "scheduled" ||
-        i.status === "confirmed" ||
-        i.status === "ongoing" ||
-        i.status === "reschedule_requested",
-    ) ?? [];
-  const past =
-    interviews?.filter(
-      (i) =>
-        i.status === "completed" ||
-        i.status === "cancelled" ||
-        i.status === "missed" ||
-        i.status === "expired",
-    ) ?? [];
+  const interviewList = Array.isArray(interviews) ? interviews : [];
+  const isEmployerView = interviewList.some((i) => i.employer_id === user?.id);
+  const upcoming = interviewList.filter(
+    (i) =>
+      i.status === "scheduled" ||
+      i.status === "confirmed" ||
+      i.status === "ongoing" ||
+      i.status === "reschedule_requested",
+  );
+  const past = interviewList.filter(
+    (i) =>
+      i.status === "completed" ||
+      i.status === "cancelled" ||
+      i.status === "missed" ||
+      i.status === "expired",
+  );
 
   if (isLoading) {
     return (

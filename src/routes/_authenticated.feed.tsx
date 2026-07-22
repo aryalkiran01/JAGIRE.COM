@@ -282,7 +282,9 @@ function FeedPage() {
           const storagePath = url.pathname.slice(pathStart + 7);
           await supabase.storage.from("posts").remove([storagePath]);
         }
-      } catch {}
+      } catch (error) {
+        console.error("Failed to delete post image from storage:", error);
+      }
     }
     const { error } = await supabase.from("posts").delete().eq("id", postId);
     if (error) {
@@ -489,7 +491,10 @@ function FeedPage() {
                         await navigator.clipboard.writeText(url);
                         toast.success("Link copied");
                       }
-                    } catch {}
+                    } catch (error) {
+                      console.error("Failed to share or copy link:", error);
+                      toast.error("Unable to share or copy the link. Please try again.");
+                    }
                   }}
                 >
                   <Share2 className="h-4 w-4" />
