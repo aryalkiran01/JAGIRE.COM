@@ -17,7 +17,19 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Calendar, Clock, Video, CircleAlert as AlertCircle, CircleCheck as CheckCircle2, Circle as XCircle, Loader as Loader2, Camera, Mic, ExternalLink, RefreshCw } from "lucide-react";
+import {
+  Calendar,
+  Clock,
+  Video,
+  CircleAlert as AlertCircle,
+  CircleCheck as CheckCircle2,
+  Circle as XCircle,
+  Loader as Loader2,
+  Camera,
+  Mic,
+  ExternalLink,
+  RefreshCw,
+} from "lucide-react";
 import { toast } from "sonner";
 import { updateInterviewStatus, rescheduleInterview } from "@/lib/google-calendar.functions";
 
@@ -196,13 +208,14 @@ function InterviewsPage() {
   }
 
   const isEmployerView = interviews?.some((i) => i.employer_id === user?.id);
-  const upcoming = interviews?.filter(
-    (i) =>
-      i.status === "scheduled" ||
-      i.status === "confirmed" ||
-      i.status === "ongoing" ||
-      i.status === "reschedule_requested",
-  ) ?? [];
+  const upcoming =
+    interviews?.filter(
+      (i) =>
+        i.status === "scheduled" ||
+        i.status === "confirmed" ||
+        i.status === "ongoing" ||
+        i.status === "reschedule_requested",
+    ) ?? [];
   const past =
     interviews?.filter(
       (i) =>
@@ -508,13 +521,7 @@ function JoinInterviewPanel({
 
       <div className="grid md:grid-cols-2 gap-3">
         <div className="aspect-video bg-black rounded-lg overflow-hidden relative">
-          <video
-            ref={videoRef}
-            autoPlay
-            muted
-            playsInline
-            className="w-full h-full object-cover"
-          />
+          <video ref={videoRef} autoPlay muted playsInline className="w-full h-full object-cover" />
           {cameraOk === null && (
             <div className="absolute inset-0 flex items-center justify-center text-white/70 text-sm">
               <Loader2 className="h-5 w-5 animate-spin" />

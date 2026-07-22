@@ -18,7 +18,16 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Heart, MessageCircle, Bookmark, Send, Loader as Loader2, Share2, Pencil, Trash2 } from "lucide-react";
+import {
+  Heart,
+  MessageCircle,
+  Bookmark,
+  Send,
+  Loader as Loader2,
+  Share2,
+  Pencil,
+  Trash2,
+} from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 
@@ -45,7 +54,12 @@ type PostRow = {
   comments_count: number | null;
   created_at: string | null;
   updated_at: string | null;
-  author: { id: string; full_name: string | null; avatar_url: string | null; headline: string | null } | null;
+  author: {
+    id: string;
+    full_name: string | null;
+    avatar_url: string | null;
+    headline: string | null;
+  } | null;
   comments: CommentRow[];
 };
 
@@ -101,10 +115,7 @@ function FeedPage() {
     queryKey: ["feed-likes", user?.id],
     enabled: !!user,
     queryFn: async () => {
-      const { data } = await supabase
-        .from("post_likes")
-        .select("post_id")
-        .eq("user_id", user!.id);
+      const { data } = await supabase.from("post_likes").select("post_id").eq("user_id", user!.id);
       return new Set((data ?? []).map((r) => r.post_id));
     },
   });
@@ -125,10 +136,7 @@ function FeedPage() {
     queryKey: ["feed-saves", user?.id],
     enabled: !!user,
     queryFn: async () => {
-      const { data } = await supabase
-        .from("post_saves")
-        .select("post_id")
-        .eq("user_id", user!.id);
+      const { data } = await supabase.from("post_saves").select("post_id").eq("user_id", user!.id);
       return new Set((data ?? []).map((r) => r.post_id));
     },
   });
@@ -163,10 +171,7 @@ function FeedPage() {
 
   async function deleteAssociatedMediaAndNotifications(postId: string) {
     // Delete notifications referencing this post
-    await supabase
-      .from("notifications")
-      .delete()
-      .eq("data->>post_id", postId);
+    await supabase.from("notifications").delete().eq("data->>post_id", postId);
   }
 
   const createPost = useMutation({
@@ -209,15 +214,8 @@ function FeedPage() {
 
   async function toggleLike(postId: string, liked: boolean) {
     if (liked)
-      await supabase
-        .from("post_likes")
-        .delete()
-        .eq("post_id", postId)
-        .eq("user_id", user!.id);
-    else
-      await supabase
-        .from("post_likes")
-        .insert({ post_id: postId, user_id: user!.id });
+      await supabase.from("post_likes").delete().eq("post_id", postId).eq("user_id", user!.id);
+    else await supabase.from("post_likes").insert({ post_id: postId, user_id: user!.id });
     qc.invalidateQueries({ queryKey: ["feed"] });
     qc.invalidateQueries({ queryKey: ["feed-likes"] });
   }
@@ -225,15 +223,8 @@ function FeedPage() {
   async function toggleSave(postId: string) {
     const isSaved = savedIds?.has(postId);
     if (isSaved)
-      await supabase
-        .from("post_saves")
-        .delete()
-        .eq("post_id", postId)
-        .eq("user_id", user!.id);
-    else
-      await supabase
-        .from("post_saves")
-        .insert({ post_id: postId, user_id: user!.id });
+      await supabase.from("post_saves").delete().eq("post_id", postId).eq("user_id", user!.id);
+    else await supabase.from("post_saves").insert({ post_id: postId, user_id: user!.id });
     toast.success(isSaved ? "Removed from saved" : "Saved");
     qc.invalidateQueries({ queryKey: ["feed-saves"] });
   }
@@ -259,10 +250,7 @@ function FeedPage() {
         .delete()
         .eq("comment_id", commentId)
         .eq("user_id", user!.id);
-    else
-      await supabase
-        .from("comment_likes")
-        .insert({ comment_id: commentId, user_id: user!.id });
+    else await supabase.from("comment_likes").insert({ comment_id: commentId, user_id: user!.id });
     qc.invalidateQueries({ queryKey: ["feed"] });
     qc.invalidateQueries({ queryKey: ["feed-comment-likes"] });
   }
@@ -477,24 +465,18 @@ function FeedPage() {
                 <p className="whitespace-pre-wrap text-sm">{p.content ?? p.body}</p>
               )}
 
-              {p.image_url && (
-                <img src={p.image_url} alt="" className="w-full rounded-lg" />
-              )}
+              {p.image_url && <img src={p.image_url} alt="" className="w-full rounded-lg" />}
 
               <div className="flex items-center gap-1 border-t pt-2">
                 <Button variant="ghost" size="sm" onClick={() => toggleLike(p.id, !!liked)}>
-                  <Heart
-                    className={`h-4 w-4 mr-1 ${liked ? "fill-red-500 text-red-500" : ""}`}
-                  />{" "}
+                  <Heart className={`h-4 w-4 mr-1 ${liked ? "fill-red-500 text-red-500" : ""}`} />{" "}
                   {p.likes_count ?? 0}
                 </Button>
                 <Button variant="ghost" size="sm" onClick={() => toggleComments(p.id)}>
                   <MessageCircle className="h-4 w-4 mr-1" /> {p.comments_count ?? 0}
                 </Button>
                 <Button variant="ghost" size="sm" onClick={() => toggleSave(p.id)}>
-                  <Bookmark
-                    className={`h-4 w-4 ${saved ? "fill-primary text-primary" : ""}`}
-                  />
+                  <Bookmark className={`h-4 w-4 ${saved ? "fill-primary text-primary" : ""}`} />
                 </Button>
                 <Button
                   variant="ghost"
@@ -534,9 +516,7 @@ function FeedPage() {
                     <div key={c.id} className="flex gap-2 items-start">
                       <Avatar className="h-7 w-7 shrink-0">
                         <AvatarImage src={c.author?.avatar_url ?? undefined} />
-                        <AvatarFallback>
-                          {(c.author?.full_name ?? "?").slice(0, 1)}
-                        </AvatarFallback>
+                        <AvatarFallback>{(c.author?.full_name ?? "?").slice(0, 1)}</AvatarFallback>
                       </Avatar>
                       <div className="flex-1 min-w-0">
                         <div className="bg-muted rounded-lg px-3 py-2">
@@ -609,16 +589,13 @@ function FeedPage() {
         );
       })}
 
-      <AlertDialog
-        open={!!deletePostId}
-        onOpenChange={(open) => !open && setDeletePostId(null)}
-      >
+      <AlertDialog open={!!deletePostId} onOpenChange={(open) => !open && setDeletePostId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete post?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. The post, its comments, likes, and associated media
-              will be permanently removed.
+              This action cannot be undone. The post, its comments, likes, and associated media will
+              be permanently removed.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

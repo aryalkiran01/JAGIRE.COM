@@ -4,7 +4,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Briefcase, Users, TrendingUp, Sparkles, Loader as Loader2, Video } from "lucide-react";
+import {
+  Plus,
+  Briefcase,
+  Users,
+  TrendingUp,
+  Sparkles,
+  Loader as Loader2,
+  Video,
+} from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { seedDemoData } from "@/lib/demo-seed";

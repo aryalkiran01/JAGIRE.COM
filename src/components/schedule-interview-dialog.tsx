@@ -14,7 +14,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Calendar, Video, Link2, Loader as Loader2, CircleCheck as CheckCircle2 } from "lucide-react";
+import {
+  Calendar,
+  Video,
+  Link2,
+  Loader as Loader2,
+  CircleCheck as CheckCircle2,
+} from "lucide-react";
 import {
   scheduleInterview,
   getGoogleCalendarStatus,
@@ -136,7 +142,7 @@ export function ScheduleInterviewDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
+        <Button variant="outline" size="sm" onClick={() => console.log("Schedule button clicked")}>
           <Calendar className="h-4 w-4 mr-1" /> Schedule
         </Button>
       </DialogTrigger>

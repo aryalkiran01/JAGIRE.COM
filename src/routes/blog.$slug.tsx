@@ -132,7 +132,9 @@ function BlogPost() {
               />
             )}
             {post.category && (
-              <Badge variant="secondary" className="mb-3">{post.category}</Badge>
+              <Badge variant="secondary" className="mb-3">
+                {post.category}
+              </Badge>
             )}
             <h1 className="text-4xl font-bold mb-3">{post.title}</h1>
             <div className="flex items-center gap-4 text-xs text-muted-foreground mb-8">
@@ -147,16 +149,16 @@ function BlogPost() {
                 {post.views_count ?? 0} views
               </span>
             </div>
-            {post.excerpt && (
-              <p className="text-lg text-muted-foreground mb-6">{post.excerpt}</p>
-            )}
+            {post.excerpt && <p className="text-lg text-muted-foreground mb-6">{post.excerpt}</p>}
             <div className="prose prose-sm dark:prose-invert max-w-none">
               <p className="whitespace-pre-wrap">{post.content}</p>
             </div>
             {post.tags?.length > 0 && (
               <div className="flex flex-wrap gap-1 mt-6">
                 {post.tags.map((t: string) => (
-                  <Badge key={t} variant="outline">{t}</Badge>
+                  <Badge key={t} variant="outline">
+                    {t}
+                  </Badge>
                 ))}
               </div>
             )}
@@ -193,7 +195,9 @@ function BlogPost() {
                     </Avatar>
                     <div className="flex-1 min-w-0">
                       <div className="bg-muted rounded-lg px-3 py-2">
-                        <div className="font-medium text-xs">{c.author?.full_name ?? "Anonymous"}</div>
+                        <div className="font-medium text-xs">
+                          {c.author?.full_name ?? "Anonymous"}
+                        </div>
                         <div className="text-sm">{c.content}</div>
                       </div>
                       <div className="flex items-center gap-3 mt-1 ml-2">
@@ -229,12 +233,18 @@ function BlogPost() {
                     <Link key={r.id} to="/blog/$slug" params={{ slug: r.slug }}>
                       <Card className="hover:shadow-glow transition h-full">
                         {r.cover_url && (
-                          <img src={r.cover_url} alt="" className="w-full h-24 object-cover rounded-t-lg" />
+                          <img
+                            src={r.cover_url}
+                            alt=""
+                            className="w-full h-24 object-cover rounded-t-lg"
+                          />
                         )}
                         <CardContent className="p-4">
                           <div className="font-medium text-sm">{r.title}</div>
                           {r.excerpt && (
-                            <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{r.excerpt}</p>
+                            <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                              {r.excerpt}
+                            </p>
                           )}
                         </CardContent>
                       </Card>

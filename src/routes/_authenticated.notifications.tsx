@@ -100,17 +100,21 @@ function Notifications() {
                 </div>
               </div>
               {!n.is_read && (
-                <Button size="icon" variant="ghost" onClick={(e) => { e.preventDefault(); markRead(n.id); }}>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    markRead(n.id);
+                  }}
+                >
                   <Check className="h-4 w-4" />
                 </Button>
               )}
             </CardContent>
           );
           return (
-            <Card
-              key={n.id}
-              className={n.is_read ? "" : "border-primary"}
-            >
+            <Card key={n.id} className={n.is_read ? "" : "border-primary"}>
               {n.link ? (
                 <Link to={n.link} className="block hover:bg-muted/50 transition rounded-lg">
                   {content}

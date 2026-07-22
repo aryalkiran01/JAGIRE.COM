@@ -29,16 +29,26 @@ export async function saveConnectionKeyForUser(
   connectionAPIKey: string,
 ) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { error } = await supabaseAdmin.from("app_user_connections").upsert(
-    {
-      user_id: userId,
-      provider: connectorId,
-      refresh_token: encryptConnectionKey(connectionAPIKey),
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: "user_id,provider" },
-  );
-  if (error) throw error;
+  try {
+    const encrypted = encryptConnectionKey(connectionAPIKey);
+    const { error } = await supabaseAdmin.from("app_user_connections").upsert(
+      {
+        user_id: userId,
+        provider: connectorId,
+        refresh_token: encrypted,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "user_id,provider" },
+    );
+    if (error) {
+      console.error("❌ Upsert error:", error);
+      throw error;
+    }
+    console.log("✅ Upsert successful for user:", userId);
+  } catch (err) {
+    console.error("❌ saveConnectionKeyForUser failed:", err);
+    throw err;
+  }
 }
 
 export async function getConnectionKeyForUser(
@@ -46,14 +56,31 @@ export async function getConnectionKeyForUser(
   connectorId: string,
 ): Promise<string | null> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  console.log("🔎 getConnectionKeyForUser called with:", { userId, connectorId });
   const { data, error } = await supabaseAdmin
     .from("app_user_connections")
     .select("refresh_token")
     .eq("user_id", userId)
     .eq("provider", connectorId)
     .maybeSingle();
-  if (error) throw error;
-  return data ? decryptConnectionKey(data.refresh_token!) : null;
+
+  if (error) {
+    console.error("❌ DB error in getConnectionKeyForUser:", error);
+    return null;
+  }
+  if (!data) {
+    console.log("❌ No row found for user:", userId, "provider:", connectorId);
+    return null;
+  }
+  console.log("✅ Row found, attempting decryption");
+  try {
+    const decrypted = decryptConnectionKey(data.refresh_token!);
+    console.log("✅ Decryption successful");
+    return decrypted;
+  } catch (e) {
+    console.error("❌ Decryption failed:", e);
+    return null;
+  }
 }
 
 export async function deleteConnectionKeyForUser(userId: string, connectorId: string) {

@@ -35,7 +35,9 @@ function Blog() {
       (
         await supabase
           .from("blogs")
-          .select("id, title, slug, excerpt, cover_url, cover_image, category, tags, published_at, views_count, author_id")
+          .select(
+            "id, title, slug, excerpt, cover_url, cover_image, category, tags, published_at, views_count, author_id",
+          )
           .eq("published", true)
           .order("published_at", { ascending: false })
       ).data ?? [],
@@ -75,7 +77,9 @@ function Blog() {
       <div className="container mx-auto px-4 py-16 max-w-5xl">
         <div className="mb-8">
           <h1 className="text-4xl font-bold mb-2">Blog</h1>
-          <p className="text-muted-foreground">Career advice, hiring insights, and AI in recruitment.</p>
+          <p className="text-muted-foreground">
+            Career advice, hiring insights, and AI in recruitment.
+          </p>
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3 mb-8">
@@ -160,15 +164,17 @@ function Blog() {
                   )}
                   <CardContent className="p-6">
                     {p.category && (
-                      <Badge variant="secondary" className="mb-2">{p.category}</Badge>
+                      <Badge variant="secondary" className="mb-2">
+                        {p.category}
+                      </Badge>
                     )}
                     <h2 className="font-bold text-xl mb-2">{p.title}</h2>
-                    {p.excerpt && (
-                      <p className="text-sm text-muted-foreground mb-3">{p.excerpt}</p>
-                    )}
+                    {p.excerpt && <p className="text-sm text-muted-foreground mb-3">{p.excerpt}</p>}
                     <div className="flex flex-wrap gap-1 mb-3">
                       {p.tags?.slice(0, 3).map((t: string) => (
-                        <Badge key={t} variant="outline" className="text-xs">{t}</Badge>
+                        <Badge key={t} variant="outline" className="text-xs">
+                          {t}
+                        </Badge>
                       ))}
                     </div>
                     <div className="flex items-center gap-4 text-xs text-muted-foreground">

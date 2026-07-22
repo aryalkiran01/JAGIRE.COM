@@ -1,10 +1,4 @@
-export type Json =
-  | string
-  | number
-  | boolean
-  | null
-  | { [key: string]: Json | undefined }
-  | Json[];
+export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export type Database = {
   graphql_public: {
@@ -2114,13 +2108,15 @@ type DefaultSchema = Database[Extract<keyof Database, "public">];
 export type Tables<
   DefaultSchema extends keyof Database = "public",
   SchemaOverrides extends { [K in DefaultSchema]?: Database[K] } = {},
-> = (SchemaOverrides[DefaultSchema] extends {
-  Tables: infer T;
-}
-  ? T
-  : DefaultSchema extends keyof Database
-    ? Database[DefaultSchema]["Tables"]
-    : never) extends infer T
+> = (
+  SchemaOverrides[DefaultSchema] extends {
+    Tables: infer T;
+  }
+    ? T
+    : DefaultSchema extends keyof Database
+      ? Database[DefaultSchema]["Tables"]
+      : never
+) extends infer T
   ? T extends Record<string, any>
     ? T[keyof T]
     : never
@@ -2129,13 +2125,15 @@ export type Tables<
 export type TablesInsert<
   DefaultSchema extends keyof Database = "public",
   SchemaOverrides extends { [K in DefaultSchema]?: Database[K] } = {},
-> = (SchemaOverrides[DefaultSchema] extends {
-  Tables: infer T;
-}
-  ? T
-  : DefaultSchema extends keyof Database
-    ? Database[DefaultSchema]["Tables"]
-    : never) extends infer T
+> = (
+  SchemaOverrides[DefaultSchema] extends {
+    Tables: infer T;
+  }
+    ? T
+    : DefaultSchema extends keyof Database
+      ? Database[DefaultSchema]["Tables"]
+      : never
+) extends infer T
   ? T extends Record<string, any>
     ? T[keyof T]["Insert"]
     : never
@@ -2144,13 +2142,15 @@ export type TablesInsert<
 export type TablesUpdate<
   DefaultSchema extends keyof Database = "public",
   SchemaOverrides extends { [K in DefaultSchema]?: Database[K] } = {},
-> = (SchemaOverrides[DefaultSchema] extends {
-  Tables: infer T;
-}
-  ? T
-  : DefaultSchema extends keyof Database
-    ? Database[DefaultSchema]["Tables"]
-    : never) extends infer T
+> = (
+  SchemaOverrides[DefaultSchema] extends {
+    Tables: infer T;
+  }
+    ? T
+    : DefaultSchema extends keyof Database
+      ? Database[DefaultSchema]["Tables"]
+      : never
+) extends infer T
   ? T extends Record<string, any>
     ? T[keyof T]["Update"]
     : never
@@ -2159,13 +2159,15 @@ export type TablesUpdate<
 export type Enums<
   DefaultSchema extends keyof Database = "public",
   SchemaOverrides extends { [K in DefaultSchema]?: Database[K] } = {},
-> = (SchemaOverrides[DefaultSchema] extends {
-  Enums: infer E;
-}
-  ? E
-  : DefaultSchema extends keyof Database
-    ? Database[DefaultSchema]["Enums"]
-    : never) extends infer E
+> = (
+  SchemaOverrides[DefaultSchema] extends {
+    Enums: infer E;
+  }
+    ? E
+    : DefaultSchema extends keyof Database
+      ? Database[DefaultSchema]["Enums"]
+      : never
+) extends infer E
   ? E extends Record<string, any>
     ? E[keyof E]
     : never
@@ -2174,13 +2176,15 @@ export type Enums<
 export type CompositeTypes<
   DefaultSchema extends keyof Database = "public",
   SchemaOverrides extends { [K in DefaultSchema]?: Database[K] } = {},
-> = (SchemaOverrides[DefaultSchema] extends {
-  CompositeTypes: infer C;
-}
-  ? C
-  : DefaultSchema extends keyof Database
-    ? Database[DefaultSchema]["CompositeTypes"]
-    : never) extends infer C
+> = (
+  SchemaOverrides[DefaultSchema] extends {
+    CompositeTypes: infer C;
+  }
+    ? C
+    : DefaultSchema extends keyof Database
+      ? Database[DefaultSchema]["CompositeTypes"]
+      : never
+) extends infer C
   ? C extends Record<string, any>
     ? C[keyof C]
     : never
@@ -2188,14 +2192,12 @@ export type CompositeTypes<
 
 export type Constants<
   PublicSchemaOrSchemaOptions extends
-    | keyof Database
-    | Record<string, { Enums: Record<string, any> }> = "public",
+    keyof Database | Record<string, { Enums: Record<string, any> }> = "public",
   SchemaOptions extends { [K in keyof Database]?: { Enums: Record<string, any> } } = {},
 > = {
-  [Schema in Extract<
-    PublicSchemaOrSchemaOptions,
-    keyof Database
-  >]: Database[Schema]["Enums"] extends infer E
+  [
+    Schema in Extract<PublicSchemaOrSchemaOptions, keyof Database>
+  ]: Database[Schema]["Enums"] extends infer E
     ? E extends Record<string, any>
       ? {
           [K in keyof E]: E[K] extends string
@@ -2211,7 +2213,22 @@ export type Constants<
 type InternalSupabase = {
   PostgrestVersion: "14.5";
   Feature: {
-    [K in "schemas" | "deletableTableColumns" | "insertableTableColumns" | "updatableTableColumns" | "updatableViews" | "scalarArraysToJsArrays" | "returningMinimalRelationColumnNames" | "returningMinimalTableColumnNames" | "overloadedFunctionArgs" | "emptyStringToNull" | "computedColumns" | "pgVector" | "jsonbNumericToJsNumber"]: boolean;
+    [
+      K in
+        | "schemas"
+        | "deletableTableColumns"
+        | "insertableTableColumns"
+        | "updatableTableColumns"
+        | "updatableViews"
+        | "scalarArraysToJsArrays"
+        | "returningMinimalRelationColumnNames"
+        | "returningMinimalTableColumnNames"
+        | "overloadedFunctionArgs"
+        | "emptyStringToNull"
+        | "computedColumns"
+        | "pgVector"
+        | "jsonbNumericToJsNumber"
+    ]: boolean;
   };
 };
 

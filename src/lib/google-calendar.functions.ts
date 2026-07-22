@@ -21,6 +21,7 @@ function hasGoogleCreds() {
   return Boolean(process.env.GOOGLE_OAUTH_CLIENT_ID && process.env.GOOGLE_OAUTH_CLIENT_SECRET);
 }
 
+// ------------------- OAuth endpoints -------------------
 export const startGoogleCalendarConnect = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((targetOrigin: string) => z.string().url().parse(targetOrigin))
@@ -69,13 +70,17 @@ export const saveGoogleCalendarConnection = createServerFn({ method: "POST" })
       refresh_token?: string;
       expires_in: number;
     };
+    console.log("Refresh token present:", !!tokens.refresh_token);
+
     if (!tokens.refresh_token) {
       throw new Error(
         "Google did not return a refresh token. Revoke access at https://myaccount.google.com/permissions and try again.",
       );
     }
+    console.log("💾 Saving refresh token for user:", context.userId);
     const { saveConnectionKeyForUser } = await import("@/lib/connection-key-crypto.server");
     await saveConnectionKeyForUser(context.userId, "google_calendar", tokens.refresh_token);
+    console.log("✅ Token saved successfully");
     return { ok: true };
   });
 
@@ -95,10 +100,16 @@ export const disconnectGoogleCalendar = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+// ------------------- Token & Calendar helpers -------------------
 async function getValidAccessToken(userId: string): Promise<string | null> {
   const { getConnectionKeyForUser } = await import("@/lib/connection-key-crypto.server");
-    const refreshToken = await getConnectionKeyForUser(userId, "google_calendar");
-  if (!refreshToken) return null;
+
+  const refreshToken = await getConnectionKeyForUser(userId, "google_calendar");
+  console.log(`🔍 Retrieved token for user ${userId}:`, refreshToken ? "exists" : "null");
+  if (!refreshToken) {
+    console.log("No refresh token found");
+    return null;
+  }
 
   const { clientId, clientSecret } = clientCreds();
   if (!clientId || !clientSecret) return null;
@@ -109,13 +120,19 @@ async function getValidAccessToken(userId: string): Promise<string | null> {
     refresh_token: refreshToken,
     grant_type: "refresh_token",
   });
+
   const res = await fetch(GOOGLE_TOKEN_URL, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body,
   });
-  if (!res.ok) return null;
-  const tokens = (await res.json()) as { access_token: string };
+  const responseText = await res.text();
+  if (!res.ok) {
+    console.error("Google refresh failed:", res.status, responseText);
+    return null;
+  }
+  const tokens = JSON.parse(responseText);
+  console.log("Access token obtained:", !!tokens.access_token);
   return tokens.access_token;
 }
 
@@ -169,6 +186,7 @@ async function createGoogleCalendarEvent(
   return { eventId: event.id, meetLink };
 }
 
+// ------------------- Notification helper -------------------
 async function notifyCandidate(
   supabaseAdmin: any,
   candidateId: string | null,
@@ -192,14 +210,28 @@ async function notifyCandidate(
 }
 
 async function getApplicationDetails(supabaseAdmin: any, applicationId: string) {
-  const { data } = await supabaseAdmin
+  const { data, error } = await supabaseAdmin
     .from("applications")
-    .select("id, applicant_id, seeker_id, job:jobs(id, title, company:companies(name))")
+    .select(
+      `
+      id,
+      applicant_id,
+      jobs (
+        id,
+        title,
+        companies (
+          name
+        )
+      )
+    `,
+    )
     .eq("id", applicationId)
-    .maybeSingle();
-  return data as any;
+    .single();
+  if (error) throw error;
+  return data;
 }
 
+// ------------------- Main schedule function -------------------
 export const scheduleInterview = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
@@ -232,14 +264,17 @@ export const scheduleInterview = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const start = new Date(data.startISO);
+    if (Number.isNaN(start.getTime())) {
+      throw new Error("Invalid interview date.");
+    }
     const end = new Date(start.getTime() + data.durationMinutes * 60_000);
 
     let googleEventId: string | null = null;
     let meetLink: string | null = data.meetingLink || null;
 
-    // Try Google Calendar if requested and available
     if (data.useGoogleCalendar) {
       const accessToken = await getValidAccessToken(context.userId);
+      console.log("Access Token:", accessToken ? "obtained" : "null");
       if (accessToken) {
         try {
           const result = await createGoogleCalendarEvent(
@@ -254,17 +289,19 @@ export const scheduleInterview = createServerFn({ method: "POST" })
           googleEventId = result.eventId;
           if (result.meetLink) meetLink = result.meetLink;
         } catch (e) {
-          // If GCal fails, continue with custom link
           console.error("Google Calendar event creation failed:", e);
+          // Continue scheduling without Meet link if desired – rethrow to fail the whole request.
+          throw e;
         }
+      } else {
+        console.warn("No valid access token – scheduling without Google Calendar.");
       }
     }
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const application = await getApplicationDetails(supabaseAdmin, data.applicationId);
-    const candidateId = application?.applicant_id ?? application?.seeker_id ?? null;
+    const candidateId = application.applicant_id;
 
-    // Insert into the main interviews table
     const { data: interview, error: interviewError } = await supabaseAdmin
       .from("interviews")
       .insert({
@@ -286,13 +323,11 @@ export const scheduleInterview = createServerFn({ method: "POST" })
       .single();
     if (interviewError) throw interviewError;
 
-    // Update application status to 'interview'
     await supabaseAdmin
       .from("applications")
       .update({ status: "interview", updated_at: new Date().toISOString() })
       .eq("id", data.applicationId);
 
-    // Also log to interview_events audit trail
     await supabaseAdmin.from("interview_events").insert({
       application_id: data.applicationId,
       employer_id: context.userId,
@@ -304,7 +339,6 @@ export const scheduleInterview = createServerFn({ method: "POST" })
       meet_link: meetLink,
     });
 
-    // Send notification to candidate
     await notifyCandidate(
       supabaseAdmin,
       candidateId,
@@ -319,20 +353,21 @@ export const scheduleInterview = createServerFn({ method: "POST" })
     return { interviewId: interview.id, eventId: googleEventId, meetLink };
   });
 
+// ------------------- Status update functions -------------------
 export const updateInterviewStatus = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator(
-    (input: { interviewId: string; status: string; notes?: string }) =>
-      z.object({
+  .inputValidator((input: { interviewId: string; status: string; notes?: string }) =>
+    z
+      .object({
         interviewId: z.string().uuid(),
         status: z.string(),
         notes: z.string().optional(),
-      }).parse(input),
+      })
+      .parse(input),
   )
   .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    // Verify the user owns this interview (as employer or candidate)
     const { data: interview } = await supabaseAdmin
       .from("interviews")
       .select("id, employer_id, candidate_id, application_id, title")
@@ -344,7 +379,6 @@ export const updateInterviewStatus = createServerFn({ method: "POST" })
     const isCandidate = interview.candidate_id === context.userId;
     if (!isEmployer && !isCandidate) throw new Error("Not authorized");
 
-    // Candidates can only set specific statuses
     const allowedCandidate = ["confirmed", "cancelled", "reschedule_requested"];
     if (isCandidate && !isEmployer && !allowedCandidate.includes(data.status)) {
       throw new Error("Candidates can only confirm, cancel, or request reschedule");
@@ -361,7 +395,6 @@ export const updateInterviewStatus = createServerFn({ method: "POST" })
       .eq("id", data.interviewId);
     if (error) throw error;
 
-    // Notify the other party
     const otherId = isEmployer ? interview.candidate_id : interview.employer_id;
     if (otherId) {
       const msg =
@@ -391,13 +424,14 @@ export const updateInterviewStatus = createServerFn({ method: "POST" })
 
 export const rescheduleInterview = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator(
-    (input: { interviewId: string; proposedTimeISO: string; reason?: string }) =>
-      z.object({
+  .inputValidator((input: { interviewId: string; proposedTimeISO: string; reason?: string }) =>
+    z
+      .object({
         interviewId: z.string().uuid(),
         proposedTimeISO: z.string(),
         reason: z.string().optional(),
-      }).parse(input),
+      })
+      .parse(input),
   )
   .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -422,7 +456,6 @@ export const rescheduleInterview = createServerFn({ method: "POST" })
       .eq("id", data.interviewId);
     if (error) throw error;
 
-    // Notify the other party
     const otherId =
       interview.candidate_id === context.userId ? interview.employer_id : interview.candidate_id;
     if (otherId) {

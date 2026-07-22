@@ -342,7 +342,9 @@ function ResumeScanner() {
                 <CardContent>
                   <div className="flex flex-wrap gap-2">
                     {roadmap.skill_gaps.map((s, i) => (
-                      <Badge key={i} variant="secondary">{s}</Badge>
+                      <Badge key={i} variant="secondary">
+                        {s}
+                      </Badge>
                     ))}
                   </div>
                 </CardContent>
@@ -359,7 +361,9 @@ function ResumeScanner() {
                 <CardContent>
                   <div className="flex flex-wrap gap-2">
                     {roadmap.missing_skills.map((s, i) => (
-                      <Badge key={i} variant="outline">{s}</Badge>
+                      <Badge key={i} variant="outline">
+                        {s}
+                      </Badge>
                     ))}
                   </div>
                 </CardContent>
@@ -416,19 +420,25 @@ function ResumeScanner() {
                     <div className="text-2xl font-bold text-muted-foreground">
                       {roadmap.salary_prediction.low}
                     </div>
-                    <div className="text-xs text-muted-foreground">Low ({roadmap.salary_prediction.currency})</div>
+                    <div className="text-xs text-muted-foreground">
+                      Low ({roadmap.salary_prediction.currency})
+                    </div>
                   </div>
                   <div>
                     <div className="text-2xl font-bold text-primary">
                       {roadmap.salary_prediction.mid}
                     </div>
-                    <div className="text-xs text-muted-foreground">Mid ({roadmap.salary_prediction.currency})</div>
+                    <div className="text-xs text-muted-foreground">
+                      Mid ({roadmap.salary_prediction.currency})
+                    </div>
                   </div>
                   <div>
                     <div className="text-2xl font-bold text-green-600">
                       {roadmap.salary_prediction.high}
                     </div>
-                    <div className="text-xs text-muted-foreground">High ({roadmap.salary_prediction.currency})</div>
+                    <div className="text-xs text-muted-foreground">
+                      High ({roadmap.salary_prediction.currency})
+                    </div>
                   </div>
                 </div>
               </CardContent>

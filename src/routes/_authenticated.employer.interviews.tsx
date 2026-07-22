@@ -24,7 +24,15 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Calendar, Clock, Video, Loader as Loader2, Pencil, X, CircleCheck as CheckCircle2 } from "lucide-react";
+import {
+  Calendar,
+  Clock,
+  Video,
+  Loader as Loader2,
+  Pencil,
+  X,
+  CircleCheck as CheckCircle2,
+} from "lucide-react";
 import { toast } from "sonner";
 import { updateInterviewStatus } from "@/lib/google-calendar.functions";
 
@@ -176,26 +184,30 @@ function EmployerInterviews() {
     );
   }
 
-  const upcoming = interviews?.filter(
-    (i) =>
-      i.status === "scheduled" ||
-      i.status === "confirmed" ||
-      i.status === "ongoing" ||
-      i.status === "reschedule_requested",
-  ) ?? [];
-  const past = interviews?.filter(
-    (i) =>
-      i.status === "completed" ||
-      i.status === "cancelled" ||
-      i.status === "missed" ||
-      i.status === "expired",
-  ) ?? [];
+  const upcoming =
+    interviews?.filter(
+      (i) =>
+        i.status === "scheduled" ||
+        i.status === "confirmed" ||
+        i.status === "ongoing" ||
+        i.status === "reschedule_requested",
+    ) ?? [];
+  const past =
+    interviews?.filter(
+      (i) =>
+        i.status === "completed" ||
+        i.status === "cancelled" ||
+        i.status === "missed" ||
+        i.status === "expired",
+    ) ?? [];
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Interviews</h1>
-        <p className="text-muted-foreground">Schedule, reschedule, and manage candidate interviews.</p>
+        <p className="text-muted-foreground">
+          Schedule, reschedule, and manage candidate interviews.
+        </p>
       </div>
 
       {interviews?.length === 0 && (
@@ -221,7 +233,9 @@ function EmployerInterviews() {
                       {iv.application?.job && ` · ${iv.application.job.title}`}
                     </div>
                   </div>
-                  <Badge className={`${STATUS_COLORS[iv.status ?? "scheduled"] ?? "bg-gray-500"} text-white`}>
+                  <Badge
+                    className={`${STATUS_COLORS[iv.status ?? "scheduled"] ?? "bg-gray-500"} text-white`}
+                  >
                     {iv.status === "reschedule_requested" ? "Reschedule requested" : iv.status}
                   </Badge>
                 </div>
@@ -286,7 +300,11 @@ function EmployerInterviews() {
                     <Pencil className="h-4 w-4 mr-1" /> Edit
                   </Button>
                   {iv.status !== "completed" && iv.status !== "cancelled" && (
-                    <Button variant="outline" size="sm" onClick={() => updateStatus(iv.id, "completed")}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => updateStatus(iv.id, "completed")}
+                    >
                       <CheckCircle2 className="h-4 w-4 mr-1" /> Complete
                     </Button>
                   )}
@@ -319,7 +337,9 @@ function EmployerInterviews() {
                       {iv.scheduled_at && ` · ${new Date(iv.scheduled_at).toLocaleString()}`}
                     </div>
                   </div>
-                  <Badge className={`${STATUS_COLORS[iv.status ?? "completed"] ?? "bg-gray-500"} text-white`}>
+                  <Badge
+                    className={`${STATUS_COLORS[iv.status ?? "completed"] ?? "bg-gray-500"} text-white`}
+                  >
                     {iv.status}
                   </Badge>
                 </div>

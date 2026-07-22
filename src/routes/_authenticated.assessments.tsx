@@ -192,7 +192,9 @@ function Assessments() {
                   <div className="flex items-center gap-1 text-sm">
                     <Award className="h-4 w-4 text-primary" />
                     Best: {best.score ?? 0}%
-                    {(best.score ?? 0) >= (a.passing_score ?? 0) && <Badge className="ml-1">Passed</Badge>}
+                    {(best.score ?? 0) >= (a.passing_score ?? 0) && (
+                      <Badge className="ml-1">Passed</Badge>
+                    )}
                   </div>
                 )}
                 <Button

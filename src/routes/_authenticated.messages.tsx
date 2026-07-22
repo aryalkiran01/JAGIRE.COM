@@ -65,7 +65,11 @@ function Messages() {
         .or(`user_a.eq.${user!.id},user_b.eq.${user!.id}`)
         .order("last_message_at", { ascending: false, nullsFirst: false });
       const ids = Array.from(
-        new Set((data ?? []).map((c) => (c.user_a === user!.id ? c.user_b : c.user_a)).filter((id): id is string => !!id)),
+        new Set(
+          (data ?? [])
+            .map((c) => (c.user_a === user!.id ? c.user_b : c.user_a))
+            .filter((id): id is string => !!id),
+        ),
       );
       const profiles = ids.length
         ? ((
@@ -188,10 +192,12 @@ function Messages() {
                   >
                     {m.body}
                     <div className="text-[10px] opacity-70 mt-1">
-                      {m.created_at ? new Date(m.created_at).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      }) : ""}
+                      {m.created_at
+                        ? new Date(m.created_at).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })
+                        : ""}
                     </div>
                   </div>
                 ))}
