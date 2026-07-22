@@ -1,49 +1,38 @@
 // app/routes/_authenticated/employer/jobs/$jobId.tsx
 import { createFileRoute, useParams } from "@tanstack/react-router";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
-import { scheduleInterview } from "@/lib/google-calendar.functions"; // ★ NEW import
+import { ScheduleInterviewDialog } from "@/components/schedule-interview-dialog";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { Calendar, MapPin, Users, Loader as Loader2 } from "lucide-react";
-import { toast } from "sonner";
-import { useState } from "react";
+import { MapPin, Users, Loader as Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/employer/jobs/$jobId")({
   component: JobDetail,
 });
 
+// ★ Fix Application interface: allow nullable fields ★
 interface Application {
   id: string;
   status: string;
   created_at: string;
-  applicant_id: string;
+  applicant_id: string | null; // ✅ allow null
   profile: {
     id: string;
     full_name: string;
     email: string;
     avatar_url?: string;
-  } | null;
+  } | null; // ✅ profile can be null
 }
 
+// ★ Fix Job interface: location and is_remote can be null ★
 interface Job {
   id: string;
   title: string;
   job_type: string;
-  location: string;
-  is_remote: boolean;
+  location: string | null;
+  is_remote: boolean | null;
   description: string;
   status: string;
 }
@@ -51,7 +40,6 @@ interface Job {
 function JobDetail() {
   const { jobId } = useParams({ from: "/_authenticated/employer/jobs/$jobId" });
   const { user } = useAuth();
-  const qc = useQueryClient();
 
   // --------------- Fetch job ---------------
   const { data: job, isLoading: jobLoading } = useQuery<Job | null>({
@@ -62,7 +50,7 @@ function JobDetail() {
         .select("id, title, job_type, location, is_remote, description, status")
         .eq("id", jobId)
         .single();
-      return data;
+      return data as Job | null; // ✅ explicit cast to match interface
     },
   });
 
@@ -73,64 +61,25 @@ function JobDetail() {
       const { data, error } = await supabase
         .from("applications")
         .select(
-          "id, status, created_at, applicant_id, profile:profiles!applications_applicant_id_fkey(id, full_name, email)",
+          `
+          id,
+          status,
+          created_at,
+          applicant_id,
+          profile:profiles!applications_applicant_id_fkey (
+            id,
+            full_name,
+            email,
+            avatar_url
+          )
+        `,
         )
         .eq("job_id", jobId)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data ?? [];
+      // ✅ cast to Application[] to satisfy TypeScript
+      return (data ?? []) as unknown as Application[];
     },
-  });
-
-  // --------------- Interview creation dialog state ---------------
-  const [selectedApp, setSelectedApp] = useState<Application | null>(null);
-  const [interviewTitle, setInterviewTitle] = useState("Interview");
-  const [scheduledAt, setScheduledAt] = useState("");
-  const [duration, setDuration] = useState(30);
-  const [meetingLink, setMeetingLink] = useState("");
-  const [notes, setNotes] = useState("");
-
-  // ★★★ Updated mutation: uses scheduleInterview server function ★★★
-  const createInterview = useMutation({
-    mutationFn: async () => {
-      if (!selectedApp || !user) throw new Error("Missing data");
-      if (!scheduledAt) throw new Error("Date & time is required");
-
-      const result = await scheduleInterview({
-        data: {
-          applicationId: selectedApp.id,
-          candidateEmail: selectedApp.profile?.email ?? "",
-          candidateName: selectedApp.profile?.full_name ?? undefined,
-          title: interviewTitle || "Interview",
-          startISO: new Date(scheduledAt).toISOString(),
-          durationMinutes: duration,
-          meetingLink: meetingLink || undefined, // fallback if Google fails
-          notes: notes || undefined,
-          useGoogleCalendar: true, // tries to create calendar event + Meet
-        },
-      });
-
-      return result; // { interviewId, eventId, meetLink }
-    },
-    onSuccess: async (result) => {
-      toast.success("Interview scheduled!");
-
-      // Show Google Meet link if generated
-      if (result.meetLink) {
-        toast.info("Google Meet link created");
-      }
-
-      // Reset form & refresh data
-      setSelectedApp(null);
-      setInterviewTitle("Interview");
-      setScheduledAt("");
-      setDuration(30);
-      setMeetingLink("");
-      setNotes("");
-      qc.invalidateQueries({ queryKey: ["employer-interviews"] });
-      qc.invalidateQueries({ queryKey: ["job-applications", jobId] });
-    },
-    onError: (e: any) => toast.error(e.message),
   });
 
   const isLoading = jobLoading || appsLoading;
@@ -195,83 +144,16 @@ function JobDetail() {
                     {app.status}
                   </Badge>
                 </div>
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    setSelectedApp(app);
-                    setInterviewTitle(
-                      `Interview: ${job.title} - ${app.profile?.full_name ?? "Candidate"}`,
-                    );
-                    setScheduledAt("");
-                    setDuration(30);
-                    setMeetingLink("");
-                    setNotes("");
-                  }}
-                >
-                  Schedule Interview
-                </Button>
+                <ScheduleInterviewDialog
+                  applicationId={app.id}
+                  candidateName={app.profile?.full_name ?? undefined}
+                  candidateEmail={app.profile?.email ?? ""}
+                />
               </CardContent>
             </Card>
           ))}
         </div>
       </div>
-
-      {/* Schedule dialog */}
-      <Dialog open={!!selectedApp} onOpenChange={(open) => !open && setSelectedApp(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Schedule Interview</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label>Title</Label>
-              <Input value={interviewTitle} onChange={(e) => setInterviewTitle(e.target.value)} />
-            </div>
-            <div>
-              <Label>Date & Time *</Label>
-              <Input
-                type="datetime-local"
-                value={scheduledAt}
-                onChange={(e) => setScheduledAt(e.target.value)}
-              />
-            </div>
-            <div>
-              <Label>Duration (minutes)</Label>
-              <Input
-                type="number"
-                min={15}
-                max={480}
-                value={duration}
-                onChange={(e) => setDuration(Number(e.target.value))}
-              />
-            </div>
-            <div>
-              <Label>Meeting Link (optional)</Label>
-              <Input
-                placeholder="https://meet.google.com/…"
-                value={meetingLink}
-                onChange={(e) => setMeetingLink(e.target.value)}
-              />
-            </div>
-            <div>
-              <Label>Notes (optional)</Label>
-              <Textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setSelectedApp(null)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={() => createInterview.mutate()}
-              disabled={!scheduledAt || createInterview.isPending}
-            >
-              {createInterview.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
-              Schedule
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

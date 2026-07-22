@@ -90,6 +90,7 @@ export function ScheduleInterviewDialog({
       });
 
       await saveFn({ data: { code, redirectOrigin: window.location.origin } });
+      console.log("saveFn completed");
     },
     onSuccess: () => {
       toast.success("Google Calendar connected");

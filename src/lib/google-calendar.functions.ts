@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { saveConnectionKeyForUser } from "@/lib/connection-key-crypto.server";
 
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
@@ -46,41 +47,48 @@ export const saveGoogleCalendarConnection = createServerFn({ method: "POST" })
     z.object({ code: z.string().min(1), redirectOrigin: z.string().url() }).parse(input),
   )
   .handler(async ({ data, context }) => {
+    console.log("=== saveGoogleCalendarConnection START ===");
+
     const { clientId, clientSecret } = clientCreds();
-    if (!clientId || !clientSecret) throw new Error("Google OAuth is not configured.");
+
+    console.log("User:", context.userId);
+    console.log("Code received:", !!data.code);
+
     const redirectUri = `${data.redirectOrigin}/google-calendar/callback`;
+
     const body = new URLSearchParams({
       code: data.code,
-      client_id: clientId,
-      client_secret: clientSecret,
+      client_id: clientId!,
+      client_secret: clientSecret!,
       redirect_uri: redirectUri,
       grant_type: "authorization_code",
     });
+
     const res = await fetch(GOOGLE_TOKEN_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
       body,
     });
-    if (!res.ok) {
-      const text = await res.text();
-      throw new Error(`Google token exchange failed (${res.status}): ${text}`);
-    }
-    const tokens = (await res.json()) as {
-      access_token: string;
-      refresh_token?: string;
-      expires_in: number;
-    };
-    console.log("Refresh token present:", !!tokens.refresh_token);
 
-    if (!tokens.refresh_token) {
-      throw new Error(
-        "Google did not return a refresh token. Revoke access at https://myaccount.google.com/permissions and try again.",
-      );
+    console.log("Google status:", res.status);
+
+    const response = await res.text();
+    console.log("Google response:", response);
+
+    if (!res.ok) {
+      throw new Error(response);
     }
-    console.log("💾 Saving refresh token for user:", context.userId);
-    const { saveConnectionKeyForUser } = await import("@/lib/connection-key-crypto.server");
+
+    const tokens = JSON.parse(response);
+
+    console.log("Refresh token exists:", !!tokens.refresh_token);
+
     await saveConnectionKeyForUser(context.userId, "google_calendar", tokens.refresh_token);
-    console.log("✅ Token saved successfully");
+
+    console.log("=== SAVED SUCCESSFULLY ===");
+
     return { ok: true };
   });
 
