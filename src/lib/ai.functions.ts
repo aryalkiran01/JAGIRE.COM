@@ -2,7 +2,7 @@
 
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { generateJson } from "@/integrations/gemini/server";
+import { aiGenerateJson } from "@/integrations/ai/ai-service";
 
 const RESUME_SYSTEM =
   "You are an expert ATS and resume reviewer. Score the resume from 0-100 on each dimension and return ONLY strict JSON with keys: overall_score, ats_score, grammar_score, formatting_score, keyword_score, professionalism_score, suggestions (array of short actionable strings, max 8), summary (2-3 sentences), extracted_skills (array of strings, max 20).";
@@ -27,7 +27,7 @@ export const scoreResume = createServerFn({ method: "POST" })
     return { resumeId: i.resumeId, text: i.text.slice(0, 20000) };
   })
   .handler(async ({ data, context }) => {
-    const parsed = await generateJson<{
+    const parsed = await aiGenerateJson<{
       overall_score: number;
       ats_score: number;
       grammar_score: number;
@@ -74,7 +74,7 @@ export const careerRecommendations = createServerFn({ method: "POST" })
       .maybeSingle();
     const skills = (resume?.parsed_data as { skills?: string[] } | null)?.skills ?? [];
 
-    const parsed = await generateJson<{
+    const parsed = await aiGenerateJson<{
       career_paths?: Array<{ title: string; why: string; next_steps: string[] }>;
       skill_gaps?: string[];
       recommended_certifications?: Array<{ name: string; provider: string }>;
@@ -140,7 +140,7 @@ export const scanResumeFromStorage = createServerFn({ method: "POST" })
     if (text.length < 50) throw new Error("Could not extract enough text from the resume file");
     if (text.length > 20000) text = text.slice(0, 20000);
 
-    const parsed = await generateJson<{
+    const parsed = await aiGenerateJson<{
       overall_score: number;
       ats_score: number;
       grammar_score: number;
@@ -198,7 +198,7 @@ export const scanResumeFromStorage = createServerFn({ method: "POST" })
     // Generate career roadmap
     let careerRoadmap: Record<string, any> | null = null;
     try {
-      const roadmap = await generateJson<{
+      const roadmap = await aiGenerateJson<{
         career_paths?: Array<{ title: string; why: string; next_steps: string[] }>;
         skill_gaps?: string[];
         missing_skills?: string[];
@@ -311,7 +311,7 @@ export const learningRecommendations = createServerFn({ method: "POST" })
     const skills = ((profile as any)?.skills ?? []).join(", ") || "general software engineering";
     const prompt = `You are a career coach. Suggest 8 learning resources for a professional with these skills: ${skills}. Headline: ${(profile as any)?.headline ?? "N/A"}. Mix courses, videos, coding challenges, and interview prep. Return JSON: {"items":[{"kind":"course|video|challenge|interview","title":"","provider":"","url":"","skills":[],"description":""}]}`;
 
-    const parsed = await generateJson<{ items: any[] }>(prompt, LEARNING_SYSTEM);
+    const parsed = await aiGenerateJson<{ items: any[] }>(prompt, LEARNING_SYSTEM);
     return { items: parsed?.items ?? [] };
   });
 
@@ -324,7 +324,7 @@ export const importFromLinkedInText = createServerFn({ method: "POST" })
     return { text: i.text.slice(0, 20000), url: (i.url ?? "").trim() };
   })
   .handler(async ({ data, context }) => {
-    const parsed = await generateJson<{
+    const parsed = await aiGenerateJson<{
       full_name?: string | null;
       headline?: string | null;
       about?: string;
