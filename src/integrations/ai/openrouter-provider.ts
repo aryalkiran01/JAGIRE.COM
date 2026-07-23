@@ -1,17 +1,17 @@
 import { AIProvider, AIRequest } from "./types";
 import { classifyError, safeJsonParse } from "./errors";
 
-const DEEPSEEK_URL = "https://api.deepseek.com/chat/completions";
-const DEFAULT_MODEL = "deepseek-chat";
+const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
+const DEFAULT_MODEL = "google/gemma-4-31b-it:free";
 
 function apiKey(): string {
-  const key = process.env.DEEPSEEK_API_KEY;
-  if (!key) throw new Error("DEEPSEEK_API_KEY is not set");
+  const key = process.env.OPENROUTER_API_KEY;
+  if (!key) throw new Error("OPENROUTER_API_KEY is not set");
   return key;
 }
 
-export class DeepSeekProvider implements AIProvider {
-  readonly name = "deepseek";
+export class OpenRouterProvider implements AIProvider {
+  readonly name = "openrouter";
 
   async generateText(req: AIRequest): Promise<string> {
     const model = req.model ?? DEFAULT_MODEL;
@@ -23,13 +23,18 @@ export class DeepSeekProvider implements AIProvider {
 
     let res: Response;
     try {
-      res = await fetch(DEEPSEEK_URL, {
+      res = await fetch(OPENROUTER_URL, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${apiKey()}`,
         },
-        body: JSON.stringify({ model, messages, stream: false }),
+        body: JSON.stringify({
+          model,
+          messages,
+          stream: false,
+          reasoning: { enabled: true },
+        }),
       });
     } catch (e) {
       throw classifyError(undefined, (e as Error).message, e);
@@ -42,7 +47,7 @@ export class DeepSeekProvider implements AIProvider {
 
     const data = await res.json();
     const out = data?.choices?.[0]?.message?.content;
-    if (!out) throw new Error("DeepSeek returned no content");
+    if (!out) throw new Error("OpenRouter returned no content");
     return out as string;
   }
 
@@ -57,7 +62,7 @@ export class DeepSeekProvider implements AIProvider {
 
     let res: Response;
     try {
-      res = await fetch(DEEPSEEK_URL, {
+      res = await fetch(OPENROUTER_URL, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -68,6 +73,7 @@ export class DeepSeekProvider implements AIProvider {
           messages,
           stream: false,
           response_format: { type: "json_object" },
+          reasoning: { enabled: true },
         }),
       });
     } catch (e) {
@@ -81,7 +87,7 @@ export class DeepSeekProvider implements AIProvider {
 
     const data = await res.json();
     const raw = data?.choices?.[0]?.message?.content;
-    if (!raw) throw new Error("DeepSeek returned no content");
+    if (!raw) throw new Error("OpenRouter returned no content");
     return safeJsonParse<T>(raw);
   }
 }

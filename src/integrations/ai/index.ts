@@ -1,6 +1,6 @@
 export { aiGenerateText, aiGenerateJson, getAIProviders, AIServiceImpl } from "./ai-service";
 export { GeminiProvider } from "./gemini-provider";
-export { DeepSeekProvider } from "./deepseek-provider";
+export { OpenRouterProvider } from "./openrouter-provider";
 export type {
   AIProvider,
   AIRequest,

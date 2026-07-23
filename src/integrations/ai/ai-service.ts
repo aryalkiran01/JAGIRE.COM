@@ -1,6 +1,6 @@
 import { AIProvider, AIRequest } from "./types";
 import { GeminiProvider } from "./gemini-provider";
-import { DeepSeekProvider } from "./deepseek-provider";
+import { OpenRouterProvider } from "./openrouter-provider";
 import { isTransient, isFatal } from "./errors";
 
 const MAX_RETRIES = 3;
@@ -87,8 +87,8 @@ class AIServiceImpl {
     if (process.env.GEMINI_API_KEY) {
       list.push(new GeminiProvider());
     }
-    if (process.env.DEEPSEEK_API_KEY) {
-      list.push(new DeepSeekProvider());
+    if (process.env.OPENROUTER_API_KEY) {
+      list.push(new OpenRouterProvider());
     }
     if (list.length === 0) {
       list.push(new GeminiProvider());
