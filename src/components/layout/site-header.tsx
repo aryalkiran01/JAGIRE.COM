@@ -49,8 +49,18 @@ type FeatureLink = {
 };
 
 const FEATURE_LINKS: FeatureLink[] = [
-  { to: "/resume-scanner", label: "Resume Scanner", icon: ScanText, desc: "AI-powered ATS scoring" },
-  { to: "/resume-builder", label: "Resume Builder", icon: FileText, desc: "Build polished resumes" },
+  {
+    to: "/resume-scanner",
+    label: "Resume Scanner",
+    icon: ScanText,
+    desc: "AI-powered ATS scoring",
+  },
+  {
+    to: "/resume-builder",
+    label: "Resume Builder",
+    icon: FileText,
+    desc: "Build polished resumes",
+  },
   { to: "/interviews", label: "Interview Prep", icon: Video, desc: "Practice & schedule" },
   { to: "/applications", label: "Job Tracker", icon: Target, desc: "Track applications" },
   { to: "/saved", label: "Saved Jobs", icon: Bookmark, desc: "Your bookmarked roles" },
@@ -308,22 +318,63 @@ export function SiteHeader() {
                 </SheetTitle>
               </SheetHeader>
               <div className="mt-4 space-y-1">
-                <MobileLink to="/jobs" icon={Briefcase} label="Browse Jobs" onClick={() => setMobileOpen(false)} />
-                <MobileLink to="/companies" icon={Building2} label="Companies" onClick={() => setMobileOpen(false)} />
-                {user && <MobileLink to="/feed" icon={Rss} label="Community Feed" onClick={() => setMobileOpen(false)} />}
-                <MobileLink to="/about" icon={Sparkles} label="About" onClick={() => setMobileOpen(false)} />
-                <MobileLink to="/pricing" icon={Target} label="Pricing" onClick={() => setMobileOpen(false)} />
+                <MobileLink
+                  to="/jobs"
+                  icon={Briefcase}
+                  label="Browse Jobs"
+                  onClick={() => setMobileOpen(false)}
+                />
+                <MobileLink
+                  to="/companies"
+                  icon={Building2}
+                  label="Companies"
+                  onClick={() => setMobileOpen(false)}
+                />
+                {user && (
+                  <MobileLink
+                    to="/feed"
+                    icon={Rss}
+                    label="Community Feed"
+                    onClick={() => setMobileOpen(false)}
+                  />
+                )}
+                <MobileLink
+                  to="/about"
+                  icon={Sparkles}
+                  label="About"
+                  onClick={() => setMobileOpen(false)}
+                />
+                <MobileLink
+                  to="/pricing"
+                  icon={Target}
+                  label="Pricing"
+                  onClick={() => setMobileOpen(false)}
+                />
                 <div className="my-2 border-t" />
                 {FEATURE_LINKS.map((f) => (
-                  <MobileLink key={f.to} to={f.to} icon={f.icon} label={f.label} onClick={() => setMobileOpen(false)} />
+                  <MobileLink
+                    key={f.to}
+                    to={f.to}
+                    icon={f.icon}
+                    label={f.label}
+                    onClick={() => setMobileOpen(false)}
+                  />
                 ))}
                 {!user && (
                   <div className="pt-4 space-y-2">
                     <Button variant="outline" className="w-full" asChild>
-                      <Link to="/auth" onClick={() => setMobileOpen(false)}>Sign in</Link>
+                      <Link to="/auth" onClick={() => setMobileOpen(false)}>
+                        Sign in
+                      </Link>
                     </Button>
                     <Button className="w-full gradient-brand text-primary-foreground" asChild>
-                      <Link to="/auth" search={{ mode: "signup" }} onClick={() => setMobileOpen(false)}>Get started</Link>
+                      <Link
+                        to="/auth"
+                        search={{ mode: "signup" }}
+                        onClick={() => setMobileOpen(false)}
+                      >
+                        Get started
+                      </Link>
                     </Button>
                   </div>
                 )}

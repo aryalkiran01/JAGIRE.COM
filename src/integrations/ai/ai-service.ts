@@ -10,7 +10,11 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function log(level: "info" | "warn" | "error", message: string, meta?: Record<string, unknown>): void {
+function log(
+  level: "info" | "warn" | "error",
+  message: string,
+  meta?: Record<string, unknown>,
+): void {
   const ts = new Date().toISOString();
   const line = `[${ts}] [AIService] [${level.toUpperCase()}] ${message}`;
   if (meta) {
@@ -30,7 +34,10 @@ async function retryWithBackoff<T>(
     try {
       const result = await fn(provider);
       if (attempt > 0) {
-        log("info", `${provider.name} succeeded on retry ${attempt}`, { provider: provider.name, attempt });
+        log("info", `${provider.name} succeeded on retry ${attempt}`, {
+          provider: provider.name,
+          attempt,
+        });
       }
       return result;
     } catch (err) {

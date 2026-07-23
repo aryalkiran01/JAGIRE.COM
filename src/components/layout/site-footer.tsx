@@ -26,27 +26,71 @@ export function SiteFooter() {
           <div>
             <h4 className="font-semibold mb-3 text-sm">For Job Seekers</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><Link to="/jobs" className="hover:text-foreground transition-colors">Browse Jobs</Link></li>
-              <li><Link to="/companies" className="hover:text-foreground transition-colors">Companies</Link></li>
-              <li><Link to="/resume-scanner" className="hover:text-foreground transition-colors">AI Resume Scanner</Link></li>
-              <li><Link to="/resume-builder" className="hover:text-foreground transition-colors">Resume Builder</Link></li>
-              <li><Link to="/career" className="hover:text-foreground transition-colors">Career Advice</Link></li>
+              <li>
+                <Link to="/jobs" className="hover:text-foreground transition-colors">
+                  Browse Jobs
+                </Link>
+              </li>
+              <li>
+                <Link to="/companies" className="hover:text-foreground transition-colors">
+                  Companies
+                </Link>
+              </li>
+              <li>
+                <Link to="/resume-scanner" className="hover:text-foreground transition-colors">
+                  AI Resume Scanner
+                </Link>
+              </li>
+              <li>
+                <Link to="/resume-builder" className="hover:text-foreground transition-colors">
+                  Resume Builder
+                </Link>
+              </li>
+              <li>
+                <Link to="/career" className="hover:text-foreground transition-colors">
+                  Career Advice
+                </Link>
+              </li>
             </ul>
           </div>
           <div>
             <h4 className="font-semibold mb-3 text-sm">For Employers</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><Link to="/employer" className="hover:text-foreground transition-colors">Post a Job</Link></li>
-              <li><Link to="/pricing" className="hover:text-foreground transition-colors">Pricing</Link></li>
-              <li><Link to="/about" className="hover:text-foreground transition-colors">About Us</Link></li>
+              <li>
+                <Link to="/employer" className="hover:text-foreground transition-colors">
+                  Post a Job
+                </Link>
+              </li>
+              <li>
+                <Link to="/pricing" className="hover:text-foreground transition-colors">
+                  Pricing
+                </Link>
+              </li>
+              <li>
+                <Link to="/about" className="hover:text-foreground transition-colors">
+                  About Us
+                </Link>
+              </li>
             </ul>
           </div>
           <div>
             <h4 className="font-semibold mb-3 text-sm">Support</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><Link to="/contact" className="hover:text-foreground transition-colors">Contact</Link></li>
-              <li><Link to="/support" className="hover:text-foreground transition-colors">Help Center</Link></li>
-              <li><Link to="/blog" className="hover:text-foreground transition-colors">Blog</Link></li>
+              <li>
+                <Link to="/contact" className="hover:text-foreground transition-colors">
+                  Contact
+                </Link>
+              </li>
+              <li>
+                <Link to="/support" className="hover:text-foreground transition-colors">
+                  Help Center
+                </Link>
+              </li>
+              <li>
+                <Link to="/blog" className="hover:text-foreground transition-colors">
+                  Blog
+                </Link>
+              </li>
             </ul>
           </div>
         </div>

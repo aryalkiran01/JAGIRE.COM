@@ -49,7 +49,10 @@ function AboutPage() {
       <section className="relative overflow-hidden py-24 md:py-32">
         <div className="absolute inset-0 gradient-hero opacity-10" />
         <div className="absolute -top-20 -left-20 h-96 w-96 rounded-full gradient-brand opacity-20 blur-3xl animate-float" />
-        <div className="absolute -bottom-20 -right-20 h-96 w-96 rounded-full bg-accent opacity-20 blur-3xl animate-float" style={{ animationDelay: "1s" }} />
+        <div
+          className="absolute -bottom-20 -right-20 h-96 w-96 rounded-full bg-accent opacity-20 blur-3xl animate-float"
+          style={{ animationDelay: "1s" }}
+        />
         <div className="container relative mx-auto px-4 text-center max-w-4xl">
           <Badge variant="secondary" className="mb-6 glass animate-fade-in">
             <Sparkles className="mr-1.5 h-3 w-3" /> Our story
@@ -186,9 +189,21 @@ function AboutPage() {
             </p>
             <div className="space-y-4">
               {[
-                { icon: ScanText, title: "Deep resume analysis", desc: "ATS, grammar, formatting, keywords, and professionalism scoring" },
-                { icon: Target, title: "Contextual job matching", desc: "Skills, experience, location, salary, and culture fit" },
-                { icon: TrendingUp, title: "Career path predictions", desc: "AI-generated roadmaps with certifications and projects" },
+                {
+                  icon: ScanText,
+                  title: "Deep resume analysis",
+                  desc: "ATS, grammar, formatting, keywords, and professionalism scoring",
+                },
+                {
+                  icon: Target,
+                  title: "Contextual job matching",
+                  desc: "Skills, experience, location, salary, and culture fit",
+                },
+                {
+                  icon: TrendingUp,
+                  title: "Career path predictions",
+                  desc: "AI-generated roadmaps with certifications and projects",
+                },
               ].map((item, i) => (
                 <div key={i} className="flex gap-4 animate-fade-in-up">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl gradient-brand">
@@ -237,8 +252,15 @@ function AboutPage() {
                 <div className="pt-2 border-t">
                   <div className="text-sm font-medium mb-2">AI Recommendations</div>
                   <div className="space-y-1.5">
-                    {["Add cloud infrastructure keywords", "Quantify achievements with metrics", "Include a summary section"].map((rec, i) => (
-                      <div key={i} className="flex items-center gap-2 text-xs text-muted-foreground">
+                    {[
+                      "Add cloud infrastructure keywords",
+                      "Quantify achievements with metrics",
+                      "Include a summary section",
+                    ].map((rec, i) => (
+                      <div
+                        key={i}
+                        className="flex items-center gap-2 text-xs text-muted-foreground"
+                      >
                         <div className="h-1.5 w-1.5 rounded-full bg-primary" />
                         {rec}
                       </div>
@@ -255,12 +277,26 @@ function AboutPage() {
       <section className="container mx-auto px-4 py-20">
         <div className="text-center mb-14">
           <h2 className="text-4xl font-bold mb-3">Our values</h2>
-          <p className="text-muted-foreground text-lg">The principles that guide everything we build</p>
+          <p className="text-muted-foreground text-lg">
+            The principles that guide everything we build
+          </p>
         </div>
         <div className="grid md:grid-cols-3 gap-6">
-          <ValueCard icon={ShieldCheck} title="Trust & Privacy" desc="Your data is encrypted, never sold, and always yours to control." />
-          <ValueCard icon={Globe} title="Accessibility" desc="Great opportunities shouldn't depend on geography or connections." />
-          <ValueCard icon={Heart} title="Human-first" desc="AI assists, but people decide. We design for meaningful connections." />
+          <ValueCard
+            icon={ShieldCheck}
+            title="Trust & Privacy"
+            desc="Your data is encrypted, never sold, and always yours to control."
+          />
+          <ValueCard
+            icon={Globe}
+            title="Accessibility"
+            desc="Great opportunities shouldn't depend on geography or connections."
+          />
+          <ValueCard
+            icon={Heart}
+            title="Human-first"
+            desc="AI assists, but people decide. We design for meaningful connections."
+          />
         </div>
       </section>
 
@@ -274,7 +310,10 @@ function AboutPage() {
         </div>
         <div className="grid md:grid-cols-3 gap-6">
           {TESTIMONIALS.map((t, i) => (
-            <Card key={i} className="glass hover:shadow-card-soft transition-all animate-fade-in-up">
+            <Card
+              key={i}
+              className="glass hover:shadow-card-soft transition-all animate-fade-in-up"
+            >
               <CardContent className="p-6">
                 <Quote className="h-8 w-8 text-primary/20 mb-3" />
                 <div className="flex mb-3">
@@ -286,7 +325,10 @@ function AboutPage() {
                 <div className="flex items-center gap-3">
                   <Avatar className="h-10 w-10">
                     <AvatarFallback className="gradient-brand text-primary-foreground">
-                      {t.name.split(" ").map((n) => n[0]).join("")}
+                      {t.name
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")}
                     </AvatarFallback>
                   </Avatar>
                   <div>

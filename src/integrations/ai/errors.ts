@@ -30,11 +30,7 @@ const FATAL_PATTERNS = [
   /bad request/i,
 ];
 
-export function classifyError(
-  status: number | undefined,
-  body: string,
-  cause?: unknown,
-): Error {
+export function classifyError(status: number | undefined, body: string, cause?: unknown): Error {
   const text = `${status ?? ""} ${body}`;
   if (status !== undefined && FATAL_PATTERNS.some((p) => p.test(text))) {
     return new AIFatalError(`AI fatal error (${status}): ${body.slice(0, 200)}`, status, cause);
@@ -57,7 +53,11 @@ export function classifyError(
   if (cause instanceof Error && TRANSIENT_PATTERNS.some((p) => p.test(cause.message))) {
     return new AITransientError(`AI network error: ${cause.message}`, undefined, true, true, cause);
   }
-  return new AIFatalError(`AI error (${status ?? "unknown"}): ${body.slice(0, 200)}`, status, cause);
+  return new AIFatalError(
+    `AI error (${status ?? "unknown"}): ${body.slice(0, 200)}`,
+    status,
+    cause,
+  );
 }
 
 export function isTransient(err: unknown): boolean {

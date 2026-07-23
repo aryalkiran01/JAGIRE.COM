@@ -211,10 +211,15 @@ function Dashboard() {
               </div>
               <div className="flex items-center gap-6">
                 <div className="text-center">
-                  <div className={`text-4xl font-bold ${
-                    (resume.overall_score ?? 0) >= 80 ? "text-green-500" :
-                    (resume.overall_score ?? 0) >= 60 ? "text-amber-500" : "text-red-500"
-                  }`}>
+                  <div
+                    className={`text-4xl font-bold ${
+                      (resume.overall_score ?? 0) >= 80
+                        ? "text-green-500"
+                        : (resume.overall_score ?? 0) >= 60
+                          ? "text-amber-500"
+                          : "text-red-500"
+                    }`}
+                  >
                     {resume.overall_score ?? "—"}
                   </div>
                   <div className="text-xs text-muted-foreground">out of 100</div>
@@ -256,7 +261,9 @@ function Dashboard() {
                 </div>
                 <div>
                   <h3 className="font-bold text-lg">Upload your resume</h3>
-                  <p className="text-sm text-muted-foreground">Get instant AI scoring and career roadmap</p>
+                  <p className="text-sm text-muted-foreground">
+                    Get instant AI scoring and career roadmap
+                  </p>
                 </div>
               </div>
               <Button className="gradient-brand text-primary-foreground" asChild>
@@ -307,7 +314,11 @@ function Dashboard() {
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center shrink-0 overflow-hidden">
                         {a.job?.company?.logo_url ? (
-                          <img src={a.job.company.logo_url} alt="" className="h-full w-full object-cover" />
+                          <img
+                            src={a.job.company.logo_url}
+                            alt=""
+                            className="h-full w-full object-cover"
+                          />
                         ) : (
                           <Building2 className="h-5 w-5 text-muted-foreground" />
                         )}
@@ -402,9 +413,7 @@ function Dashboard() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="font-medium truncate">{iv.title}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {iv.job?.company?.name}
-                      </div>
+                      <div className="text-sm text-muted-foreground">{iv.job?.company?.name}</div>
                       <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
                         <Clock className="h-3 w-3" />
                         {new Date(iv.scheduled_at).toLocaleString()}
@@ -447,10 +456,14 @@ function Dashboard() {
                     key={n.id}
                     className="flex items-start gap-3 p-3 rounded-lg hover:bg-muted/30 transition-colors"
                   >
-                    <div className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ${
-                      n.is_read ? "bg-muted" : "gradient-brand"
-                    }`}>
-                      <CheckCircle2 className={`h-4 w-4 ${n.is_read ? "text-muted-foreground" : "text-primary-foreground"}`} />
+                    <div
+                      className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ${
+                        n.is_read ? "bg-muted" : "gradient-brand"
+                      }`}
+                    >
+                      <CheckCircle2
+                        className={`h-4 w-4 ${n.is_read ? "text-muted-foreground" : "text-primary-foreground"}`}
+                      />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-medium">{n.title}</div>
@@ -459,7 +472,9 @@ function Dashboard() {
                         {formatDistanceToNow(new Date(n.created_at))} ago
                       </div>
                     </div>
-                    {!n.is_read && <div className="h-2 w-2 rounded-full bg-primary shrink-0 mt-2" />}
+                    {!n.is_read && (
+                      <div className="h-2 w-2 rounded-full bg-primary shrink-0 mt-2" />
+                    )}
                   </div>
                 ))}
               </div>
@@ -503,7 +518,9 @@ function StatCard({
     <Link to={to}>
       <Card className="glass hover:shadow-glow hover:-translate-y-1 transition-all group cursor-pointer">
         <CardContent className="p-5">
-          <div className={`h-10 w-10 rounded-xl ${bg} flex items-center justify-center mb-3 group-hover:scale-110 transition-transform`}>
+          <div
+            className={`h-10 w-10 rounded-xl ${bg} flex items-center justify-center mb-3 group-hover:scale-110 transition-transform`}
+          >
             <Icon className={`h-5 w-5 ${color}`} />
           </div>
           <div className="text-3xl font-bold">{value}</div>
@@ -514,15 +531,7 @@ function StatCard({
   );
 }
 
-function QuickAction({
-  icon: Icon,
-  label,
-  to,
-}: {
-  icon: LucideIcon;
-  label: string;
-  to: string;
-}) {
+function QuickAction({ icon: Icon, label, to }: { icon: LucideIcon; label: string; to: string }) {
   return (
     <Link to={to}>
       <Card className="glass hover:shadow-card-soft hover:-translate-y-0.5 transition-all group cursor-pointer">

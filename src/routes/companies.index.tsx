@@ -10,7 +10,19 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { SkeletonCard } from "@/components/ui/skeleton-loader";
-import { Building2, Search, Star, Users, TrendingUp, MapPin, Briefcase, ArrowRight, ListFilter as Filter, Globe, Heart } from "lucide-react";
+import {
+  Building2,
+  Search,
+  Star,
+  Users,
+  TrendingUp,
+  MapPin,
+  Briefcase,
+  ArrowRight,
+  ListFilter as Filter,
+  Globe,
+  Heart,
+} from "lucide-react";
 
 export const Route = createFileRoute("/companies/")({ component: Companies });
 
@@ -33,10 +45,7 @@ function Companies() {
   const { data: jobCounts } = useQuery({
     queryKey: ["company-job-counts"],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("jobs")
-        .select("company_id")
-        .eq("status", "active");
+      const { data } = await supabase.from("jobs").select("company_id").eq("status", "active");
       const counts: Record<string, number> = {};
       for (const j of data ?? []) {
         counts[j.company_id] = (counts[j.company_id] ?? 0) + 1;
@@ -69,9 +78,7 @@ function Companies() {
     if (sort === "name") {
       list = [...list].sort((a, b) => (a.name ?? "").localeCompare(b.name ?? ""));
     } else if (sort === "jobs") {
-      list = [...list].sort(
-        (a, b) => (jobCounts?.[b.id] ?? 0) - (jobCounts?.[a.id] ?? 0),
-      );
+      list = [...list].sort((a, b) => (jobCounts?.[b.id] ?? 0) - (jobCounts?.[a.id] ?? 0));
     }
     return list;
   }, [companies, q, industry, sort, jobCounts]);
@@ -160,11 +167,7 @@ function Companies() {
                   <div className="h-24 gradient-hero relative overflow-hidden">
                     <div className="absolute inset-0 gradient-brand opacity-30" />
                     {c.banner_url && (
-                      <img
-                        src={c.banner_url}
-                        alt=""
-                        className="h-full w-full object-cover"
-                      />
+                      <img src={c.banner_url} alt="" className="h-full w-full object-cover" />
                     )}
                   </div>
                   <CardContent className="p-6 pt-0">

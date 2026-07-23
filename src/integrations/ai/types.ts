@@ -14,9 +14,9 @@ export class AITransientError extends Error {
   constructor(
     message: string,
     public readonly statusCode?: number,
-  public readonly isTransient = true,
-  public readonly retryable = true,
-  public readonly cause?: unknown,
+    public readonly isTransient = true,
+    public readonly retryable = true,
+    public readonly cause?: unknown,
   ) {
     super(message);
     this.name = "AITransientError";

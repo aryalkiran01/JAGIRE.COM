@@ -9,7 +9,27 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Search, MapPin, Briefcase, Sparkles, Target, Users, TrendingUp, Building2, ArrowRight, Star, ScanText, FileText, Video, Rocket, ShieldCheck, Zap, Globe, CircleCheck as CheckCircle2, Quote } from "lucide-react";
+import {
+  Search,
+  MapPin,
+  Briefcase,
+  Sparkles,
+  Target,
+  Users,
+  TrendingUp,
+  Building2,
+  ArrowRight,
+  Star,
+  ScanText,
+  FileText,
+  Video,
+  Rocket,
+  ShieldCheck,
+  Zap,
+  Globe,
+  CircleCheck as CheckCircle2,
+  Quote,
+} from "lucide-react";
 import { useState } from "react";
 
 export const Route = createFileRoute("/")({
@@ -59,7 +79,10 @@ function Landing() {
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 gradient-hero opacity-10" />
         <div className="absolute -top-40 -right-40 h-[500px] w-[500px] rounded-full gradient-brand opacity-20 blur-3xl animate-float" />
-        <div className="absolute -bottom-40 -left-40 h-[500px] w-[500px] rounded-full bg-accent opacity-20 blur-3xl animate-float" style={{ animationDelay: "1.5s" }} />
+        <div
+          className="absolute -bottom-40 -left-40 h-[500px] w-[500px] rounded-full bg-accent opacity-20 blur-3xl animate-float"
+          style={{ animationDelay: "1.5s" }}
+        />
 
         <div className="container relative mx-auto px-4 py-24 md:py-36">
           <div className="mx-auto max-w-4xl text-center">
@@ -98,13 +121,18 @@ function Landing() {
             </form>
 
             <div className="mt-6 flex flex-wrap justify-center gap-2 animate-fade-in stagger-2">
-              {["Remote", "Engineering", "Design", "Marketing", "Product", "Data Science"].map((tag) => (
-                <Link key={tag} to="/jobs" search={{ q: tag }}>
-                  <Badge variant="outline" className="cursor-pointer hover:bg-muted transition-colors">
-                    {tag}
-                  </Badge>
-                </Link>
-              ))}
+              {["Remote", "Engineering", "Design", "Marketing", "Product", "Data Science"].map(
+                (tag) => (
+                  <Link key={tag} to="/jobs" search={{ q: tag }}>
+                    <Badge
+                      variant="outline"
+                      className="cursor-pointer hover:bg-muted transition-colors"
+                    >
+                      {tag}
+                    </Badge>
+                  </Link>
+                ),
+              )}
             </div>
 
             <div className="mt-16 grid grid-cols-3 gap-8 max-w-xl mx-auto">
@@ -184,7 +212,7 @@ function Landing() {
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             {categories.map((c, i) => (
               <Link key={c.id} to="/jobs" search={{ category: c.slug }}>
-                <Card className="hover:shadow-glow hover:-translate-y-1 transition-all cursor-pointer animate-fade-in-up" >
+                <Card className="hover:shadow-glow hover:-translate-y-1 transition-all cursor-pointer animate-fade-in-up">
                   <CardContent className="p-6 text-center">
                     <div className="h-12 w-12 rounded-xl gradient-brand mx-auto mb-3 flex items-center justify-center shadow-glow">
                       <Briefcase className="h-6 w-6 text-primary-foreground" />
@@ -220,7 +248,11 @@ function Landing() {
                     <div className="flex items-start gap-3 mb-4">
                       <div className="h-12 w-12 rounded-lg bg-muted flex items-center justify-center overflow-hidden shrink-0">
                         {job.company?.logo_url ? (
-                          <img src={job.company.logo_url} alt="" className="h-full w-full object-cover" />
+                          <img
+                            src={job.company.logo_url}
+                            alt=""
+                            className="h-full w-full object-cover"
+                          />
                         ) : (
                           <Building2 className="h-6 w-6 text-muted-foreground" />
                         )}
@@ -300,7 +332,10 @@ function Landing() {
         </div>
         <div className="grid md:grid-cols-3 gap-6">
           {TESTIMONIALS.map((t, i) => (
-            <Card key={i} className="glass hover:shadow-card-soft transition-all animate-fade-in-up">
+            <Card
+              key={i}
+              className="glass hover:shadow-card-soft transition-all animate-fade-in-up"
+            >
               <CardContent className="p-6">
                 <Quote className="h-8 w-8 text-primary/20 mb-3" />
                 <div className="flex mb-3">
@@ -312,7 +347,10 @@ function Landing() {
                 <div className="flex items-center gap-3">
                   <Avatar className="h-10 w-10">
                     <AvatarFallback className="gradient-brand text-primary-foreground">
-                      {t.name.split(" ").map((n) => n[0]).join("")}
+                      {t.name
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")}
                     </AvatarFallback>
                   </Avatar>
                   <div>
@@ -375,9 +413,7 @@ function Landing() {
 function StatCard({ value, label, icon: Icon }: { value: number; label: string; icon: any }) {
   return (
     <div className="text-center">
-      <div className="text-3xl md:text-4xl font-bold gradient-text">
-        {value.toLocaleString()}+
-      </div>
+      <div className="text-3xl md:text-4xl font-bold gradient-text">{value.toLocaleString()}+</div>
       <div className="text-xs text-muted-foreground mt-1 flex items-center justify-center gap-1">
         <Icon className="h-3 w-3" />
         {label}

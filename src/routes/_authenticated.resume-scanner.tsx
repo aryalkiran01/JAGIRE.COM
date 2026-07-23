@@ -189,7 +189,10 @@ function ResumeScanner() {
       };
 
       if (roadmap.career_paths?.length)
-        addSection("Career Paths", roadmap.career_paths.map((c) => `${c.title}: ${c.why}`));
+        addSection(
+          "Career Paths",
+          roadmap.career_paths.map((c) => `${c.title}: ${c.why}`),
+        );
       if (roadmap.skill_gaps?.length) addSection("Skill Gaps", roadmap.skill_gaps);
       if (roadmap.missing_skills?.length) addSection("Missing Skills", roadmap.missing_skills);
       if (roadmap.recommended_certifications?.length)
@@ -203,7 +206,10 @@ function ResumeScanner() {
           roadmap.suggested_projects.map((p) => `${p.title}: ${p.description}`),
         );
       if (roadmap.recommended_jobs?.length)
-        addSection("Recommended Jobs", roadmap.recommended_jobs.map((j) => `${j.title}: ${j.why}`));
+        addSection(
+          "Recommended Jobs",
+          roadmap.recommended_jobs.map((j) => `${j.title}: ${j.why}`),
+        );
       if (roadmap.companies_hiring?.length)
         addSection(
           "Companies Hiring",
@@ -233,10 +239,25 @@ function ResumeScanner() {
     ? [
         { label: "Overall", value: resume.overall_score, icon: Sparkles, color: "text-primary" },
         { label: "ATS", value: resume.ats_score, icon: ScanText, color: "text-blue-500" },
-        { label: "Grammar", value: resume.grammar_score, icon: CheckCircle2, color: "text-green-500" },
-        { label: "Formatting", value: resume.formatting_score, icon: FileText, color: "text-accent" },
+        {
+          label: "Grammar",
+          value: resume.grammar_score,
+          icon: CheckCircle2,
+          color: "text-green-500",
+        },
+        {
+          label: "Formatting",
+          value: resume.formatting_score,
+          icon: FileText,
+          color: "text-accent",
+        },
         { label: "Keywords", value: resume.keyword_score, icon: Target, color: "text-orange-500" },
-        { label: "Professionalism", value: resume.professionalism_score, icon: Award, color: "text-purple-500" },
+        {
+          label: "Professionalism",
+          value: resume.professionalism_score,
+          icon: Award,
+          color: "text-purple-500",
+        },
       ]
     : [];
   const suggestions = (resume?.suggestions as string[] | null) ?? [];
@@ -269,7 +290,8 @@ function ResumeScanner() {
             AI Resume Scanner
           </h1>
           <p className="text-muted-foreground mt-1">
-            Upload your resume for instant ATS scoring, keyword analysis, and a personalized career roadmap.
+            Upload your resume for instant ATS scoring, keyword analysis, and a personalized career
+            roadmap.
           </p>
         </div>
         {resume && (
@@ -454,7 +476,10 @@ function ResumeScanner() {
               </CardHeader>
               <CardContent className="space-y-3">
                 {roadmap.career_paths.map((c, i) => (
-                  <div key={i} className="border-l-2 border-primary pl-4 hover:bg-muted/30 rounded-r-lg py-2 transition-colors">
+                  <div
+                    key={i}
+                    className="border-l-2 border-primary pl-4 hover:bg-muted/30 rounded-r-lg py-2 transition-colors"
+                  >
                     <div className="font-semibold">{c.title}</div>
                     <p className="text-sm text-muted-foreground mt-0.5">{c.why}</p>
                     {c.next_steps?.length > 0 && (
@@ -484,7 +509,11 @@ function ResumeScanner() {
                 <CardContent>
                   <div className="flex flex-wrap gap-2">
                     {roadmap.skill_gaps.map((s, i) => (
-                      <Badge key={i} variant="secondary" className="hover:scale-105 transition-transform">
+                      <Badge
+                        key={i}
+                        variant="secondary"
+                        className="hover:scale-105 transition-transform"
+                      >
                         {s}
                       </Badge>
                     ))}
@@ -522,7 +551,10 @@ function ResumeScanner() {
               </CardHeader>
               <CardContent className="grid md:grid-cols-2 gap-3">
                 {roadmap.recommended_certifications.map((c, i) => (
-                  <div key={i} className="rounded-xl border p-4 hover:shadow-card-soft hover:-translate-y-0.5 transition-all">
+                  <div
+                    key={i}
+                    className="rounded-xl border p-4 hover:shadow-card-soft hover:-translate-y-0.5 transition-all"
+                  >
                     <div className="flex items-center gap-2 mb-1">
                       <Award className="h-4 w-4 text-primary" />
                       <div className="font-medium">{c.name}</div>
@@ -543,7 +575,10 @@ function ResumeScanner() {
               </CardHeader>
               <CardContent className="space-y-2">
                 {roadmap.suggested_projects.map((p, i) => (
-                  <div key={i} className="rounded-xl border p-4 hover:bg-muted/30 transition-colors">
+                  <div
+                    key={i}
+                    className="rounded-xl border p-4 hover:bg-muted/30 transition-colors"
+                  >
                     <div className="font-medium">{p.title}</div>
                     <p className="text-sm text-muted-foreground mt-0.5">{p.description}</p>
                   </div>
@@ -600,7 +635,10 @@ function ResumeScanner() {
                 </CardHeader>
                 <CardContent className="space-y-2">
                   {roadmap.recommended_jobs.map((j, i) => (
-                    <div key={i} className="rounded-lg border p-3 hover:bg-muted/30 transition-colors">
+                    <div
+                      key={i}
+                      className="rounded-lg border p-3 hover:bg-muted/30 transition-colors"
+                    >
                       <div className="font-medium">{j.title}</div>
                       <p className="text-sm text-muted-foreground">{j.why}</p>
                     </div>
@@ -618,7 +656,10 @@ function ResumeScanner() {
                 </CardHeader>
                 <CardContent className="space-y-2">
                   {roadmap.companies_hiring.map((c, i) => (
-                    <div key={i} className="flex items-center justify-between rounded-lg border p-3 hover:bg-muted/30 transition-colors">
+                    <div
+                      key={i}
+                      className="flex items-center justify-between rounded-lg border p-3 hover:bg-muted/30 transition-colors"
+                    >
                       <span className="font-medium">{c.name}</span>
                       <Badge variant="secondary">{c.sector}</Badge>
                     </div>
@@ -657,12 +698,31 @@ function ResumeScanner() {
               </CardHeader>
               <CardContent className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {[
-                  { label: "30 Days", items: roadmap.interview_prep_plan.thirty_days, color: "border-green-500" },
-                  { label: "60 Days", items: roadmap.interview_prep_plan.sixty_days, color: "border-blue-500" },
-                  { label: "90 Days", items: roadmap.interview_prep_plan.ninety_days, color: "border-amber-500" },
-                  { label: "180 Days", items: roadmap.interview_prep_plan.one_eighty_days, color: "border-purple-500" },
+                  {
+                    label: "30 Days",
+                    items: roadmap.interview_prep_plan.thirty_days,
+                    color: "border-green-500",
+                  },
+                  {
+                    label: "60 Days",
+                    items: roadmap.interview_prep_plan.sixty_days,
+                    color: "border-blue-500",
+                  },
+                  {
+                    label: "90 Days",
+                    items: roadmap.interview_prep_plan.ninety_days,
+                    color: "border-amber-500",
+                  },
+                  {
+                    label: "180 Days",
+                    items: roadmap.interview_prep_plan.one_eighty_days,
+                    color: "border-purple-500",
+                  },
                 ].map((phase) => (
-                  <div key={phase.label} className={`rounded-xl border-l-4 ${phase.color} bg-muted/20 p-4`}>
+                  <div
+                    key={phase.label}
+                    className={`rounded-xl border-l-4 ${phase.color} bg-muted/20 p-4`}
+                  >
                     <div className="font-semibold mb-2">{phase.label}</div>
                     <ul className="space-y-1.5">
                       {phase.items?.map((s, i) => (

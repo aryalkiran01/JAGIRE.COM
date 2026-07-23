@@ -278,8 +278,7 @@ function FeedPage() {
         .delete()
         .eq("comment_id", commentId)
         .eq("user_id", user!.id);
-    else
-      await supabase.from("comment_likes").insert({ comment_id: commentId, user_id: user!.id });
+    else await supabase.from("comment_likes").insert({ comment_id: commentId, user_id: user!.id });
     qc.invalidateQueries({ queryKey: ["feed"] });
     qc.invalidateQueries({ queryKey: ["feed-comment-likes"] });
   }
@@ -360,10 +359,16 @@ function FeedPage() {
   }
 
   const visiblePosts = posts?.slice(0, visibleCount) ?? [];
-  const trendingPosts = posts
-    ?.slice()
-    .sort((a, b) => (b.likes_count ?? 0) + (b.comments_count ?? 0) * 2 - ((a.likes_count ?? 0) + (a.comments_count ?? 0) * 2))
-    .slice(0, 5) ?? [];
+  const trendingPosts =
+    posts
+      ?.slice()
+      .sort(
+        (a, b) =>
+          (b.likes_count ?? 0) +
+          (b.comments_count ?? 0) * 2 -
+          ((a.likes_count ?? 0) + (a.comments_count ?? 0) * 2),
+      )
+      .slice(0, 5) ?? [];
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
@@ -372,7 +377,9 @@ function FeedPage() {
         <div className="space-y-4 min-w-0">
           <div className="mb-2">
             <h1 className="text-3xl font-bold">Community Feed</h1>
-            <p className="text-muted-foreground text-sm">Share insights, network, and stay updated</p>
+            <p className="text-muted-foreground text-sm">
+              Share insights, network, and stay updated
+            </p>
           </div>
 
           {/* Compose box */}
@@ -452,7 +459,9 @@ function FeedPage() {
             <Card>
               <CardContent className="p-12 text-center">
                 <Flame className="h-10 w-10 mx-auto mb-3 text-muted-foreground/50" />
-                <p className="text-muted-foreground">No posts yet. Be the first to share something!</p>
+                <p className="text-muted-foreground">
+                  No posts yet. Be the first to share something!
+                </p>
               </CardContent>
             </Card>
           )}
@@ -483,7 +492,9 @@ function FeedPage() {
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
-                      <div className="font-semibold text-sm">{p.author?.full_name ?? "Anonymous"}</div>
+                      <div className="font-semibold text-sm">
+                        {p.author?.full_name ?? "Anonymous"}
+                      </div>
                       <div className="text-xs text-muted-foreground">
                         {p.author?.headline ?? ""}
                         {p.author?.headline && " · "}
@@ -641,7 +652,9 @@ function FeedPage() {
                                 className={`h-6 px-2 text-xs ${commentLiked ? "text-red-500" : "text-muted-foreground"}`}
                                 onClick={() => toggleCommentLike(c.id, !!commentLiked)}
                               >
-                                <Heart className={`h-3 w-3 mr-1 ${commentLiked ? "fill-red-500" : ""}`} />
+                                <Heart
+                                  className={`h-3 w-3 mr-1 ${commentLiked ? "fill-red-500" : ""}`}
+                                />
                                 {c.likes_count ?? 0}
                               </Button>
                               {isCommentAuthor && (
@@ -694,7 +707,7 @@ function FeedPage() {
                   </div>
                 </CardContent>
               </Card>
-            )
+            );
           })}
 
           {/* Load more sentinel */}
@@ -716,11 +729,7 @@ function FeedPage() {
                 </div>
                 <div className="space-y-3">
                   {trendingPosts.map((p, i) => (
-                    <a
-                      key={p.id}
-                      href={`#post-${p.id}`}
-                      className="block group"
-                    >
+                    <a key={p.id} href={`#post-${p.id}`} className="block group">
                       <div className="flex items-start gap-2">
                         <span className="text-xs font-bold text-muted-foreground/50 mt-0.5">
                           #{i + 1}
@@ -771,8 +780,8 @@ function FeedPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete post?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. The post, its comments, likes, and associated media
-              will be permanently removed.
+              This action cannot be undone. The post, its comments, likes, and associated media will
+              be permanently removed.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
