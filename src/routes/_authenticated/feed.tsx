@@ -20,7 +20,20 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Heart, MessageCircle, Bookmark, Send, Loader as Loader2, Share2, Pencil, Trash2, TrendingUp, Flame, ImagePlus, MoveHorizontal as MoreHorizontal } from "lucide-react";
+import {
+  Heart,
+  MessageCircle,
+  Bookmark,
+  Send,
+  Loader as Loader2,
+  Share2,
+  Pencil,
+  Trash2,
+  TrendingUp,
+  Flame,
+  ImagePlus,
+  MoveHorizontal as MoreHorizontal,
+} from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 
