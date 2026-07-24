@@ -13,7 +13,7 @@ import {
   MapPin,
   Briefcase,
   Clock,
-  DollarSign,
+  IndianRupee,
   Bookmark,
   Loader as Loader2,
   MessageSquare,
@@ -25,6 +25,12 @@ import { ApplyJobDialog } from "@/components/apply-job-dialog";
 export const Route = createFileRoute("/jobs/$jobId")({
   component: JobDetail,
 });
+
+function fmtSalary(min: number | null, max: number | null) {
+  if (!min) return null;
+  const fmt = (n: number) => `Rs. ${n.toLocaleString("en-IN")}`;
+  return max && max !== min ? `${fmt(min)} – ${fmt(max)}` : `${fmt(min)}+`;
+}
 
 function JobDetail() {
   const { jobId } = Route.useParams();
@@ -77,6 +83,8 @@ function JobDetail() {
   if (!job)
     return <div className="min-h-screen flex items-center justify-center">Job not found</div>;
 
+  const salary = fmtSalary(job.salary_min, job.salary_max);
+
   return (
     <div className="min-h-screen bg-background">
       <SiteHeader />
@@ -87,11 +95,7 @@ function JobDetail() {
               <div className="flex items-start gap-4 mb-6">
                 <div className="h-16 w-16 rounded-xl bg-muted flex items-center justify-center overflow-hidden">
                   {(job as any).company?.logo_url ? (
-                    <img
-                      src={(job as any).company.logo_url}
-                      alt=""
-                      className="h-full w-full object-cover"
-                    />
+                    <img src={(job as any).company.logo_url} alt="" className="h-full w-full object-cover" />
                   ) : (
                     <Building2 className="h-8 w-8" />
                   )}
@@ -102,8 +106,7 @@ function JobDetail() {
                   <div className="flex flex-wrap gap-2 mt-3">
                     {job.location && (
                       <Badge variant="secondary">
-                        <MapPin className="mr-1 h-3 w-3" />
-                        {job.location}
+                        <MapPin className="mr-1 h-3 w-3" />{job.location}
                       </Badge>
                     )}
                     <Badge variant="secondary">
@@ -111,11 +114,9 @@ function JobDetail() {
                       {String(job.job_type).replace("_", " ")}
                     </Badge>
                     <Badge variant="outline">{job.experience_level}</Badge>
-                    {job.salary_min && (
+                    {salary && (
                       <Badge className="gradient-brand text-primary-foreground">
-                        <DollarSign className="mr-1 h-3 w-3" />
-                        {Math.round(job.salary_min / 1000)}k -{" "}
-                        {Math.round((job.salary_max ?? job.salary_min) / 1000)}k
+                        <IndianRupee className="mr-1 h-3 w-3" />{salary}
                       </Badge>
                     )}
                   </div>
@@ -151,9 +152,7 @@ function JobDetail() {
                     <h3>Skills</h3>
                     <div className="flex flex-wrap gap-2 not-prose">
                       {job.required_skills.map((s) => (
-                        <Badge key={s} variant="outline">
-                          {s}
-                        </Badge>
+                        <Badge key={s} variant="outline">{s}</Badge>
                       ))}
                     </div>
                   </>
@@ -176,12 +175,7 @@ function JobDetail() {
                 />
               ) : (
                 <Button
-                  onClick={() =>
-                    navigate({
-                      to: "/auth",
-                      search: { mode: "signin", redirect: `/jobs/${jobId}` },
-                    })
-                  }
+                  onClick={() => navigate({ to: "/auth", search: { mode: "signin", redirect: `/jobs/${jobId}` } })}
                   className="w-full gradient-brand text-primary-foreground"
                 >
                   Sign in to apply
@@ -193,27 +187,20 @@ function JobDetail() {
                 </p>
               )}
               <Button onClick={save} disabled={saving} variant="outline" className="w-full">
-                <Bookmark className="mr-2 h-4 w-4" />
-                Save job
+                <Bookmark className="mr-2 h-4 w-4" />Save job
               </Button>
-              {user &&
-                (job as any).company?.owner_id &&
-                (job as any).company.owner_id !== user.id && (
-                  <Button asChild variant="outline" className="w-full">
-                    <Link to="/messages" search={{ with: (job as any).company.owner_id }}>
-                      <MessageSquare className="mr-2 h-4 w-4" />
-                      Message employer
-                    </Link>
-                  </Button>
-                )}
+              {user && (job as any).company?.owner_id && (job as any).company.owner_id !== user.id && (
+                <Button asChild variant="outline" className="w-full">
+                  <Link to="/messages" search={{ with: (job as any).company.owner_id }}>
+                    <MessageSquare className="mr-2 h-4 w-4" />Message employer
+                  </Link>
+                </Button>
+              )}
               <div className="text-xs text-muted-foreground pt-3 border-t">
                 <div className="flex items-center gap-1">
-                  <Clock className="h-3 w-3" /> Posted{" "}
-                  {new Date(job.created_at).toLocaleDateString()}
+                  <Clock className="h-3 w-3" /> Posted {new Date(job.created_at).toLocaleDateString()}
                 </div>
-                <div className="mt-1">
-                  {job.applications_count} applicants · {job.views_count} views
-                </div>
+                <div className="mt-1">{job.applications_count} applicants · {job.views_count} views</div>
               </div>
             </CardContent>
           </Card>

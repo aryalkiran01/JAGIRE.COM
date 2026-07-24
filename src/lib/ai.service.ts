@@ -9,6 +9,7 @@ import {
   careerRecommendationsSchema,
   linkedinImportSchema,
   learningRecommendationsSchema,
+  careerCoachResponseSchema,
 } from "@/integrations/ai/schemas";
 
 // ── Prompts ──────────────────────────────────────────────────────────────────
@@ -236,6 +237,27 @@ export const scanResumeFromStorage = createServerFn({ method: "POST" })
         .slice(0, 8);
     }
 
+    // Profile auto-update from resume scan
+    const profilePatch: Record<string, any> = {
+      ai_profile_data: {
+        summary: scan.summary,
+        skills: scan.extracted_skills ?? [],
+        strengths: scan.strengths ?? [],
+        keywords: scan.keywords ?? [],
+        missing_skills: scan.missing_skills ?? [],
+      },
+    };
+    // Only overwrite skills if user has none set yet
+    const { data: existingProfile } = await context.supabase
+      .from("profiles")
+      .select("skills")
+      .eq("id", context.userId)
+      .maybeSingle();
+    if (!existingProfile?.skills?.length && scan.extracted_skills?.length) {
+      profilePatch.skills = scan.extracted_skills.slice(0, 20);
+    }
+    await context.supabase.from("profiles").update(profilePatch).eq("id", context.userId);
+
     return { ...scoringUpdate, matches };
   });
 
@@ -348,4 +370,76 @@ export const importFromLinkedInText = createServerFn({ method: "POST" })
       .eq("id", context.userId);
     if (error) throw new Error(error.message);
     return { imported: { fields: Object.keys(patch).length, skills: patch.skills?.length ?? 0 } };
+  });
+
+const CAREER_COACH_SYSTEM =
+  "You are Jagire AI Career Coach. You have the user's profile, resume scores, skills, and application history. " +
+  "Give personalised, actionable career advice. " +
+  "JSON only: {advice(string),recommended_skills(string[8]),action_plan(string[6]),improvement_suggestions(string[6]),follow_up_questions(string[3])}";
+
+export const careerCoach = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => {
+    const i = input as { question: string; sessionId?: string };
+    if (!i?.question?.trim()) throw new Error("Question is required");
+    return { question: i.question.trim().slice(0, 1000), sessionId: i.sessionId };
+  })
+  .handler(async ({ data, context }) => {
+    const [{ data: profile }, { data: resume }, { data: applications }] = await Promise.all([
+      context.supabase
+        .from("profiles")
+        .select("full_name,headline,skills,experience_years,location")
+        .eq("id", context.userId)
+        .maybeSingle(),
+      context.supabase
+        .from("resumes")
+        .select("overall_score,ats_score,grammar_score,suggestions,career_roadmap")
+        .eq("user_id", context.userId)
+        .eq("is_default", true)
+        .maybeSingle(),
+      context.supabase
+        .from("applications")
+        .select("status, job:jobs(title)")
+        .eq("applicant_id", context.userId)
+        .limit(10),
+    ]);
+
+    const appSummary = (applications ?? [])
+      .map((a: any) => `${a.job?.title}(${a.status})`)
+      .join(", ");
+
+    const contextBlock = [
+      `Profile: ${JSON.stringify({ ...profile })}`,
+      `Resume scores: overall=${resume?.overall_score ?? "?"}, ats=${resume?.ats_score ?? "?"}, grammar=${resume?.grammar_score ?? "?"}`,
+      `Recent applications: ${appSummary || "none"}`,
+      `User question: ${data.question}`,
+    ].join("\n");
+
+    const response = await aiGenerateJsonValidated(
+      contextBlock,
+      CAREER_COACH_SYSTEM,
+      careerCoachResponseSchema,
+      "career-coach",
+    );
+
+    // Persist session history
+    const sessionId = data.sessionId;
+    if (sessionId) {
+      const { data: existing } = await context.supabase
+        .from("career_coach_sessions")
+        .select("messages")
+        .eq("id", sessionId)
+        .eq("user_id", context.userId)
+        .maybeSingle();
+      const msgs = (existing?.messages as any[]) ?? [];
+      msgs.push({ role: "user", content: data.question, ts: new Date().toISOString() });
+      msgs.push({ role: "assistant", content: response, ts: new Date().toISOString() });
+      await context.supabase
+        .from("career_coach_sessions")
+        .update({ messages: msgs, updated_at: new Date().toISOString() })
+        .eq("id", sessionId)
+        .eq("user_id", context.userId);
+    }
+
+    return response;
   });

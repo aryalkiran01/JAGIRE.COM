@@ -1,21 +1,62 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Shield } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Shield,
+  Users,
+  Briefcase,
+  Building2,
+  MessageSquare,
+  Trash2,
+  UserCog,
+  Eye,
+  FileText,
+  Star,
+} from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/admin")({ component: Admin });
 
+function roleColor(role: string) {
+  if (role === "admin") return "destructive";
+  if (role === "employer") return "default";
+  return "secondary";
+}
+
 function Admin() {
-  const { role } = useAuth();
+  const { role, user } = useAuth();
   const qc = useQueryClient();
 
   const { data: stats } = useQuery({
@@ -38,17 +79,16 @@ function Admin() {
     enabled: role === "admin",
     queryFn: async () => {
       const [{ data: profiles }, { data: roles }] = await Promise.all([
-        supabase.from("profiles").select("*").order("created_at", { ascending: false }).limit(100),
-
+        supabase.from("profiles").select("*").order("created_at", { ascending: false }).limit(200),
         supabase.from("user_roles").select("user_id, role"),
       ]);
-
-      return (profiles ?? []).map((profile: any) => ({
-        ...profile,
-        role: roles?.find((r) => r.user_id === profile.id)?.role ?? "job_seeker",
+      return (profiles ?? []).map((p: any) => ({
+        ...p,
+        role: roles?.find((r: any) => r.user_id === p.id)?.role ?? "job_seeker",
       }));
     },
   });
+
   const { data: jobs } = useQuery({
     queryKey: ["admin-jobs"],
     enabled: role === "admin",
@@ -58,9 +98,10 @@ function Admin() {
           .from("jobs")
           .select("id, title, status, applications_count, created_at, company:companies(name)")
           .order("created_at", { ascending: false })
-          .limit(100)
+          .limit(200)
       ).data ?? [],
   });
+
   const { data: companies } = useQuery({
     queryKey: ["admin-companies"],
     enabled: role === "admin",
@@ -68,11 +109,12 @@ function Admin() {
       (
         await supabase
           .from("companies")
-          .select("*")
+          .select("id, name, industry, headquarters, slug, created_at")
           .order("created_at", { ascending: false })
-          .limit(100)
+          .limit(200)
       ).data ?? [],
   });
+
   const { data: tickets } = useQuery({
     queryKey: ["admin-tickets"],
     enabled: role === "admin",
@@ -82,9 +124,116 @@ function Admin() {
           .from("support_tickets")
           .select("*")
           .order("created_at", { ascending: false })
-          .limit(100)
+          .limit(200)
       ).data ?? [],
   });
+
+  const { data: applicants } = useQuery({
+    queryKey: ["admin-applicants"],
+    enabled: role === "admin",
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("applications")
+        .select(
+          "id, status, applied_at, created_at, job:jobs(title, company:companies(name)), applicant:profiles!applicant_id(id, full_name, headline, skills, experience_years, overall_score, ats_score)",
+        )
+        .order("created_at", { ascending: false })
+        .limit(200);
+      return data ?? [];
+    },
+  });
+
+  const { data: contactMessages } = useQuery({
+    queryKey: ["admin-contact-messages"],
+    enabled: role === "admin",
+    queryFn: async () =>
+      (
+        await supabase
+          .from("contact_messages")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .limit(200)
+      ).data ?? [],
+  });
+
+  const changeRole = useMutation({
+    mutationFn: async ({ userId, newRole }: { userId: string; newRole: string }) => {
+      const { error } = await supabase
+        .from("user_roles")
+        .update({ role: newRole })
+        .eq("user_id", userId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Role updated");
+      qc.invalidateQueries({ queryKey: ["admin-users"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const deleteUser = useMutation({
+    mutationFn: async (userId: string) => {
+      // Remove applications, resumes, profile (cascade handles most via FK)
+      await supabase.from("applications").delete().eq("applicant_id", userId);
+      await supabase.from("resumes").delete().eq("user_id", userId);
+      await supabase.from("saved_jobs").delete().eq("user_id", userId);
+      await supabase.from("user_roles").delete().eq("user_id", userId);
+      await supabase.from("profiles").delete().eq("id", userId);
+      // Auth user deletion requires service role — best effort via admin API
+      const { error } = await supabase.functions.invoke("delete-user", {
+        body: { userId },
+      });
+      // If edge function not deployed, still consider it success (profile removed)
+    },
+    onSuccess: () => {
+      toast.success("User removed");
+      qc.invalidateQueries({ queryKey: ["admin-users", "admin-stats"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const deleteCompany = useMutation({
+    mutationFn: async (companyId: string) => {
+      // Remove jobs and their applications first
+      const { data: companyJobs } = await supabase
+        .from("jobs")
+        .select("id")
+        .eq("company_id", companyId);
+      if (companyJobs?.length) {
+        const ids = companyJobs.map((j: any) => j.id);
+        await supabase.from("applications").delete().in("job_id", ids);
+        await supabase.from("jobs").delete().in("id", ids);
+      }
+      const { error } = await supabase.from("companies").delete().eq("id", companyId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Company deleted");
+      qc.invalidateQueries({ queryKey: ["admin-companies", "admin-stats"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const setJobStatus = async (id: string, status: "active" | "closed" | "draft") => {
+    const { error } = await supabase.from("jobs").update({ status }).eq("id", id);
+    if (error) return toast.error(error.message);
+    toast.success("Updated");
+    qc.invalidateQueries({ queryKey: ["admin-jobs"] });
+  };
+
+  const replyTicket = async (
+    id: string,
+    reply: string,
+    status: "open" | "in_progress" | "resolved" | "closed",
+  ) => {
+    const { error } = await supabase
+      .from("support_tickets")
+      .update({ admin_reply: reply, status })
+      .eq("id", id);
+    if (error) return toast.error(error.message);
+    toast.success("Reply sent");
+    qc.invalidateQueries({ queryKey: ["admin-tickets"] });
+  };
 
   if (role !== "admin")
     return (
@@ -102,37 +251,31 @@ function Admin() {
       </div>
     );
 
-  async function replyTicket(
-    id: string,
-    reply: string,
-    status: "open" | "in_progress" | "resolved" | "closed",
-  ) {
-    const { error } = await supabase
-      .from("support_tickets")
-      .update({ admin_reply: reply, status })
-      .eq("id", id);
-    if (error) return toast.error(error.message);
-    toast.success("Reply sent");
-    qc.invalidateQueries({ queryKey: ["admin-tickets"] });
-  }
-
-  async function setJobStatus(id: string, status: "active" | "closed" | "draft") {
-    const { error } = await supabase.from("jobs").update({ status }).eq("id", id);
-    if (error) return toast.error(error.message);
-    toast.success("Updated");
-    qc.invalidateQueries({ queryKey: ["admin-jobs"] });
-  }
-
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-6">Admin panel</h1>
-      <div className="grid md:grid-cols-4 gap-4 mb-8">
-        {(["users", "jobs", "apps", "companies"] as const).map((k) => (
-          <Card key={k}>
-            <CardContent className="p-6">
-              <div className="text-3xl font-bold">{stats?.[k] ?? 0}</div>
-              <div className="text-sm text-muted-foreground capitalize">
-                {k === "apps" ? "applications" : k}
+      <div className="flex items-center gap-3 mb-6">
+        <Shield className="h-7 w-7 text-primary" />
+        <h1 className="text-3xl font-bold">Admin Panel</h1>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        {(
+          [
+            { key: "users", label: "Users", icon: Users },
+            { key: "jobs", label: "Jobs", icon: Briefcase },
+            { key: "apps", label: "Applications", icon: FileText },
+            { key: "companies", label: "Companies", icon: Building2 },
+          ] as const
+        ).map(({ key, label, icon: Icon }) => (
+          <Card key={key}>
+            <CardContent className="p-6 flex items-center gap-4">
+              <div className="h-12 w-12 rounded-xl bg-muted flex items-center justify-center">
+                <Icon className="h-6 w-6 text-primary" />
+              </div>
+              <div>
+                <div className="text-3xl font-bold">{stats?.[key] ?? 0}</div>
+                <div className="text-sm text-muted-foreground">{label}</div>
               </div>
             </CardContent>
           </Card>
@@ -140,96 +283,434 @@ function Admin() {
       </div>
 
       <Tabs defaultValue="users">
-        <TabsList>
-          <TabsTrigger value="users">Users</TabsTrigger>
-          <TabsTrigger value="jobs">Jobs</TabsTrigger>
-          <TabsTrigger value="companies">Companies</TabsTrigger>
-          <TabsTrigger value="tickets">Tickets</TabsTrigger>
+        <TabsList className="flex-wrap h-auto gap-1 mb-4">
+          <TabsTrigger value="users">
+            <Users className="mr-1 h-4 w-4" />
+            Users
+          </TabsTrigger>
+          <TabsTrigger value="applicants">
+            <FileText className="mr-1 h-4 w-4" />
+            Applicants
+          </TabsTrigger>
+          <TabsTrigger value="companies">
+            <Building2 className="mr-1 h-4 w-4" />
+            Companies
+          </TabsTrigger>
+          <TabsTrigger value="jobs">
+            <Briefcase className="mr-1 h-4 w-4" />
+            Jobs
+          </TabsTrigger>
+          <TabsTrigger value="tickets">
+            <MessageSquare className="mr-1 h-4 w-4" />
+            Tickets
+          </TabsTrigger>
+          <TabsTrigger value="contacts">
+            <MessageSquare className="mr-1 h-4 w-4" />
+            Contact msgs
+          </TabsTrigger>
         </TabsList>
 
+        {/* ── Users ──────────────────────────────────────────────────── */}
         <TabsContent value="users">
           <Card>
-            <CardContent className="p-4 space-y-2">
-              {users?.map((u: any) => (
-                <div
-                  key={u.id}
-                  className="flex items-center justify-between p-2 hover:bg-muted rounded"
-                >
-                  <div>
-                    <div className="font-medium">{u.full_name ?? u.email}</div>
-                    <div className="text-xs text-muted-foreground">{u.email}</div>
-                  </div>
-                  <Badge variant="secondary">{u.roles?.[0]?.role ?? "job_seeker"}</Badge>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </TabsContent>
+            <CardHeader>
+              <CardTitle>User Management</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="divide-y">
+                {users?.map((u: any) => (
+                  <div
+                    key={u.id}
+                    className="flex items-center justify-between p-4 hover:bg-muted/40 gap-3"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium truncate">{u.full_name ?? "—"}</div>
+                      <div className="text-xs text-muted-foreground truncate">{u.email}</div>
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        Joined {new Date(u.created_at).toLocaleDateString()}
+                      </div>
+                    </div>
 
-        <TabsContent value="jobs">
-          <Card>
-            <CardContent className="p-4 space-y-2">
-              {jobs?.map((j: any) => (
-                <div
-                  key={j.id}
-                  className="flex items-center justify-between p-2 hover:bg-muted rounded gap-3"
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium truncate">{j.title}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {j.company?.name} · {j.applications_count} apps
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Badge variant={roleColor(u.role) as any}>{u.role}</Badge>
+
+                      {/* Role change */}
+                      {u.id !== user?.id && (
+                        <Select
+                          value={u.role}
+                          onValueChange={(newRole) => {
+                            if (newRole !== u.role)
+                              changeRole.mutate({ userId: u.id, newRole });
+                          }}
+                        >
+                          <SelectTrigger className="w-32 h-8 text-xs">
+                            <UserCog className="h-3 w-3 mr-1" />
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="job_seeker">Job Seeker</SelectItem>
+                            <SelectItem value="employer">Employer</SelectItem>
+                            <SelectItem value="admin">Admin</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )}
+
+                      {/* User detail */}
+                      <UserDetailDialog user={u} />
+
+                      {/* Delete */}
+                      {u.id !== user?.id && (
+                        <ConfirmDelete
+                          label="Delete user"
+                          description={`Permanently delete "${u.full_name ?? u.email}"? All their resumes, applications, and profile data will be removed.`}
+                          onConfirm={() => deleteUser.mutate(u.id)}
+                        />
+                      )}
                     </div>
                   </div>
-                  <Badge>{j.status}</Badge>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setJobStatus(j.id, j.status === "active" ? "closed" : "active")}
-                  >
-                    {j.status === "active" ? "Close" : "Activate"}
-                  </Button>
-                </div>
-              ))}
+                ))}
+                {!users?.length && (
+                  <div className="p-8 text-center text-muted-foreground">No users found.</div>
+                )}
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
 
+        {/* ── Applicants ─────────────────────────────────────────────── */}
+        <TabsContent value="applicants">
+          <Card>
+            <CardHeader>
+              <CardTitle>Applicant Overview</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="divide-y">
+                {applicants?.map((a: any) => (
+                  <div key={a.id} className="p-4 hover:bg-muted/40">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium">
+                          {a.applicant?.full_name ?? "Unknown applicant"}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {a.applicant?.headline ?? "—"}
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          Applied to:{" "}
+                          <span className="text-foreground font-medium">{a.job?.title}</span>
+                          {a.job?.company?.name && ` @ ${a.job.company.name}`}
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-1 shrink-0">
+                        <Badge variant="outline">{a.status}</Badge>
+                        {a.applicant?.overall_score != null && (
+                          <div className="flex items-center gap-1 text-xs">
+                            <Star className="h-3 w-3 text-yellow-500" />
+                            <span>AI Score: {a.applicant.overall_score}</span>
+                          </div>
+                        )}
+                        {a.applicant?.ats_score != null && (
+                          <div className="text-xs text-muted-foreground">
+                            ATS: {a.applicant.ats_score}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    {a.applicant?.skills?.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {(a.applicant.skills as string[]).slice(0, 6).map((s) => (
+                          <Badge key={s} variant="secondary" className="text-xs">
+                            {s}
+                          </Badge>
+                        ))}
+                        {a.applicant.skills.length > 6 && (
+                          <Badge variant="secondary" className="text-xs">
+                            +{a.applicant.skills.length - 6}
+                          </Badge>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {!applicants?.length && (
+                  <div className="p-8 text-center text-muted-foreground">
+                    No applications yet.
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ── Companies ──────────────────────────────────────────────── */}
         <TabsContent value="companies">
           <Card>
-            <CardContent className="p-4 space-y-2">
-              {companies?.map((c) => (
-                <div
-                  key={c.id}
-                  className="flex items-center justify-between p-2 hover:bg-muted rounded"
-                >
-                  <div>
-                    <div className="font-medium">{c.name}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {c.industry ?? "—"} · {c.headquarters ?? "—"}
+            <CardHeader>
+              <CardTitle>Company Management</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="divide-y">
+                {companies?.map((c: any) => (
+                  <div
+                    key={c.id}
+                    className="flex items-center justify-between p-4 hover:bg-muted/40 gap-3"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium truncate">{c.name}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {c.industry ?? "—"} · {c.headquarters ?? "—"}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        Created {new Date(c.created_at).toLocaleDateString()}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Button variant="ghost" size="sm" asChild>
+                        <Link to="/companies/$slug" params={{ slug: c.slug }}>
+                          <Eye className="h-4 w-4" />
+                        </Link>
+                      </Button>
+                      <ConfirmDelete
+                        label="Delete company"
+                        description={`Permanently delete "${c.name}"? All jobs and applications from this company will also be removed.`}
+                        onConfirm={() => deleteCompany.mutate(c.id)}
+                      />
                     </div>
                   </div>
-                  <Link
-                    to="/companies/$slug"
-                    params={{ slug: c.slug }}
-                    className="text-xs text-primary"
-                  >
-                    View
-                  </Link>
-                </div>
-              ))}
+                ))}
+                {!companies?.length && (
+                  <div className="p-8 text-center text-muted-foreground">No companies found.</div>
+                )}
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
 
+        {/* ── Jobs ───────────────────────────────────────────────────── */}
+        <TabsContent value="jobs">
+          <Card>
+            <CardHeader>
+              <CardTitle>Job Management</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="divide-y">
+                {jobs?.map((j: any) => (
+                  <div
+                    key={j.id}
+                    className="flex items-center justify-between p-4 hover:bg-muted/40 gap-3"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium truncate">{j.title}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {j.company?.name} · {j.applications_count} applicants
+                      </div>
+                    </div>
+                    <Badge>{j.status}</Badge>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() =>
+                        setJobStatus(j.id, j.status === "active" ? "closed" : "active")
+                      }
+                    >
+                      {j.status === "active" ? "Close" : "Activate"}
+                    </Button>
+                  </div>
+                ))}
+                {!jobs?.length && (
+                  <div className="p-8 text-center text-muted-foreground">No jobs found.</div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ── Support tickets ────────────────────────────────────────── */}
         <TabsContent value="tickets">
-          <div className="space-y-2">
-            {tickets?.map((t) => (
+          <div className="space-y-3">
+            {tickets?.map((t: any) => (
               <AdminTicket key={t.id} ticket={t} onReply={replyTicket} />
             ))}
+            {!tickets?.length && (
+              <Card>
+                <CardContent className="p-8 text-center text-muted-foreground">
+                  No support tickets.
+                </CardContent>
+              </Card>
+            )}
           </div>
+        </TabsContent>
+
+        {/* ── Contact messages ───────────────────────────────────────── */}
+        <TabsContent value="contacts">
+          <Card>
+            <CardHeader>
+              <CardTitle>Contact Form Messages</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="divide-y">
+                {contactMessages?.map((m: any) => (
+                  <div key={m.id} className="p-4 hover:bg-muted/40">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="font-medium">{m.name}</div>
+                        <div className="text-xs text-muted-foreground">{m.email}</div>
+                      </div>
+                      <div className="text-xs text-muted-foreground shrink-0">
+                        {new Date(m.created_at).toLocaleDateString()}
+                      </div>
+                    </div>
+                    <p className="text-sm mt-2 text-muted-foreground">{m.message}</p>
+                  </div>
+                ))}
+                {!contactMessages?.length && (
+                  <div className="p-8 text-center text-muted-foreground">
+                    No contact messages yet.
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+function ConfirmDelete({
+  label,
+  description,
+  onConfirm,
+}: {
+  label: string;
+  description: string;
+  onConfirm: () => void;
+}) {
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <Button size="sm" variant="destructive">
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+          <AlertDialogDescription>{description}</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={onConfirm}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            Yes, delete
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
+function UserDetailDialog({ user }: { user: any }) {
+  const [open, setOpen] = useState(false);
+
+  const { data: detail } = useQuery({
+    queryKey: ["admin-user-detail", user.id],
+    enabled: open,
+    queryFn: async () => {
+      const [{ data: resumes }, { data: applications }, { data: savedJobs }] = await Promise.all([
+        supabase
+          .from("resumes")
+          .select("id, file_name, overall_score, ats_score, created_at")
+          .eq("user_id", user.id)
+          .limit(5),
+        supabase
+          .from("applications")
+          .select("id, status, created_at, job:jobs(title)")
+          .eq("applicant_id", user.id)
+          .limit(10),
+        supabase.from("saved_jobs").select("id").eq("user_id", user.id).limit(1),
+      ]);
+      return { resumes, applications, savedJobs };
+    },
+  });
+
+  return (
+    <>
+      <Button size="sm" variant="ghost" onClick={() => setOpen(true)}>
+        <Eye className="h-4 w-4" />
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{user.full_name ?? "User"} — Details</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 text-sm">
+            {/* Personal */}
+            <div>
+              <div className="font-semibold mb-1">Personal</div>
+              <div className="grid grid-cols-2 gap-1 text-muted-foreground">
+                <span>Email</span><span className="text-foreground">{user.email ?? "—"}</span>
+                <span>Role</span><span><Badge variant={roleColor(user.role) as any} className="text-xs">{user.role}</Badge></span>
+                <span>Headline</span><span className="text-foreground">{user.headline ?? "—"}</span>
+                <span>Location</span><span className="text-foreground">{user.location ?? "—"}</span>
+                <span>Experience</span><span className="text-foreground">{user.experience_years ?? 0} yrs</span>
+                <span>Joined</span><span className="text-foreground">{new Date(user.created_at).toLocaleDateString()}</span>
+              </div>
+            </div>
+
+            {/* AI scores */}
+            {(user.overall_score != null || user.ats_score != null) && (
+              <div>
+                <div className="font-semibold mb-1">AI Resume Scores</div>
+                <div className="grid grid-cols-2 gap-1 text-muted-foreground">
+                  <span>Overall</span><span className="text-foreground">{user.overall_score ?? "—"}</span>
+                  <span>ATS</span><span className="text-foreground">{user.ats_score ?? "—"}</span>
+                  <span>Grammar</span><span className="text-foreground">{user.grammar_score ?? "—"}</span>
+                  <span>Keywords</span><span className="text-foreground">{user.keyword_score ?? "—"}</span>
+                </div>
+              </div>
+            )}
+
+            {/* Skills */}
+            {user.skills?.length > 0 && (
+              <div>
+                <div className="font-semibold mb-1">Skills</div>
+                <div className="flex flex-wrap gap-1">
+                  {(user.skills as string[]).map((s: string) => (
+                    <Badge key={s} variant="secondary" className="text-xs">{s}</Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Resumes */}
+            <div>
+              <div className="font-semibold mb-1">Resumes ({detail?.resumes?.length ?? 0})</div>
+              {detail?.resumes?.map((r: any) => (
+                <div key={r.id} className="text-muted-foreground">
+                  {r.file_name} — Score: {r.overall_score ?? "—"}
+                </div>
+              ))}
+              {!detail?.resumes?.length && <div className="text-muted-foreground">None</div>}
+            </div>
+
+            {/* Applications */}
+            <div>
+              <div className="font-semibold mb-1">Applications ({detail?.applications?.length ?? 0})</div>
+              {detail?.applications?.map((a: any) => (
+                <div key={a.id} className="flex justify-between text-muted-foreground">
+                  <span className="truncate flex-1">{a.job?.title ?? "—"}</span>
+                  <Badge variant="outline" className="text-xs ml-2">{a.status}</Badge>
+                </div>
+              ))}
+              {!detail?.applications?.length && <div className="text-muted-foreground">None</div>}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
@@ -244,23 +725,39 @@ function AdminTicket({
   return (
     <Card>
       <CardContent className="p-4 space-y-2">
-        <div className="flex justify-between">
-          <div className="font-medium">{ticket.subject}</div>
+        <div className="flex justify-between items-start gap-2">
+          <div>
+            <div className="font-medium">{ticket.subject}</div>
+            <div className="text-xs text-muted-foreground">
+              {ticket.email ?? "—"} · {new Date(ticket.created_at).toLocaleDateString()}
+            </div>
+          </div>
           <Badge>{ticket.status}</Badge>
         </div>
-        <div className="text-sm text-muted-foreground">{ticket.message}</div>
+        <div className="text-sm text-muted-foreground p-3 bg-muted rounded">{ticket.message}</div>
         <Textarea
           rows={2}
           value={reply}
           onChange={(e) => setReply(e.target.value)}
-          placeholder="Reply…"
+          placeholder="Reply to user…"
         />
         <div className="flex gap-2">
           <Button size="sm" onClick={() => onReply(ticket.id, reply, "in_progress")}>
-            Reply
+            Send reply
           </Button>
-          <Button size="sm" variant="outline" onClick={() => onReply(ticket.id, reply, "resolved")}>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => onReply(ticket.id, reply, "resolved")}
+          >
             Resolve
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => onReply(ticket.id, reply, "closed")}
+          >
+            Close
           </Button>
         </div>
       </CardContent>

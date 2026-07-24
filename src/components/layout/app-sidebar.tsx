@@ -18,6 +18,7 @@ import {
   Bell,
   User,
   Users,
+  BrainCircuit,
   type LucideIcon,
 } from "lucide-react";
 
@@ -34,6 +35,7 @@ const SEEKER_NAV: NavItem[] = [
   { to: "/saved", label: "Saved Jobs", icon: Bookmark },
   { to: "/interviews", label: "Interviews", icon: Video },
   { to: "/resume-scanner", label: "Resume Scanner", icon: ScanText },
+  { to: "/career-coach", label: "AI Career Coach", icon: BrainCircuit },
   { to: "/resume-builder", label: "Resume Builder", icon: FileText },
   { to: "/assessments", label: "Assessments", icon: GraduationCap },
   { to: "/companies", label: "Companies", icon: Building2 },

@@ -23,6 +23,7 @@ export {
   hiringRecommendationSchema,
   strengthWeaknessSchema,
   companyCandidateAnalysisSchema,
+  careerCoachResponseSchema,
 } from "./schemas";
 export type {
   AIProvider,

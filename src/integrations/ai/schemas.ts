@@ -207,7 +207,15 @@ export const fullResumeScanSchema = z.object({
 });
 
 export type FullResumeScan = z.infer<typeof fullResumeScanSchema>;
-export type ResumeAnalysis = z.infer<typeof resumeAnalysisSchema>;
+export const careerCoachResponseSchema = z.object({
+  advice: z.string(),
+  recommended_skills: z.array(z.string()).max(8).default([]),
+  action_plan: z.array(z.string()).max(6).default([]),
+  improvement_suggestions: z.array(z.string()).max(6).default([]),
+  follow_up_questions: z.array(z.string()).max(3).default([]),
+});
+
+export type CareerCoachResponse = z.infer<typeof careerCoachResponseSchema>;
 export type CareerRecommendations = z.infer<typeof careerRecommendationsSchema>;
 export type LinkedinImport = z.infer<typeof linkedinImportSchema>;
 export type LearningRecommendations = z.infer<typeof learningRecommendationsSchema>;
