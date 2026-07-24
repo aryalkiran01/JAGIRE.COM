@@ -1,10 +1,13 @@
-import { AIProvider, AIRequest } from "./types";
+import { z } from "zod";
+import { AIProvider, AIRequest, AIEmbeddingRequest, AIEmbeddingResponse, AITask } from "./types";
 import { GeminiProvider } from "./gemini-provider";
 import { OpenRouterProvider } from "./openrouter-provider";
+import { OllamaProvider } from "./ollama-provider";
 import { isTransient, isFatal } from "./errors";
 
 const MAX_RETRIES = 3;
 const BACKOFF_BASE_MS = 1000;
+const VALIDATION_RETRY_LIMIT = 1;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -24,6 +27,30 @@ function log(
   }
 }
 
+function getConfiguredProviderOrder(): AIProvider[] {
+  const declared = process.env.AI_PROVIDER?.toLowerCase() ?? "ollama";
+  const list: AIProvider[] = [];
+  switch (declared) {
+    case "gemini":
+      if (process.env.GEMINI_API_KEY) list.push(new GeminiProvider());
+      if (process.env.OPENROUTER_API_KEY) list.push(new OpenRouterProvider());
+      if (process.env.OLLAMA_HOST || true) list.push(new OllamaProvider());
+      break;
+    case "openrouter":
+      if (process.env.OPENROUTER_API_KEY) list.push(new OpenRouterProvider());
+      if (process.env.GEMINI_API_KEY) list.push(new GeminiProvider());
+      if (true) list.push(new OllamaProvider());
+      break;
+    case "ollama":
+    default:
+      list.push(new OllamaProvider());
+      if (process.env.GEMINI_API_KEY) list.push(new GeminiProvider());
+      if (process.env.OPENROUTER_API_KEY) list.push(new OpenRouterProvider());
+      break;
+  }
+  return list;
+}
+
 async function retryWithBackoff<T>(
   provider: AIProvider,
   fn: (p: AIProvider) => Promise<T>,
@@ -31,21 +58,25 @@ async function retryWithBackoff<T>(
 ): Promise<T> {
   let lastError: unknown;
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    const start = Date.now();
     try {
       const result = await fn(provider);
-      if (attempt > 0) {
-        log("info", `${provider.name} succeeded on retry ${attempt}`, {
-          provider: provider.name,
-          attempt,
-        });
-      }
+      const latencyMs = Date.now() - start;
+      log("info", `${provider.name} succeeded for ${label}`, {
+        provider: provider.name,
+        label,
+        attempt,
+        latencyMs,
+      });
       return result;
     } catch (err) {
       lastError = err;
+      const latencyMs = Date.now() - start;
       if (isFatal(err)) {
         log("error", `${provider.name} fatal error — not retrying`, {
           provider: provider.name,
           error: (err as Error).message,
+          latencyMs,
         });
         throw err;
       }
@@ -53,6 +84,7 @@ async function retryWithBackoff<T>(
         log("error", `${provider.name} non-transient error — not retrying`, {
           provider: provider.name,
           error: (err as Error).message,
+          latencyMs,
         });
         throw err;
       }
@@ -62,6 +94,7 @@ async function retryWithBackoff<T>(
           provider: provider.name,
           attempt: attempt + 1,
           error: (err as Error).message,
+          latencyMs,
         });
         await sleep(delay);
       }
@@ -79,21 +112,7 @@ class AIServiceImpl {
   private providerIndex = 0;
 
   constructor(providers?: AIProvider[]) {
-    this.providers = providers ?? this.buildDefaultProviders();
-  }
-
-  private buildDefaultProviders(): AIProvider[] {
-    const list: AIProvider[] = [];
-    if (process.env.GEMINI_API_KEY) {
-      list.push(new GeminiProvider());
-    }
-    if (process.env.OPENROUTER_API_KEY) {
-      list.push(new OpenRouterProvider());
-    }
-    if (list.length === 0) {
-      list.push(new GeminiProvider());
-    }
-    return list;
+    this.providers = providers ?? getConfiguredProviderOrder();
   }
 
   getProviders(): string[] {
@@ -106,6 +125,61 @@ class AIServiceImpl {
 
   async generateJson<T>(req: AIRequest): Promise<T> {
     return this.executeWithFallback((p) => p.generateJson<T>(req), "generateJson", req);
+  }
+
+  async generateJsonValidated<T>(
+    req: AIRequest,
+    schema: z.ZodType<T>,
+  ): Promise<T> {
+    let lastError: unknown;
+    for (let attempt = 0; attempt <= VALIDATION_RETRY_LIMIT; attempt++) {
+      try {
+        const raw = await this.executeWithFallback(
+          (p) => p.generateJson<T>(req),
+          "generateJsonValidated",
+          req,
+        );
+        const parsed = schema.parse(raw);
+        if (attempt > 0) {
+          log("info", `Validation succeeded on retry ${attempt}`, { label: req.task });
+        }
+        return parsed;
+      } catch (err) {
+        lastError = err;
+        if (err instanceof z.ZodError) {
+          log("warn", `Zod validation failed — retrying once`, {
+            task: req.task,
+            errors: err.errors.map((e) => `${e.path.join(".")}: ${e.message}`),
+            attempt,
+          });
+          if (attempt < VALIDATION_RETRY_LIMIT) continue;
+        }
+        throw err;
+      }
+    }
+    throw lastError;
+  }
+
+  async generateEmbedding(req: AIEmbeddingRequest): Promise<AIEmbeddingResponse> {
+    for (const provider of this.providers) {
+      if (!provider.generateEmbedding) continue;
+      try {
+        const start = Date.now();
+        const res = await provider.generateEmbedding(req);
+        log("info", `Embedding generated`, {
+          provider: provider.name,
+          model: res.model,
+          latencyMs: Date.now() - start,
+          dimensions: res.embedding.length,
+        });
+        return res;
+      } catch (err) {
+        log("warn", `Embedding provider ${provider.name} failed`, {
+          error: (err as Error).message,
+        });
+      }
+    }
+    throw new Error("No embedding provider available");
   }
 
   private async executeWithFallback<T>(
@@ -125,6 +199,7 @@ class AIServiceImpl {
         log("info", `Trying provider ${provider.name} for ${label}`, {
           provider: provider.name,
           label,
+          task: req.task ?? "general",
           promptLength: req.prompt.length,
         });
         const result = await retryWithBackoff(provider, fn, `${label}:${provider.name}`);
@@ -171,16 +246,38 @@ export async function aiGenerateText(
   prompt: string,
   systemInstruction?: string,
   model?: string,
+  task?: AITask,
 ): Promise<string> {
-  return getService().generateText({ prompt, systemInstruction, model });
+  return getService().generateText({ prompt, systemInstruction, model, task });
 }
 
 export async function aiGenerateJson<T>(
   prompt: string,
   systemInstruction: string,
   model?: string,
+  task?: AITask,
 ): Promise<T> {
-  return getService().generateJson<T>({ prompt, systemInstruction, model, json: true });
+  return getService().generateJson<T>({ prompt, systemInstruction, model, task, json: true });
+}
+
+export async function aiGenerateJsonValidated<T>(
+  prompt: string,
+  systemInstruction: string,
+  schema: z.ZodType<T>,
+  task: AITask,
+  model?: string,
+): Promise<T> {
+  return getService().generateJsonValidated<T>(
+    { prompt, systemInstruction, model, task, json: true },
+    schema,
+  );
+}
+
+export async function aiGenerateEmbedding(
+  input: string,
+  model?: string,
+): Promise<AIEmbeddingResponse> {
+  return getService().generateEmbedding({ input, model });
 }
 
 export { AIServiceImpl };
