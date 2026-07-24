@@ -402,7 +402,7 @@ function FeedPage() {
               </div>
               {imageUrl && (
                 <div className="relative rounded-lg overflow-hidden border">
-                  <img src={imageUrl} alt="" className="w-full max-h-64 object-cover" />
+                  <img src={imageUrl} alt="" className="w-full h-auto object-cover" />
                   <Button
                     size="icon"
                     variant="destructive"
