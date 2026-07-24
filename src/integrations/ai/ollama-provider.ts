@@ -1,12 +1,6 @@
 import { Ollama } from "ollama";
 import type { ChatRequest } from "ollama";
-import {
-  AIProvider,
-  AIRequest,
-  AIEmbeddingRequest,
-  AIEmbeddingResponse,
-  AITask,
-} from "./types";
+import { AIProvider, AIRequest, AIEmbeddingRequest, AIEmbeddingResponse, AITask } from "./types";
 import { classifyError, safeJsonParse } from "./errors";
 import { resolveOllamaModel, OLLAMA_TIMEOUT_MS } from "./ollama-models";
 
@@ -23,9 +17,7 @@ function getClient(): Ollama {
   return client;
 }
 
-function buildMessages(
-  req: AIRequest,
-): Array<{ role: "system" | "user"; content: string }> {
+function buildMessages(req: AIRequest): Array<{ role: "system" | "user"; content: string }> {
   const messages: Array<{ role: "system" | "user"; content: string }> = [];
   if (req.systemInstruction) {
     messages.push({ role: "system", content: req.systemInstruction });
@@ -68,7 +60,11 @@ async function callChat(req: AIRequest, json: boolean): Promise<string> {
       throw classifyError(404, `Ollama model not found: ${model}. Run: ollama pull ${model}`, e);
     }
     if (/connection refused|ECONNREFUSED|fetch failed/i.test(msg)) {
-      throw classifyError(503, `Ollama is not running at ${host()}. Start it with: ollama serve`, e);
+      throw classifyError(
+        503,
+        `Ollama is not running at ${host()}. Start it with: ollama serve`,
+        e,
+      );
     }
     throw classifyError(undefined, msg, e);
   }
@@ -102,7 +98,11 @@ export class OllamaProvider implements AIProvider {
     } catch (e) {
       const msg = (e as Error).message ?? "Ollama embedding failed";
       if (/model.*not.*found/i.test(msg)) {
-        throw classifyError(404, `Ollama embedding model not found: ${model}. Run: ollama pull ${model}`, e);
+        throw classifyError(
+          404,
+          `Ollama embedding model not found: ${model}. Run: ollama pull ${model}`,
+          e,
+        );
       }
       throw classifyError(undefined, msg, e);
     }

@@ -127,10 +127,7 @@ class AIServiceImpl {
     return this.executeWithFallback((p) => p.generateJson<T>(req), "generateJson", req);
   }
 
-  async generateJsonValidated<T>(
-    req: AIRequest,
-    schema: z.ZodType<T>,
-  ): Promise<T> {
+  async generateJsonValidated<T>(req: AIRequest, schema: z.ZodType<T>): Promise<T> {
     let lastError: unknown;
     for (let attempt = 0; attempt <= VALIDATION_RETRY_LIMIT; attempt++) {
       try {
