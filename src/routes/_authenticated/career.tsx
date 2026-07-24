@@ -4,7 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { TrendingUp, Sparkles, Loader2 } from "lucide-react";
+import { TrendingUp, Sparkles, Loader as Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { careerRecommendations } from "@/lib/ai.service";
 
