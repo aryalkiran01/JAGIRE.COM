@@ -148,6 +148,65 @@ export const companyCandidateAnalysisSchema = z.object({
     .default([]),
 });
 
+// Combined single-call schema for scanResumeFromStorage.
+// Merges resume scoring, career roadmap, strengths/weaknesses, and
+// improvement suggestions so only ONE Ollama call is needed per upload.
+export const fullResumeScanSchema = z.object({
+  // scoring
+  overall_score: z.number(),
+  ats_score: z.number(),
+  grammar_score: z.number(),
+  formatting_score: z.number(),
+  keyword_score: z.number(),
+  professionalism_score: z.number(),
+  // quick wins
+  suggestions: z.array(z.string()).max(8).default([]),
+  summary: z.string(),
+  extracted_skills: z.array(z.string()).max(20).default([]),
+  // analysis
+  strengths: z.array(z.string()).max(5).default([]),
+  weaknesses: z.array(z.string()).max(5).default([]),
+  missing_skills: z.array(z.string()).max(10).default([]),
+  keywords: z.array(z.string()).max(15).default([]),
+  // career roadmap
+  career_paths: z
+    .array(z.object({ title: z.string(), why: z.string(), next_steps: z.array(z.string()) }))
+    .max(4)
+    .default([]),
+  skill_gaps: z.array(z.string()).max(8).default([]),
+  recommended_certifications: z
+    .array(z.object({ name: z.string(), provider: z.string() }))
+    .max(5)
+    .default([]),
+  suggested_projects: z
+    .array(z.object({ title: z.string(), description: z.string() }))
+    .max(4)
+    .default([]),
+  recommended_jobs: z
+    .array(z.object({ title: z.string(), why: z.string() }))
+    .max(5)
+    .default([]),
+  companies_hiring: z
+    .array(z.object({ name: z.string(), sector: z.string() }))
+    .max(5)
+    .default([]),
+  salary_prediction: z
+    .object({ low: z.number(), mid: z.number(), high: z.number(), currency: z.string() })
+    .nullable()
+    .default(null),
+  resume_improvements: z.array(z.string()).max(8).default([]),
+  interview_prep_plan: z
+    .object({
+      thirty_days: z.array(z.string()),
+      sixty_days: z.array(z.string()),
+      ninety_days: z.array(z.string()),
+      one_eighty_days: z.array(z.string()),
+    })
+    .nullable()
+    .default(null),
+});
+
+export type FullResumeScan = z.infer<typeof fullResumeScanSchema>;
 export type ResumeAnalysis = z.infer<typeof resumeAnalysisSchema>;
 export type CareerRecommendations = z.infer<typeof careerRecommendationsSchema>;
 export type LinkedinImport = z.infer<typeof linkedinImportSchema>;

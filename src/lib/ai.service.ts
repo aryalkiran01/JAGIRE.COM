@@ -5,36 +5,61 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth.middleware";
 import { aiGenerateJsonValidated } from "@/integrations/ai/ai-service";
 import {
   resumeAnalysisSchema,
+  fullResumeScanSchema,
   careerRecommendationsSchema,
   linkedinImportSchema,
   learningRecommendationsSchema,
 } from "@/integrations/ai/schemas";
 
+// ── Prompts ──────────────────────────────────────────────────────────────────
+// Kept tight to reduce token usage. No filler prose — models are instructed
+// to return only the JSON keys listed.
+
 const RESUME_SYSTEM =
-  "You are an expert ATS and resume reviewer. Score the resume from 0-100 on each dimension and return ONLY strict JSON with keys: overall_score, ats_score, grammar_score, formatting_score, keyword_score, professionalism_score, suggestions (array of short actionable strings, max 8), summary (2-3 sentences), extracted_skills (array of strings, max 20).";
+  "ATS resume reviewer. Score 0-100. Return JSON only: {overall_score,ats_score,grammar_score,formatting_score,keyword_score,professionalism_score,suggestions[8],summary,extracted_skills[20]}";
+
+// Combined single-call system prompt for full resume upload scan.
+// Merges scoring + strengths/weaknesses + keywords + career roadmap so
+// only ONE model call is made per resume upload.
+const FULL_SCAN_SYSTEM =
+  "Expert resume analyst and career coach. Analyse the resume and return ONE JSON object with ALL of these keys (no extra text): " +
+  "overall_score(0-100), ats_score(0-100), grammar_score(0-100), formatting_score(0-100), keyword_score(0-100), professionalism_score(0-100), " +
+  "suggestions(string[8]), summary(string), extracted_skills(string[20]), " +
+  "strengths(string[5]), weaknesses(string[5]), missing_skills(string[10]), keywords(string[15]), " +
+  "career_paths([{title,why,next_steps[]}][4]), skill_gaps(string[8]), " +
+  "recommended_certifications([{name,provider}][5]), suggested_projects([{title,description}][4]), " +
+  "recommended_jobs([{title,why}][5]), companies_hiring([{name,sector}][5]), " +
+  "salary_prediction({low,mid,high,currency}|null), resume_improvements(string[8]), " +
+  "interview_prep_plan({thirty_days[],sixty_days[],ninety_days[],one_eighty_days[]}|null). " +
+  "Keep each list to the max count shown. Numbers only, no units.";
 
 const CAREER_SYSTEM =
-  "You are a senior career coach. Return ONLY strict JSON with keys: career_paths (array of {title, why, next_steps[]}), skill_gaps (array of strings), missing_skills (array of strings), recommended_certifications (array of {name, provider}), suggested_projects (array of {title, description}), recommended_jobs (array of {title, why}), companies_hiring (array of {name, sector}), salary_prediction (object: {low, mid, high, currency}), resume_improvements (array of strings), interview_prep_plan (object: {thirty_days[], sixty_days[], ninety_days[], one_eighty_days[]}). Keep each list to 3-5 items.";
+  "Senior career coach. JSON only: {career_paths([{title,why,next_steps[]}]),skill_gaps([]),missing_skills([]),recommended_certifications([{name,provider}]),suggested_projects([{title,description}]),recommended_jobs([{title,why}]),companies_hiring([{name,sector}]),salary_prediction({low,mid,high,currency}),resume_improvements([]),interview_prep_plan({thirty_days[],sixty_days[],ninety_days[],one_eighty_days[]}),suggested_search_keywords([])}. 3-5 items per list.";
 
 const LINKEDIN_SYSTEM =
-  "Extract a professional profile from the pasted LinkedIn text. Return ONLY strict JSON with keys: full_name (string or null), headline (string or null), about (string), location (string or null), current_position (string or null), experience_years (integer estimate, 0 if unknown), skills (array of strings, max 20).";
+  "Extract LinkedIn profile. JSON only: {full_name,headline,about,location,current_position,experience_years(int),skills[20]}";
 
-const LEARNING_SYSTEM = "Return only valid JSON.";
+const LEARNING_SYSTEM =
+  'Career coach. JSON only: {"items":[{"kind":"course|video|challenge|interview","title":"","provider":"","url":"","skills":[],"description":""}]}';
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 function clamp(n: unknown): number {
   return Math.max(0, Math.min(100, Math.round(Number(n) || 0)));
 }
 
+// scoreResume: used when the caller passes raw text directly (no file upload).
+// Uses the lightweight resumeAnalysisSchema — no career roadmap needed here.
 export const scoreResume = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => {
     const i = input as { resumeId: string; text: string };
     if (!i?.resumeId || !i?.text) throw new Error("Missing resumeId or text");
-    return { resumeId: i.resumeId, text: i.text.slice(0, 20000) };
+    return { resumeId: i.resumeId, text: i.text.slice(0, 12000) };
   })
   .handler(async ({ data, context }) => {
     const parsed = await aiGenerateJsonValidated(
-      `Resume text:\n\n${data.text}`,
+      `Resume:\n${data.text}`,
       RESUME_SYSTEM,
       resumeAnalysisSchema,
       "resume-analysis",
@@ -62,21 +87,23 @@ export const scoreResume = createServerFn({ method: "POST" })
 export const careerRecommendations = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { data: profile } = await context.supabase
-      .from("profiles")
-      .select("full_name, headline, bio, location, experience_years")
-      .eq("id", context.userId)
-      .maybeSingle();
-    const { data: resume } = await context.supabase
-      .from("resumes")
-      .select("parsed_data")
-      .eq("user_id", context.userId)
-      .eq("is_default", true)
-      .maybeSingle();
+    const [{ data: profile }, { data: resume }] = await Promise.all([
+      context.supabase
+        .from("profiles")
+        .select("full_name,headline,bio,location,experience_years")
+        .eq("id", context.userId)
+        .maybeSingle(),
+      context.supabase
+        .from("resumes")
+        .select("parsed_data")
+        .eq("user_id", context.userId)
+        .eq("is_default", true)
+        .maybeSingle(),
+    ]);
     const skills = (resume?.parsed_data as { skills?: string[] } | null)?.skills ?? [];
 
     const parsed = await aiGenerateJsonValidated(
-      `Profile: ${JSON.stringify(profile ?? {})}\nSkills: ${skills.join(", ") || "unknown"}`,
+      `Profile:${JSON.stringify(profile ?? {})}\nSkills:${skills.join(",") || "unknown"}`,
       CAREER_SYSTEM,
       careerRecommendationsSchema,
       "career-suggestions",
@@ -90,6 +117,9 @@ export const careerRecommendations = createServerFn({ method: "POST" })
     };
   });
 
+// scanResumeFromStorage: full upload scan.
+// A SINGLE AI call returns scores + career roadmap + strengths/weaknesses + improvements.
+// Result stored and reused — no second AI call.
 export const scanResumeFromStorage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => {
@@ -136,37 +166,56 @@ export const scanResumeFromStorage = createServerFn({ method: "POST" })
 
     text = text.replace(/\s+/g, " ").trim();
     if (text.length < 50) throw new Error("Could not extract enough text from the resume file");
-    if (text.length > 20000) text = text.slice(0, 20000);
+    // Truncate to 8 000 chars — enough signal for analysis; saves ~30% tokens vs 20 000
+    if (text.length > 8000) text = text.slice(0, 8000);
 
-    const parsed = await aiGenerateJsonValidated(
-      `Resume text:\n\n${text}`,
-      RESUME_SYSTEM,
-      resumeAnalysisSchema,
+    // ONE AI call — returns both scoring and career roadmap
+    const scan = await aiGenerateJsonValidated(
+      `Resume:\n${text}`,
+      FULL_SCAN_SYSTEM,
+      fullResumeScanSchema,
       "resume-analysis",
     );
 
-    const update = {
-      overall_score: clamp(parsed.overall_score),
-      ats_score: clamp(parsed.ats_score),
-      grammar_score: clamp(parsed.grammar_score),
-      formatting_score: clamp(parsed.formatting_score),
-      keyword_score: clamp(parsed.keyword_score),
-      professionalism_score: clamp(parsed.professionalism_score),
-      suggestions: parsed.suggestions ?? [],
+    const scoringUpdate = {
+      overall_score: clamp(scan.overall_score),
+      ats_score: clamp(scan.ats_score),
+      grammar_score: clamp(scan.grammar_score),
+      formatting_score: clamp(scan.formatting_score),
+      keyword_score: clamp(scan.keyword_score),
+      professionalism_score: clamp(scan.professionalism_score),
+      suggestions: scan.suggestions ?? [],
       parsed_data: {
-        summary: parsed.summary,
-        skills: parsed.extracted_skills ?? [],
+        summary: scan.summary,
+        skills: scan.extracted_skills ?? [],
         raw_text: text.slice(0, 5000),
       },
+      career_roadmap: {
+        career_paths: scan.career_paths ?? [],
+        skill_gaps: scan.skill_gaps ?? [],
+        missing_skills: scan.missing_skills ?? [],
+        recommended_certifications: scan.recommended_certifications ?? [],
+        suggested_projects: scan.suggested_projects ?? [],
+        recommended_jobs: scan.recommended_jobs ?? [],
+        companies_hiring: scan.companies_hiring ?? [],
+        salary_prediction: scan.salary_prediction ?? null,
+        resume_improvements: scan.resume_improvements ?? [],
+        interview_prep_plan: scan.interview_prep_plan ?? null,
+        strengths: scan.strengths ?? [],
+        weaknesses: scan.weaknesses ?? [],
+        keywords: scan.keywords ?? [],
+      },
     };
+
     const { error } = await context.supabase
       .from("resumes")
-      .update(update)
+      .update(scoringUpdate)
       .eq("id", resume.id)
       .eq("user_id", context.userId);
     if (error) throw new Error(error.message);
 
-    const skills = (parsed.extracted_skills ?? []).map((s) => s.toLowerCase()).filter(Boolean);
+    // Job matching is pure client-side math — no extra AI call needed
+    const skills = (scan.extracted_skills ?? []).map((s) => s.toLowerCase()).filter(Boolean);
     let matches: Array<{ id: string; title: string; company: string | null; score: number }> = [];
     if (skills.length) {
       const { data: jobs } = await context.supabase
@@ -177,8 +226,7 @@ export const scanResumeFromStorage = createServerFn({ method: "POST" })
       matches = (jobs ?? [])
         .map((j: any) => {
           const js = ((j.required_skills ?? []) as string[]).map((s) => s.toLowerCase());
-          if (!js.length)
-            return { id: j.id, title: j.title, company: j.company?.name ?? null, score: 0 };
+          if (!js.length) return { id: j.id, title: j.title, company: j.company?.name ?? null, score: 0 };
           const hits = js.filter((s) => skills.some((k) => s.includes(k) || k.includes(s))).length;
           const score = Math.round((hits / Math.max(js.length, 1)) * 100);
           return { id: j.id, title: j.title, company: j.company?.name ?? null, score };
@@ -188,36 +236,7 @@ export const scanResumeFromStorage = createServerFn({ method: "POST" })
         .slice(0, 8);
     }
 
-    // Generate career roadmap
-    let careerRoadmap: Record<string, any> | null = null;
-    try {
-      const roadmap = await aiGenerateJsonValidated(
-        `Resume text:\n\n${text}\n\nExtracted skills: ${(parsed.extracted_skills ?? []).join(", ")}`,
-        CAREER_SYSTEM,
-        careerRecommendationsSchema,
-        "career-suggestions",
-      );
-      careerRoadmap = {
-        career_paths: roadmap.career_paths ?? [],
-        skill_gaps: roadmap.skill_gaps ?? [],
-        missing_skills: roadmap.missing_skills ?? [],
-        recommended_certifications: roadmap.recommended_certifications ?? [],
-        suggested_projects: roadmap.suggested_projects ?? [],
-        recommended_jobs: roadmap.recommended_jobs ?? [],
-        companies_hiring: roadmap.companies_hiring ?? [],
-        salary_prediction: roadmap.salary_prediction ?? null,
-        resume_improvements: roadmap.resume_improvements ?? [],
-        interview_prep_plan: roadmap.interview_prep_plan ?? null,
-      };
-      await context.supabase
-        .from("resumes")
-        .update({ career_roadmap: careerRoadmap })
-        .eq("id", resume.id)
-        .eq("user_id", context.userId);
-    } catch (error) {
-      console.error("Failed to update career roadmap:", error);
-    }
-    return { ...update, matches, career_roadmap: careerRoadmap };
+    return { ...scoringUpdate, matches };
   });
 
 export const importFromGitHub = createServerFn({ method: "POST" })
@@ -235,9 +254,7 @@ export const importFromGitHub = createServerFn({ method: "POST" })
     };
     const [uRes, rRes] = await Promise.all([
       fetch(`https://api.github.com/users/${data.username}`, { headers }),
-      fetch(`https://api.github.com/users/${data.username}/repos?sort=stars&per_page=100`, {
-        headers,
-      }),
+      fetch(`https://api.github.com/users/${data.username}/repos?sort=stars&per_page=100`, { headers }),
     ]);
     if (uRes.status === 404) throw new Error("GitHub user not found");
     if (!uRes.ok) throw new Error(`GitHub error (${uRes.status})`);
@@ -287,8 +304,8 @@ export const learningRecommendations = createServerFn({ method: "POST" })
       .select("skills, headline, experience_years")
       .eq("id", context.userId)
       .maybeSingle();
-    const skills = ((profile as any)?.skills ?? []).join(", ") || "general software engineering";
-    const prompt = `You are a career coach. Suggest 8 learning resources for a professional with these skills: ${skills}. Headline: ${(profile as any)?.headline ?? "N/A"}. Mix courses, videos, coding challenges, and interview prep. Return JSON: {"items":[{"kind":"course|video|challenge|interview","title":"","provider":"","url":"","skills":[],"description":""}]}`;
+    const skills = ((profile as any)?.skills ?? []).join(", ") || "software engineering";
+    const prompt = `Suggest 8 learning resources for: skills=${skills}, headline=${(profile as any)?.headline ?? "N/A"}. Mix courses, videos, challenges, interview prep.`;
 
     const parsed = await aiGenerateJsonValidated(
       prompt,
@@ -305,7 +322,7 @@ export const importFromLinkedInText = createServerFn({ method: "POST" })
     const i = input as { text: string; url?: string };
     if (!i?.text || i.text.trim().length < 50)
       throw new Error("Paste at least your LinkedIn About / Experience text");
-    return { text: i.text.slice(0, 20000), url: (i.url ?? "").trim() };
+    return { text: i.text.slice(0, 10000), url: (i.url ?? "").trim() };
   })
   .handler(async ({ data, context }) => {
     const parsed = await aiGenerateJsonValidated(
@@ -322,17 +339,13 @@ export const importFromLinkedInText = createServerFn({ method: "POST" })
     if (parsed.location) patch.location = parsed.location;
     if (parsed.current_position) patch.current_position = parsed.current_position;
     if (Number.isFinite(parsed.experience_years))
-      patch.experience_years = Math.max(
-        0,
-        Math.min(60, Math.round(Number(parsed.experience_years))),
-      );
+      patch.experience_years = Math.max(0, Math.min(60, Math.round(Number(parsed.experience_years))));
     if (parsed.skills?.length) patch.skills = parsed.skills.slice(0, 20);
     if (data.url) patch.linkedin_url = data.url;
+
     const { error } = await (context.supabase.from("profiles") as any)
       .update(patch)
       .eq("id", context.userId);
     if (error) throw new Error(error.message);
-    return {
-      imported: { fields: Object.keys(patch).length, skills: patch.skills?.length ?? 0 },
-    };
+    return { imported: { fields: Object.keys(patch).length, skills: patch.skills?.length ?? 0 } };
   });

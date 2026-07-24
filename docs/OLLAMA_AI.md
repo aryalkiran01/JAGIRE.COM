@@ -27,20 +27,23 @@ ollama --version
 ## 2. Install Required Models
 
 ```bash
-ollama pull qwen3
-ollama pull deepseek-r1
+# Required
 ollama pull llama3.2
+ollama pull qwen3
 ollama pull mxbai-embed-large
+
+# Optional — only needed for reasoning tasks if you override OLLAMA_CHAT_MODEL
+# ollama pull deepseek-r1
 ```
 
 ### Model sizes (approximate)
 
 | Model | Size | Used for |
 |---|---|---|
-| qwen3 | ~2 GB | Chat, resume analysis, ATS, job matching, cover letters, interview questions |
-| deepseek-r1 | ~4.7 GB | Reasoning, candidate ranking, hiring recommendations, company analysis |
-| llama3.2 | ~1.3 GB | Fast tasks: grammar, summary, skill extraction, keyword detection |
+| llama3.2 | ~1.3 GB | Fast analysis: scoring, extraction, grammar, keywords, job matching |
+| qwen3 | ~2 GB | Generation: cover letters, interview questions, career suggestions, rankings |
 | mxbai-embed-large | ~670 MB | Semantic search embeddings |
+| deepseek-r1 *(optional)* | ~4.7 GB | Optional reasoning tasks — not required by default |
 
 ---
 
@@ -48,28 +51,32 @@ ollama pull mxbai-embed-large
 
 | AI Feature | Task ID | Model (default) |
 |---|---|---|
-| Resume Analysis | `resume-analysis` | qwen3 |
-| ATS Score Detection | `ats-score` | qwen3 |
+| Resume Analysis (upload scan) | `resume-analysis` | llama3.2 |
+| ATS Score Detection | `ats-score` | llama3.2 |
 | Resume Grammar Analysis | `grammar` | llama3.2 |
-| Resume Improvement Suggestions | `resume-improvement` | qwen3 |
 | Resume Summary | `resume-summary` | llama3.2 |
 | Skill Extraction | `skill-extraction` | llama3.2 |
-| Experience Analysis | `experience-analysis` | qwen3 |
+| Experience Analysis | `experience-analysis` | llama3.2 |
 | Education Analysis | `education-analysis` | llama3.2 |
 | Resume Keyword Detection | `keyword-detection` | llama3.2 |
-| Missing Skills Detection | `missing-skills` | qwen3 |
-| Job Matching | `job-matching` | qwen3 |
-| Candidate Ranking | `candidate-ranking` | deepseek-r1 |
+| Missing Skills Detection | `missing-skills` | llama3.2 |
+| Job Matching | `job-matching` | llama3.2 |
+| Resume Strength & Weakness | `strength-weakness` | llama3.2 |
+| AI Job Recommendation | `job-recommendation` | llama3.2 |
+| Learning Recommendations | `learning-recommendations` | llama3.2 |
+| LinkedIn Import | `linkedin-import` | llama3.2 |
+| Resume Improvement Suggestions | `resume-improvement` | qwen3 |
 | Cover Letter Generation | `cover-letter` | qwen3 |
 | Interview Question Generation | `interview-questions` | qwen3 |
-| AI Career Suggestions | `career-suggestions` | deepseek-r1 |
-| Resume Strength & Weakness | `strength-weakness` | qwen3 |
-| AI Hiring Recommendation | `hiring-recommendation` | deepseek-r1 |
-| AI Job Recommendation | `job-recommendation` | qwen3 |
-| Company Candidate Analysis | `company-candidate-analysis` | deepseek-r1 |
-| LinkedIn Import | `linkedin-import` | llama3.2 |
-| Learning Recommendations | `learning-recommendations` | qwen3 |
+| Candidate Ranking | `candidate-ranking` | qwen3 |
+| AI Career Suggestions | `career-suggestions` | qwen3 |
+| AI Hiring Recommendation | `hiring-recommendation` | qwen3 |
+| Company Candidate Analysis | `company-candidate-analysis` | qwen3 |
 | Embeddings / Semantic Search | `embedding` | mxbai-embed-large |
+
+> **Note:** `deepseek-r1` is no longer the default for any task. To use it,
+> set `OLLAMA_REASONING_MODEL=deepseek-r1` and then set
+> `OLLAMA_CHAT_MODEL=deepseek-r1` for any task you want to route to it.
 
 ---
 
