@@ -28,7 +28,7 @@ import {
   getGoogleCalendarStatus,
   startGoogleCalendarConnect,
   saveGoogleCalendarConnection,
-} from "@/lib/google-calendar.functions";
+} from "@/lib/google-calendar.service";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 type MeetingType = "google_meet" | "custom";

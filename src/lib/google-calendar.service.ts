@@ -2,7 +2,7 @@
 
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth.middleware";
 import { saveConnectionKeyForUser } from "@/lib/connection-key-crypto.server";
 
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";

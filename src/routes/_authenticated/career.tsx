@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { TrendingUp, Sparkles, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { careerRecommendations } from "@/lib/ai.functions";
+import { careerRecommendations } from "@/lib/ai.service";
 
 export const Route = createFileRoute("/_authenticated/career")({ component: Career });
 

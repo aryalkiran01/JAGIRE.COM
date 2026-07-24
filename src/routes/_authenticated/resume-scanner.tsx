@@ -31,7 +31,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { toast } from "sonner";
-import { scanResumeFromStorage } from "@/lib/ai.functions";
+import { scanResumeFromStorage } from "@/lib/ai.service";
 
 export const Route = createFileRoute("/_authenticated/resume-scanner")({
   component: ResumeScanner,

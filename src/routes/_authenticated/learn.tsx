@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { GraduationCap, ExternalLink, Loader2, Award } from "lucide-react";
-import { learningRecommendations } from "@/lib/ai.functions";
+import { learningRecommendations } from "@/lib/ai.service";
 
 export const Route = createFileRoute("/_authenticated/learn")({ component: LearnPage });
 

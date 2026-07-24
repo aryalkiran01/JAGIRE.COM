@@ -32,7 +32,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { toast } from "sonner";
-import { updateInterviewStatus, rescheduleInterview } from "@/lib/google-calendar.functions";
+import { updateInterviewStatus, rescheduleInterview } from "@/lib/google-calendar.service";
 
 export const Route = createFileRoute("/_authenticated/interviews")({
   component: InterviewsPage,

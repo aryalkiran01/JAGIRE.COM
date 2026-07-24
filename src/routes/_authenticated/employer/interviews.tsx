@@ -35,7 +35,7 @@ import {
   CircleCheck as CheckCircle2,
 } from "lucide-react";
 import { toast } from "sonner";
-import { updateInterviewStatus } from "@/lib/google-calendar.functions";
+import { updateInterviewStatus } from "@/lib/google-calendar.service";
 
 export const Route = createFileRoute("/_authenticated/employer/interviews")({
   component: EmployerInterviews,

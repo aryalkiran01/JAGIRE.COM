@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import { Github, Upload, Loader2, Star, ExternalLink, Linkedin } from "lucide-react";
-import { importFromGitHub, importFromLinkedInText } from "@/lib/ai.functions";
+import { importFromGitHub, importFromLinkedInText } from "@/lib/ai.service";
 
 export const Route = createFileRoute("/_authenticated/profile")({ component: ProfilePage });
 
