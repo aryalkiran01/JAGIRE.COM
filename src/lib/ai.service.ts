@@ -3,6 +3,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth.middleware";
 import { aiGenerateJsonValidated, aiGenerateText } from "@/integrations/ai/ai-service";
+import { requirePremium } from "@/lib/premium.server";
 import {
   resumeAnalysisSchema,
   fullResumeScanSchema,
@@ -67,6 +68,7 @@ export const scoreResume = createServerFn({ method: "POST" })
     return { resumeId: i.resumeId, text: i.text.slice(0, 12000) };
   })
   .handler(async ({ data, context }) => {
+    await requirePremium(context.userId);
     const parsed = await aiGenerateJsonValidated(
       `Resume:\n${data.text}`,
       RESUME_SYSTEM,
@@ -96,6 +98,7 @@ export const scoreResume = createServerFn({ method: "POST" })
 export const careerRecommendations = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
+    await requirePremium(context.userId);
     const [{ data: profile }, { data: resume }] = await Promise.all([
       context.supabase
         .from("profiles")
@@ -136,6 +139,7 @@ export const scanResumeFromStorage = createServerFn({ method: "POST" })
   })
 
   .handler(async ({ data, context }) => {
+    await requirePremium(context.userId);
     const { data: resume, error: rErr } = await context.supabase
       .from("resumes")
       .select("id, file_path, mime_type, file_name, user_id, resume_data, parsed_data")
@@ -374,6 +378,7 @@ export const importFromGitHub = createServerFn({ method: "POST" })
     return { username: u };
   })
   .handler(async ({ data, context }) => {
+    await requirePremium(context.userId);
     const headers = {
       Accept: "application/vnd.github+json",
       "User-Agent": "Jagire-App",
@@ -427,6 +432,7 @@ export const importFromGitHub = createServerFn({ method: "POST" })
 export const learningRecommendations = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
+    await requirePremium(context.userId);
     const { data: profile } = await context.supabase
       .from("profiles")
       .select("skills, headline, experience_years")
@@ -453,6 +459,7 @@ export const importFromLinkedInText = createServerFn({ method: "POST" })
     return { text: i.text.slice(0, 10000), url: (i.url ?? "").trim() };
   })
   .handler(async ({ data, context }) => {
+    await requirePremium(context.userId);
     const parsed = await aiGenerateJsonValidated(
       data.text,
       LINKEDIN_SYSTEM,
@@ -494,6 +501,7 @@ export const careerCoach = createServerFn({ method: "POST" })
     return { question: i.question.trim().slice(0, 1000), sessionId: i.sessionId };
   })
   .handler(async ({ data, context }) => {
+    await requirePremium(context.userId);
     const [{ data: profile }, { data: resume }, { data: applications }] = await Promise.all([
       context.supabase
         .from("profiles")
@@ -708,6 +716,7 @@ export const aiAssistantChat = createServerFn({ method: "POST" })
     };
   })
   .handler(async ({ data, context }) => {
+    await requirePremium(context.userId);
     // 1. Resolve or create conversation
     let conversationId = data.conversationId;
     let isNewConversation = false;

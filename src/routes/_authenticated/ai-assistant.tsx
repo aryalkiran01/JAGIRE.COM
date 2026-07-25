@@ -24,6 +24,9 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { aiAssistantChat } from "@/lib/ai.service";
+import { useSubscription } from "@/hooks/use-subscription";
+import { Link } from "@tanstack/react-router";
+import { Lock } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/ai-assistant")({
   component: AIAssistantPage,
@@ -140,6 +143,7 @@ function AIAssistantPage() {
   const { user, role } = useAuth();
   const qc = useQueryClient();
   const runAssistant = useServerFn(aiAssistantChat);
+  const { data: subscription } = useSubscription();
   const [input, setInput] = useState("");
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Msg[]>([]);
@@ -230,6 +234,21 @@ function AIAssistantPage() {
           <p className="text-muted-foreground text-sm">Your personal AI career companion</p>
         </div>
       </div>
+
+      {!subscription?.isPremium && (
+        <div className="rounded-xl border border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950 p-4 mb-4 flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-2 text-sm text-amber-800 dark:text-amber-300">
+            <Lock className="h-4 w-4 shrink-0" />
+            <span>
+              Buy Premium to access AI-powered features. Upgrade your plan to unlock AI career
+              tools.
+            </span>
+          </div>
+          <Button asChild size="sm" className="gradient-brand text-primary-foreground">
+            <Link to="/pricing">Upgrade now</Link>
+          </Button>
+        </div>
+      )}
 
       <div className="grid lg:grid-cols-4 gap-4 h-[calc(100vh-200px)]">
         {/* Sidebar */}
