@@ -374,7 +374,9 @@ function ResumeScanner() {
                   Click to upload a new resume or drag & drop to replace
                 </p>
                 <div className="flex justify-center gap-2 mt-3">
-                  <Badge variant="secondary">{(resume.file_size / 1024).toFixed(0)} KB</Badge>
+                  <Badge variant="secondary">
+                    {((resume.file_size ?? 0) / 1024).toFixed(0)} KB
+                  </Badge>
                   {resume.overall_score != null && (
                     <Badge className="gradient-brand text-primary-foreground">
                       Score: {resume.overall_score}/100

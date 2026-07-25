@@ -333,7 +333,7 @@ function ProfilePage() {
                 onChange={(e) => setForm({ ...form, preferred_location: e.target.value })}
               />
             </Field>
-            <Field label="Expected salary (USD)">
+            <Field label="Expected salary (NPR)">
               <Input
                 type="number"
                 value={form.expected_salary ?? ""}

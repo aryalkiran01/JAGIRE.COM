@@ -9,15 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import {
-  BrainCircuit,
-  Send,
-  Loader as Loader2,
-  Plus,
-  MessageSquare,
-  X,
-  Sparkles,
-} from "lucide-react";
+import { Send, Loader as Loader2, Plus, MessageSquare, X, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { aiAssistantChat } from "@/lib/ai.service";
 
@@ -206,10 +198,11 @@ export function AIAssistantWidget() {
       {/* Floating button */}
       <button
         onClick={() => setOpen(true)}
-        className="fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full gradient-brand shadow-glow flex items-center justify-center hover:scale-110 transition-transform group"
+        className="fixed bottom-10 right-10 z-50 h-14 w-14 rounded-full shadow-glow flex items-center justify-center hover:scale-110 transition-transform group animate-float"
         aria-label="Open AI Assistant"
       >
-        <BrainCircuit className="h-7 w-7 text-primary-foreground" />
+        <img src="/ai-bot.png" alt="Jagire AI" className="h-25 min-w-19" />
+
         <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-accent animate-pulse" />
       </button>
 
@@ -261,14 +254,23 @@ export function AIAssistantWidget() {
           <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
             {messages.length === 0 && (
               <div className="h-full flex flex-col items-center justify-center text-center py-8">
-                <BrainCircuit className="h-12 w-12 mb-3 text-primary/30" />
+                <div className="mb-4 animate-ai-float">
+                  <img
+                    src="/ai-bot.png"
+                    alt="Jagire AI"
+                    className="h-24 w-24 object-contain opacity-80 drop-shadow-lg"
+                  />
+                </div>
+
                 <p className="text-sm font-medium mb-1">
                   Hi {user.user_metadata?.full_name ?? "there"}!
                 </p>
+
                 <p className="text-xs text-muted-foreground mb-4 max-w-xs">
                   I'm your AI career companion. Ask me anything about your career, resume, jobs,
                   interviews, or salary.
                 </p>
+
                 <div className="grid grid-cols-1 gap-1.5 w-full max-w-xs">
                   {QUICK_PROMPTS.map((p) => (
                     <button

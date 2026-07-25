@@ -11,11 +11,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
-  BrainCircuit,
   Send,
   Loader as Loader2,
   Plus,
-  Sparkles,
   Target,
   FileText,
   Briefcase,
@@ -49,8 +47,8 @@ const QUICK_PROMPTS = [
   { icon: Video, text: "Prepare me for an interview" },
   { icon: IndianRupee, text: "What salary should I ask for?" },
   { icon: RefreshCw, text: "How can I switch careers?" },
-  { icon: BrainCircuit, text: "Why am I getting rejected?" },
-  { icon: Sparkles, text: "What should I improve this month?" },
+  { image: "/ai-bot.png", text: "Why am I getting rejected?" },
+  { image: "/ai-bot.png", text: "What should I improve this month?" },
 ];
 
 function MiniMarkdown({ text }: { text: string }) {
@@ -223,9 +221,9 @@ function AIAssistantPage() {
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-6xl">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="h-11 w-11 rounded-xl gradient-brand flex items-center justify-center">
-          <BrainCircuit className="h-6 w-6 text-primary-foreground" />
+      <div className="flex items-center mb-6">
+        <div className=" flex items-center justify-center">
+          <img src="/ai-bot.png" alt="Jagire AI" className="h-19 min-w-22" />{" "}
         </div>
         <div>
           <h1 className="text-2xl font-bold">AI Assistant</h1>
@@ -282,8 +280,12 @@ function AIAssistantPage() {
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
               {messages.length === 0 && (
                 <div className="h-full flex flex-col items-center justify-center text-center py-8">
-                  <div className="h-16 w-16 rounded-2xl gradient-brand flex items-center justify-center mb-4">
-                    <Sparkles className="h-8 w-8 text-primary-foreground" />
+                  <div className="h-20 w-20 flex items-center justify-center mb-4 animate-ai-float">
+                    <img
+                      src="/ai-bot.png"
+                      alt="Jagire AI"
+                      className="h-20 w-20 object-contain drop-shadow-lg"
+                    />
                   </div>
                   <h2 className="text-xl font-bold mb-2">
                     Hi {user?.user_metadata?.full_name ?? "there"}!
@@ -312,7 +314,15 @@ function AIAssistantPage() {
                         disabled={chat.isPending}
                         className="text-left text-xs px-3 py-2.5 rounded-lg border hover:bg-muted transition-colors disabled:opacity-50 flex items-center gap-2"
                       >
-                        <p.icon className="h-3.5 w-3.5 text-primary shrink-0" />
+                        {p.icon ? (
+                          <p.icon className="h-3.5 w-3.5 text-primary shrink-0" />
+                        ) : p.image ? (
+                          <img
+                            src={p.image}
+                            alt={p.text}
+                            className="h-3.5 w-3.5 rounded-sm object-cover shrink-0"
+                          />
+                        ) : null}
                         <span className="truncate">{p.text}</span>
                       </button>
                     ))}
@@ -327,8 +337,12 @@ function AIAssistantPage() {
               {chat.isPending && (
                 <div className="flex gap-2 items-center text-muted-foreground">
                   <Avatar className="h-7 w-7">
-                    <AvatarFallback className="gradient-brand text-primary-foreground text-xs">
-                      <Sparkles className="h-3 w-3" />
+                    <AvatarFallback className="text-xs">
+                      <img
+                        src="/ai-bot.png"
+                        alt="Jagire AI"
+                        className="h-8 w-8 object-contain animate-ai-float"
+                      />
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex gap-1">

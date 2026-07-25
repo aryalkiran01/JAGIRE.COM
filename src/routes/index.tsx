@@ -287,7 +287,7 @@ function Landing() {
             {categories.map((c: any) => (
               <Link key={c.id} to="/jobs" search={{ category: c.slug }}>
                 <Card className="hover:shadow-glow hover:-translate-y-1 transition-all cursor-pointer animate-fade-in-up overflow-hidden group">
-                  <div className="relative h-32 sm:h-40 md:h-44 w-full overflow-hidden">
+                  <div className="relative h-24 overflow-hidden">
                     <img
                       src={getCategoryImage(c.name ?? "", c.slug ?? "")}
                       alt={c.name}
@@ -410,6 +410,9 @@ function Landing() {
       {/* Testimonials */}
       <section className="container mx-auto px-4 py-20">
         <div className="text-center mb-14">
+          <Badge variant="outline" className="mb-4">
+            <Star className="mr-1 h-3 w-3 fill-accent text-accent" /> Testimonials
+          </Badge>
           <h2 className="text-4xl font-bold mb-3">Loved by professionals worldwide</h2>
         </div>
         <div className="grid md:grid-cols-3 gap-6">

@@ -137,7 +137,6 @@ class AIServiceImpl {
           req,
         );
 
-        // ✅ ADD THIS: Normalize and truncate arrays before validation
         if (req.task === "resume-analysis" && typeof raw === "object" && raw !== null) {
           const result = raw as Record<string, any>;
 
@@ -208,6 +207,39 @@ class AIServiceImpl {
           Object.assign(raw as any, result);
         }
 
+        if (req.task === "career-coach" && typeof raw === "object" && raw !== null) {
+          const result = raw as Record<string, any>;
+
+          const maxLengths: Record<string, number> = {
+            recommended_skills: 8,
+            action_plan: 6,
+            improvement_suggestions: 6,
+            follow_up_questions: 3,
+          };
+
+          const arrayFields = [
+            "recommended_skills",
+            "action_plan",
+            "improvement_suggestions",
+            "follow_up_questions",
+          ];
+
+          for (const field of arrayFields) {
+            if (typeof result[field] === "string") {
+              result[field] = result[field]
+                .split(/\r?\n|,|•|;|\d+\.\s*/)
+                .map((s: string) => s.trim())
+                .filter(Boolean)
+                .slice(0, maxLengths[field]);
+            } else if (!Array.isArray(result[field])) {
+              result[field] = [];
+            }
+          }
+
+          Object.assign(raw as any, result);
+        }
+
+        // Then validate
         const parsed = schema.parse(raw);
         if (attempt > 0) {
           log("info", `Validation succeeded on retry ${attempt}`, { label: req.task });

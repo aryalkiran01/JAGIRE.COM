@@ -9,16 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import {
-  BrainCircuit,
-  Send,
-  Loader as Loader2,
-  Lightbulb,
-  Target,
-  TrendingUp,
-  Plus,
-  Clock,
-} from "lucide-react";
+import { Send, Loader as Loader2, Lightbulb, Target, TrendingUp, Plus, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { careerCoach } from "@/lib/ai.service";
 
@@ -139,10 +130,8 @@ function CareerCoachPage() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="h-10 w-10 rounded-xl gradient-brand flex items-center justify-center">
-          <BrainCircuit className="h-5 w-5 text-primary-foreground" />
-        </div>
+      <div className="flex items-center  mb-6">
+        <img src="/ai-bot.png" alt="Jagire AI" className="h-24 min-w-24" />
         <div>
           <h1 className="text-3xl font-bold">AI Career Coach</h1>
           <p className="text-muted-foreground text-sm">
@@ -216,7 +205,14 @@ function CareerCoachPage() {
             <CardContent className="p-4 min-h-96 max-h-[60vh] overflow-y-auto space-y-4">
               {messages.length === 0 && (
                 <div className="h-full flex flex-col items-center justify-center text-center py-12 text-muted-foreground">
-                  <BrainCircuit className="h-12 w-12 mb-3 opacity-30" />
+                  <div className="mb-5 animate-ai-float">
+                    <img
+                      src="/ai-bot.png"
+                      alt="Jagire AI"
+                      className="h-24 w-24 object-contain opacity-90 drop-shadow-lg"
+                    />
+                  </div>
+
                   <p className="text-sm max-w-xs">
                     Ask anything about your career — skills to learn, why you're getting rejected,
                     salary advice, or how to grow.

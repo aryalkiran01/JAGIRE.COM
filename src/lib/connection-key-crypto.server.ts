@@ -62,7 +62,7 @@ export async function getConnectionKeyForUser(
   connectorId: string,
 ): Promise<string | null> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  console.log("🔎 getConnectionKeyForUser called with:", { userId, connectorId });
+  console.log(" getConnectionKeyForUser called with:", { userId, connectorId });
   const { data, error } = await supabaseAdmin
     .from("app_user_connections")
     .select("refresh_token")
@@ -78,13 +78,13 @@ export async function getConnectionKeyForUser(
     console.log("❌ No row found for user:", userId, "provider:", connectorId);
     return null;
   }
-  console.log("✅ Row found, attempting decryption");
+  console.log("Row found, attempting decryption");
   try {
     const decrypted = decryptConnectionKey(data.refresh_token!);
-    console.log("✅ Decryption successful");
+    console.log("Decryption successful");
     return decrypted;
   } catch (e) {
-    console.error("❌ Decryption failed:", e);
+    console.error(" Decryption failed:", e);
     return null;
   }
 }

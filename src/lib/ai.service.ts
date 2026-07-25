@@ -41,16 +41,19 @@ const FULL_SCAN_SYSTEM =
   "- interview_prep_plan: object {thirty_days[], sixty_days[], ninety_days[], one_eighty_days[]} or null\n\n" +
   "Return ONLY the JSON. No markdown, no explanations.";
 
-const CAREER_SYSTEM =
-  "Senior career coach. JSON only: {career_paths([{title,why,next_steps[]}]),skill_gaps([]),missing_skills([]),recommended_certifications([{name,provider}]),suggested_projects([{title,description}]),recommended_jobs([{title,why}]),companies_hiring([{name,sector}]),salary_prediction({low,mid,high,currency}),resume_improvements([]),interview_prep_plan({thirty_days[],sixty_days[],ninety_days[],one_eighty_days[]}),suggested_search_keywords([])}. 3-5 items per list.";
+const CAREER_SYSTEM = `
+You are a senior career coach.
 
+Return ONLY valid JSON matching this schema exactly.
+Never return markdown or explanations.
+Every array field MUST always be an array, even if it has one item.
+Never return null. Use [] instead.
+`;
 const LINKEDIN_SYSTEM =
   "Extract LinkedIn profile. JSON only: {full_name,headline,about,location,current_position,experience_years(int),skills[20]}";
 
 const LEARNING_SYSTEM =
   'Career coach. JSON only: {"items":[{"kind":"course|video|challenge|interview","title":"","provider":"","url":"","skills":[],"description":""}]}';
-
-// ─────────────────────────────────────────────────────────────────────────────
 
 function clamp(n: unknown): number {
   return Math.max(0, Math.min(100, Math.round(Number(n) || 0)));
@@ -123,7 +126,7 @@ export const careerRecommendations = createServerFn({ method: "POST" })
     };
   });
 
-// ✅ ONLY ONE scanResumeFromStorage - complete and correct
+//  ONLY ONE scanResumeFromStorage - complete and correct
 export const scanResumeFromStorage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => {
@@ -152,7 +155,7 @@ export const scanResumeFromStorage = createServerFn({ method: "POST" })
       rawTextLength: storedRawText.length,
       hasResumeData: !!resume.resume_data,
     });
-    // ✅ FIRST: Check if we have stored text data (from resume builder or previous scan)
+    // FIRST: Check if we have stored text data (from resume builder or previous scan)
     if (storedRawText) {
       text = storedRawText;
       console.log(`Using stored parsed_data text: ${text.length} characters`);
@@ -192,7 +195,6 @@ export const scanResumeFromStorage = createServerFn({ method: "POST" })
         } else if (isPdf) {
           let extractedSuccessfully = false;
 
-          // Method 1: pdf-parse
           // Method 1: pdf-parse
           try {
             const pdfParseModule = await import("pdf-parse");

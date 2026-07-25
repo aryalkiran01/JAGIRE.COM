@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Briefcase, ArrowLeft } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 
 export const Route = createFileRoute("/forgot-password")({ component: Forgot });
 
@@ -27,11 +27,14 @@ function Forgot() {
     <div className="min-h-screen flex items-center justify-center px-4 gradient-hero relative overflow-hidden">
       <div className="absolute inset-0 bg-background/80 backdrop-blur-3xl" />
       <div className="relative w-full max-w-md">
-        <Link to="/" className="flex items-center justify-center gap-2 mb-8">
-          <div className="h-10 w-10 rounded-xl gradient-brand flex items-center justify-center">
-            <Briefcase className="h-5 w-5 text-primary-foreground" />
+        <Link to="/" className="flex items-center justify-center gap-2 mb-4">
+          <div className=" rounded-xl flex items-center justify-center">
+            <img
+              src="/Jagire-logo.png"
+              alt="Jagire AI"
+              className="h-36 min-w-19 object-contain drop-shadow-sm"
+            />
           </div>
-          <span className="text-2xl font-bold gradient-text">Jagire</span>
         </Link>
         <Card className="glass">
           <CardHeader>
