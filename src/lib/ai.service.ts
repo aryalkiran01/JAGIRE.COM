@@ -464,20 +464,20 @@ async function buildUserContext(supabase: any, userId: string, role: string | nu
       supabase
         .from("profiles")
         .select(
-          "full_name,headline,bio,location,experience_years,current_position,skills,expected_salary,preferred_job_type,preferred_location",
+          "full_name,headline,bio,location,years_experience,current_position,skills,expected_salary_usd,job_type_preference,preferred_location,education,experience,technologies",
         )
         .eq("id", userId)
         .maybeSingle(),
       supabase
         .from("resumes")
-        .select("overall_score,ats_score,grammar_score,suggestions,parsed_data,career_roadmap,missing_skills")
+        .select("overall_score,ats_score,grammar_score,suggestions,parsed_data,career_roadmap")
         .eq("user_id", userId)
         .eq("is_default", true)
         .maybeSingle(),
       supabase
         .from("applications")
         .select("id,status,created_at, job:jobs(id,title,company:companies(name))")
-        .eq("applicant_id", userId)
+        .eq("seeker_id", userId)
         .order("created_at", { ascending: false })
         .limit(10),
       supabase
@@ -491,18 +491,23 @@ async function buildUserContext(supabase: any, userId: string, role: string | nu
     ctx.push(`## User Profile\n${JSON.stringify({
       name: profile.full_name,
       headline: profile.headline,
+      bio: profile.bio,
       location: profile.location,
-      experience_years: profile.experience_years,
+      years_experience: profile.years_experience,
       current_position: profile.current_position,
       skills: profile.skills ?? [],
-      expected_salary: profile.expected_salary,
-      preferred_job_type: profile.preferred_job_type,
+      technologies: profile.technologies ?? [],
+      education: profile.education ?? [],
+      experience: profile.experience ?? [],
+      expected_salary_usd: profile.expected_salary_usd,
+      preferred_job_type: profile.job_type_preference,
       preferred_location: profile.preferred_location,
     })}`);
   }
 
   if (resume) {
     const parsed = resume.parsed_data as any;
+    const roadmap = resume.career_roadmap as any;
     ctx.push(`## Resume Analysis\n${JSON.stringify({
       overall_score: resume.overall_score,
       ats_score: resume.ats_score,
@@ -510,7 +515,9 @@ async function buildUserContext(supabase: any, userId: string, role: string | nu
       suggestions: resume.suggestions ?? [],
       extracted_skills: parsed?.skills ?? [],
       summary: parsed?.summary ?? "",
-      missing_skills: resume.missing_skills ?? (resume.career_roadmap as any)?.missing_skills ?? [],
+      missing_skills: roadmap?.missing_skills ?? [],
+      strengths: roadmap?.strengths ?? [],
+      weaknesses: roadmap?.weaknesses ?? [],
     })}`);
   }
 
@@ -532,7 +539,7 @@ async function buildUserContext(supabase: any, userId: string, role: string | nu
   ctx.push(`## Active Jobs (sample)`);
   const { data: activeJobs } = await supabase
     .from("jobs")
-    .select("id,title,required_skills,salary_min,salary_max,location,job_type, company:companies(name)")
+    .select("id,title,required_skills,salary_min,salary_max,salary_currency,location,job_type, company:companies(name)")
     .eq("status", "active")
     .order("created_at", { ascending: false })
     .limit(20);
