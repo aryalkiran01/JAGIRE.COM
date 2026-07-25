@@ -9,7 +9,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Send, Loader as Loader2, Lightbulb, Target, TrendingUp, Plus, Clock, Lock } from "lucide-react";
+import {
+  Send,
+  Loader as Loader2,
+  Lightbulb,
+  Target,
+  TrendingUp,
+  Plus,
+  Clock,
+  Lock,
+} from "lucide-react";
 import { toast } from "sonner";
 import { careerCoach } from "@/lib/ai.service";
 import { useSubscription } from "@/hooks/use-subscription";

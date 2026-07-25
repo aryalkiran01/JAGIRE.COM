@@ -3,14 +3,53 @@
 -- JAGIRE — AI Smart Job Portal — Full schema
 -- ============================================
 
-CREATE TYPE public.app_role AS ENUM ('job_seeker', 'employer', 'admin');
-CREATE TYPE public.job_type AS ENUM ('full_time', 'part_time', 'contract', 'internship', 'freelance');
-CREATE TYPE public.experience_level AS ENUM ('entry', 'junior', 'mid', 'senior', 'lead', 'executive');
-CREATE TYPE public.job_status AS ENUM ('draft', 'active', 'paused', 'closed');
-CREATE TYPE public.application_status AS ENUM ('applied', 'viewed', 'shortlisted', 'interview', 'selected', 'rejected', 'withdrawn');
-CREATE TYPE public.meeting_status AS ENUM ('scheduled', 'completed', 'cancelled', 'no_show');
-CREATE TYPE public.notification_type AS ENUM ('application', 'message', 'interview', 'job_match', 'system');
-CREATE TYPE public.ticket_status AS ENUM ('open', 'in_progress', 'resolved', 'closed');
+DO $$ BEGIN
+    CREATE TYPE public.app_role AS ENUM ('job_seeker', 'employer', 'admin');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ BEGIN
+    CREATE TYPE public.job_type AS ENUM ('full_time', 'part_time', 'contract', 'internship', 'freelance');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ BEGIN
+    CREATE TYPE public.experience_level AS ENUM ('entry', 'junior', 'mid', 'senior', 'lead', 'executive');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ BEGIN
+    CREATE TYPE public.job_status AS ENUM ('draft', 'active', 'paused', 'closed');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ BEGIN
+    CREATE TYPE public.application_status AS ENUM ('applied', 'viewed', 'shortlisted', 'interview', 'selected', 'rejected', 'withdrawn');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ BEGIN
+    CREATE TYPE public.meeting_status AS ENUM ('scheduled', 'completed', 'cancelled', 'no_show');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ BEGIN
+    CREATE TYPE public.notification_type AS ENUM ('application', 'message', 'interview', 'job_match', 'system');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ BEGIN
+    CREATE TYPE public.ticket_status AS ENUM ('open', 'in_progress', 'resolved', 'closed');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
 CREATE OR REPLACE FUNCTION public.set_updated_at()
 RETURNS TRIGGER LANGUAGE plpgsql SET search_path = public AS $$
@@ -130,7 +169,6 @@ CREATE TABLE public.companies (
   benefits text[] DEFAULT '{}', technologies text[] DEFAULT '{}',
   hiring_process text, locations text[] DEFAULT '{}',
   twitter_url text, facebook_url text,
-  verified BOOLEAN NOT NULL DEFAULT false,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -325,7 +363,6 @@ CREATE TABLE public.messages (
   chat_id UUID NOT NULL REFERENCES public.chats(id) ON DELETE CASCADE,
   sender_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   body TEXT, attachment_url TEXT, attachment_type text,
-  read_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX idx_messages_chat ON public.messages (chat_id, created_at);

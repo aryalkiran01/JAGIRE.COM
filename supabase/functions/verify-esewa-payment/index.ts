@@ -35,28 +35,31 @@ Deno.serve(async (req: Request) => {
     const { transaction_uuid, total_amount } = body;
 
     if (!transaction_uuid || !total_amount) {
-      return new Response(
-        JSON.stringify({ error: "Missing transaction_uuid or total_amount" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+      return new Response(JSON.stringify({ error: "Missing transaction_uuid or total_amount" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const product_code = body.product_code ?? MERCHANT_CODE;
 
     // 1. Verify with eSewa server-to-server
-    const statusUrl = `${ESEWA_STATUS_URL}/?product_code=${encodeURIComponent(product_code)}&total_amount=${encodeURIComponent(total_amount)}&transaction_uuid=${encodeURIComponent(transaction_uuid)}`;
+    const statusUrl = `${ESEWA_STATUS_URL}?product_code=${encodeURIComponent(product_code)}&total_amount=${encodeURIComponent(total_amount)}&transaction_uuid=${encodeURIComponent(transaction_uuid)}`;
 
     let esewaResponse: Response;
     try {
       esewaResponse = await fetch(statusUrl, { method: "GET" });
     } catch (e) {
-      return new Response(
-        JSON.stringify({ error: "Unable to reach eSewa", verified: false }),
-        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+      return new Response(JSON.stringify({ error: "Unable to reach eSewa", verified: false }), {
+        status: 502,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const rawText = await esewaResponse.text();
+    console.log("Status URL:", statusUrl);
+    console.log("HTTP Status:", esewaResponse.status);
+    console.log("Raw eSewa Response:", rawText);
     let esewaData: any = null;
     try {
       esewaData = JSON.parse(rawText);
@@ -74,10 +77,10 @@ Deno.serve(async (req: Request) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     if (!supabaseUrl || !serviceRoleKey) {
-      return new Response(
-        JSON.stringify({ error: "Server misconfiguration" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+      return new Response(JSON.stringify({ error: "Server misconfiguration" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const supabase = createClient(supabaseUrl, serviceRoleKey, {
@@ -125,11 +128,22 @@ Deno.serve(async (req: Request) => {
         JSON.stringify({
           verified: false,
           error: "Payment not confirmed by eSewa",
-          esewa_status: esewaData?.status ?? "UNKNOWN",
+          http_status: esewaResponse.status,
+          esewa_response: esewaData,
+          raw_response: rawText,
         }),
-        { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        {
+          status: 402,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+          },
+        },
       );
     }
+    console.log("Status URL:", statusUrl);
+    console.log("HTTP Status:", esewaResponse.status);
+    console.log("Raw eSewa Response:", rawText);
 
     // 5. Activate premium subscription
     const amount = Number(total_amount);
@@ -201,9 +215,9 @@ Deno.serve(async (req: Request) => {
     );
   } catch (err) {
     console.error("verify-esewa-payment error:", err);
-    return new Response(
-      JSON.stringify({ error: String(err), verified: false }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
+    return new Response(JSON.stringify({ error: String(err), verified: false }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });

@@ -6,8 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Check, AlertCircle } from "lucide-react";
 import { useMemo, useState } from "react";
 
-// eSewa ePay v2 Test Credentials (Updated)
-// Documentation: https://developer.esewa.com.np/pages/Epay
+// eSewa ePay v2 Test Credentials
 const ESEWA_URL = "https://rc-epay.esewa.com.np/api/epay/main/v2/form";
 const MERCHANT_CODE = "EPAYTEST";
 const SECRET = "8gBm/:&EnhH.1/q";
@@ -89,8 +88,11 @@ function Checkout() {
   }
 
   const origin = typeof window !== "undefined" ? window.location.origin : "";
-  const successUrl = `${origin}/payment-success?txnId=${txnId}`;
-  const failureUrl = `${origin}/payment-failure?txnId=${txnId}`;
+
+  // ✅ FIX: Clean URLs without query parameters
+  // eSewa will add ?data=<base64> when redirecting back
+  const successUrl = `${origin}/payment-success`;
+  const failureUrl = `${origin}/payment-failure`;
 
   async function handlePayment() {
     try {
@@ -98,10 +100,7 @@ function Checkout() {
       setError(null);
 
       const amount = p.price.toString();
-      const taxAmount = "0";
       const totalAmount = amount;
-      const productServiceCharge = "0";
-      const productDeliveryCharge = "0";
 
       // Generate signature
       const signedFieldNames = "total_amount,transaction_uuid,product_code";
@@ -116,12 +115,12 @@ function Checkout() {
 
       const fields: Record<string, string> = {
         amount,
-        tax_amount: taxAmount,
+        tax_amount: "0",
         total_amount: totalAmount,
         transaction_uuid: txnId,
         product_code: MERCHANT_CODE,
-        product_service_charge: productServiceCharge,
-        product_delivery_charge: productDeliveryCharge,
+        product_service_charge: "0",
+        product_delivery_charge: "0",
         success_url: successUrl,
         failure_url: failureUrl,
         signed_field_names: signedFieldNames,
@@ -138,8 +137,6 @@ function Checkout() {
       });
 
       document.body.appendChild(form);
-
-      // Submit the form
       form.submit();
 
       // Clean up

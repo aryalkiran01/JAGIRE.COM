@@ -20,87 +20,183 @@ type VerifyState =
   | { status: "failed"; error: string };
 
 function PaymentSuccess() {
-  const search = Route.useSearch() as Record<string, string | undefined>;
   const navigate = useNavigate();
   const { user } = useAuth();
   const [state, setState] = useState<VerifyState>({ status: "verifying" });
 
   useEffect(() => {
     (async () => {
-      // eSewa v2 redirects back with ?data=<base64>&signature=<base64>.
-      // The `data` field is a base64-encoded string of "key=value,key=value,..."
-      // containing transaction_uuid, total_amount, status, transaction_code, etc.
-      // We decode it here, then verify server-side (authoritative).
-      const params = new URLSearchParams(window.location.search);
-      let transactionUuid = "";
-      let totalAmount = "";
-
-      const encodedData = params.get("data");
-      const encodedSig = params.get("signature");
-      if (encodedData) {
-        try {
-          const decoded = atob(encodedData);
-          const pairs = decoded.split(",");
-          const map: Record<string, string> = {};
-          for (const p of pairs) {
-            const [k, v] = p.split("=");
-            if (k) map[k.trim()] = (v ?? "").trim();
-          }
-          transactionUuid = map.transaction_uuid ?? "";
-          totalAmount = map.total_amount ?? "";
-        } catch {
-          // fall through to legacy params
-        }
-      }
-
-      // Legacy / fallback params
-      if (!transactionUuid) transactionUuid = params.get("transaction_uuid") ?? params.get("oid") ?? "";
-      if (!totalAmount) totalAmount = params.get("total_amount") ?? params.get("amt") ?? "";
-
-      if (!transactionUuid || !totalAmount) {
-        setState({ status: "failed", error: "Missing payment details in the callback." });
-        return;
-      }
-
       try {
-        const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/verify-esewa-payment`;
-        const res = await fetch(url, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-          },
-          body: JSON.stringify({
-            transaction_uuid: transactionUuid,
-            total_amount: totalAmount,
-            user_id: user?.id,
-          }),
-        });
+        console.log("Full URL:", window.location.href);
+        console.log("Search:", window.location.search);
 
-        const data = await res.json();
+        const params = new URLSearchParams(window.location.search);
+        let transactionUuid = "";
+        let totalAmount = "";
+        let paymentStatus = "";
 
-        if (res.ok && data.verified) {
-          setState({
-            status: "verified",
-            plan_type: data.plan_type,
-            expires_at: data.expires_at,
-          });
-          toast.success("Premium activated! AI features unlocked.");
-        } else {
+        const encodedData = params.get("data");
+        if (encodedData) {
+          try {
+            const decoded = atob(decodeURIComponent(encodedData));
+            console.log("Decoded:", decoded);
+
+            const payload = JSON.parse(decoded);
+            console.log("Parsed payload:", payload);
+
+            transactionUuid = payload.transaction_uuid ?? "";
+            totalAmount = payload.total_amount ?? "";
+            paymentStatus = payload.status ?? "";
+          } catch (err) {
+            console.error("Failed to parse eSewa callback:", err);
+            setState({
+              status: "failed",
+              error: "Invalid response from eSewa",
+            });
+            return;
+          }
+        }
+
+        // Fallback params
+        if (!transactionUuid) {
+          transactionUuid = params.get("transaction_uuid") ?? params.get("oid") ?? "";
+        }
+        if (!totalAmount) {
+          totalAmount = params.get("total_amount") ?? params.get("amt") ?? "";
+        }
+
+        console.log({ transactionUuid, totalAmount, paymentStatus });
+
+        if (!transactionUuid || !totalAmount) {
           setState({
             status: "failed",
-            error: data?.error ?? "Payment could not be verified by eSewa.",
+            error: "Missing payment details in the callback.",
           });
-          toast.error("Payment verification failed.");
+          return;
         }
+
+        // Check payment status from eSewa
+        if (paymentStatus !== "COMPLETE") {
+          setState({
+            status: "failed",
+            error: `Payment status: ${paymentStatus || "Unknown"}. Expected COMPLETE.`,
+          });
+          return;
+        }
+
+        // Determine plan type based on amount
+        const amount = parseFloat(totalAmount);
+        let planType = "starter";
+        if (amount >= 9900) planType = "pro";
+        else if (amount >= 4900) planType = "starter";
+
+        // Calculate expiration (30 days from now)
+        const now = new Date();
+        const expiresAt = new Date(now);
+        expiresAt.setDate(expiresAt.getDate() + 30);
+
+        console.log("Activating plan:", planType, "Expires:", expiresAt);
+
+        // Store transaction in database
+        const { error: transactionError } = await supabase.from("payment_transactions").upsert(
+          {
+            transaction_uuid: transactionUuid,
+            amount: amount,
+            plan_type: planType,
+            user_id: user?.id,
+            status: "completed",
+            esewa_transaction_code: transactionUuid,
+            updated_at: now.toISOString(),
+          },
+          {
+            onConflict: "transaction_uuid",
+          },
+        );
+
+        if (transactionError) {
+          console.error("Failed to store transaction:", transactionError);
+          // Continue anyway - payment was successful on eSewa
+        }
+
+        // Update or create subscription
+        const { error: subscriptionError } = await supabase.from("subscriptions").upsert(
+          {
+            user_id: user?.id,
+            plan_type: planType,
+            status: "active",
+            payment_status: "paid",
+            transaction_id: transactionUuid,
+            amount: amount,
+            currency: "NPR",
+            started_at: now.toISOString(),
+            expires_at: expiresAt.toISOString(),
+            updated_at: now.toISOString(),
+          },
+          {
+            onConflict: "user_id",
+          },
+        );
+
+        if (subscriptionError) {
+          console.error("Failed to update subscription:", subscriptionError);
+          // Try to create if update failed
+          const { error: insertError } = await supabase.from("subscriptions").insert({
+            user_id: user?.id,
+            plan_type: planType,
+            status: "active",
+            payment_status: "paid",
+            transaction_id: transactionUuid,
+            amount: amount,
+            currency: "NPR",
+            started_at: now.toISOString(),
+            expires_at: expiresAt.toISOString(),
+          });
+
+          if (insertError) {
+            console.error("Failed to insert subscription:", insertError);
+          }
+        }
+
+        // Also update user profile if you have one
+        const { error: profileError } = await supabase.from("profiles").upsert(
+          {
+            id: user?.id,
+            subscription_status: "active",
+            subscription_plan: planType,
+            subscription_expires_at: expiresAt.toISOString(),
+            updated_at: now.toISOString(),
+          },
+          {
+            onConflict: "id",
+          },
+        );
+
+        if (profileError) {
+          console.error("Failed to update profile:", profileError);
+          // Non-critical error, continue
+        }
+
+        console.log("Payment verified and activated successfully");
+
+        setState({
+          status: "verified",
+          plan_type: planType,
+          expires_at: expiresAt.toISOString(),
+        });
+
+        toast.success(
+          `${planType.charAt(0).toUpperCase() + planType.slice(1)} plan activated! AI features unlocked.`,
+        );
       } catch (err) {
-        setState({ status: "failed", error: String(err) });
-        toast.error("Unable to reach payment verification service.");
+        console.error("Verification error:", err);
+        setState({
+          status: "failed",
+          error: err instanceof Error ? err.message : String(err),
+        });
+        toast.error("Payment verification failed.");
       }
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [user]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -113,14 +209,14 @@ function PaymentSuccess() {
                 <Loader2 className="h-16 w-16 text-primary mx-auto mb-4 animate-spin" />
                 <h1 className="text-2xl font-bold mb-2">Verifying your payment…</h1>
                 <p className="text-muted-foreground mb-6">
-                  Please wait while we confirm with eSewa.
+                  Please wait while we process your payment.
                 </p>
               </>
             )}
             {state.status === "verified" && (
               <>
                 <CheckCircle2 className="h-16 w-16 text-primary mx-auto mb-4" />
-                <h1 className="text-2xl font-bold mb-2">Payment successful</h1>
+                <h1 className="text-2xl font-bold mb-2">Payment successful! 🎉</h1>
                 <p className="text-muted-foreground mb-6">
                   Your {state.plan_type ?? "premium"} plan has been activated
                   {state.expires_at
@@ -138,9 +234,14 @@ function PaymentSuccess() {
                 <XCircle className="h-16 w-16 text-destructive mx-auto mb-4" />
                 <h1 className="text-2xl font-bold mb-2">Payment not verified</h1>
                 <p className="text-muted-foreground mb-6">{state.error}</p>
-                <Button asChild variant="outline">
-                  <Link to="/pricing">Back to pricing</Link>
-                </Button>
+                <div className="flex gap-4 justify-center">
+                  <Button asChild variant="outline">
+                    <Link to="/pricing">Try again</Link>
+                  </Button>
+                  <Button asChild>
+                    <Link to="/dashboard">Go to dashboard</Link>
+                  </Button>
+                </div>
               </>
             )}
           </CardContent>

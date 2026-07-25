@@ -239,11 +239,8 @@ CREATE POLICY "anon_insert_contact_messages" ON contact_messages FOR INSERT
   TO anon, authenticated WITH CHECK (true);
 
 -- Only admins can read contact messages
-CREATE POLICY "admin_select_contact_messages" 
-ON contact_messages 
-FOR SELECT
-TO authenticated
-USING (true);
+CREATE POLICY "admin_select_contact_messages" ON contact_messages FOR SELECT
+  TO authenticated USING (public.has_role(auth.uid(), 'admin'::app_role));
 -- ============================================================
 -- 6. Fix messages policies — tighten UPDATE, keep SELECT via chat
 -- ============================================================
@@ -260,14 +257,14 @@ CREATE POLICY "update_own_messages_v2" ON messages FOR UPDATE
 -- 7. Indexes for performance
 -- ============================================================
 CREATE INDEX IF NOT EXISTS messages_chat_created_idx ON messages (chat_id, created_at);
--- CREATE INDEX IF NOT EXISTS messages_receiver_read_idx ON messages (receiver_id, is_read) WHERE receiver_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS messages_receiver_read_idx ON messages (receiver_id, is_read) WHERE receiver_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS messages_sender_created_idx ON messages (sender_id, created_at);
 
 CREATE INDEX IF NOT EXISTS chats_user_a_idx ON chats (user_a);
 CREATE INDEX IF NOT EXISTS chats_user_b_idx ON chats (user_b);
 CREATE INDEX IF NOT EXISTS chats_last_msg_idx ON chats (last_message_at DESC NULLS LAST);
 
--- CREATE INDEX IF NOT EXISTS notif_user_read_idx ON notifications (user_id, is_read);
+CREATE INDEX IF NOT EXISTS notif_user_read_idx ON notifications (user_id, is_read);
 CREATE INDEX IF NOT EXISTS notif_user_created_idx ON notifications (user_id, created_at DESC);
 
 CREATE INDEX IF NOT EXISTS posts_author_created_idx ON posts (author_id, created_at DESC);
@@ -276,85 +273,8 @@ CREATE INDEX IF NOT EXISTS posts_created_idx ON posts (created_at DESC);
 CREATE INDEX IF NOT EXISTS post_comments_post_idx ON post_comments (post_id, created_at);
 CREATE INDEX IF NOT EXISTS post_comments_author_idx ON post_comments (author_id);
 
-DO $$
-BEGIN
-
--- payments
-IF EXISTS (
-    SELECT 1
-    FROM information_schema.tables
-    WHERE table_schema='public'
-    AND table_name='payments'
-)
-AND EXISTS (
-    SELECT 1
-    FROM information_schema.columns
-    WHERE table_name='payments'
-    AND column_name='user_id'
-)
-AND EXISTS (
-    SELECT 1
-    FROM information_schema.columns
-    WHERE table_name='payments'
-    AND column_name='status'
-)
-THEN
-
-CREATE INDEX IF NOT EXISTS payments_user_status_idx
-ON public.payments(user_id,status);
-
-END IF;
-
-
--- messages
-IF EXISTS (
-    SELECT 1
-    FROM information_schema.columns
-    WHERE table_name='messages'
-    AND column_name='receiver_id'
-)
-AND EXISTS (
-    SELECT 1
-    FROM information_schema.columns
-    WHERE table_name='messages'
-    AND column_name='is_read'
-)
-THEN
-
-CREATE INDEX IF NOT EXISTS messages_receiver_read_idx
-ON public.messages(receiver_id,is_read);
-
-END IF;
-
-
--- notifications
-IF EXISTS (
-    SELECT 1
-    FROM information_schema.tables
-    WHERE table_name='notifications'
-)
-THEN
-
-CREATE INDEX IF NOT EXISTS notif_user_read_idx
-ON public.notifications(user_id,is_read);
-
-END IF;
-
-END $$;;
-DO $$
-BEGIN
-IF EXISTS (
-    SELECT 1 
-    FROM information_schema.columns
-    WHERE table_schema='public'
-    AND table_name='payments'
-    AND column_name='esewa_transaction_id'
-)
-THEN
-    CREATE INDEX IF NOT EXISTS payments_esewa_txn_idx
-    ON public.payments(esewa_transaction_id);
-END IF;
-END $$;
+CREATE INDEX IF NOT EXISTS payments_user_status_idx ON payments (user_id, status);
+CREATE INDEX IF NOT EXISTS payments_esewa_txn_idx ON payments (esewa_transaction_id);
 
 -- ============================================================
 -- 8. Trigger: notify admins on new contact message
