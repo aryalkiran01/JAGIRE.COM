@@ -136,8 +136,8 @@ function JobsPage() {
                         <Badge variant="outline">{job.experience_level}</Badge>
                         {job.salary_min && (
                           <Badge>
-                            ${Math.round(job.salary_min / 1000)}k - $
-                            {Math.round((job.salary_max ?? job.salary_min) / 1000)}k
+                            Rs. {job.salary_min.toLocaleString()} –{" "}
+                            Rs. {(job.salary_max ?? job.salary_min).toLocaleString()}
                           </Badge>
                         )}
                       </div>

@@ -29,12 +29,60 @@ import {
   Globe,
   CircleCheck as CheckCircle2,
   Quote,
+  BrainCircuit,
 } from "lucide-react";
 import { useState } from "react";
 
 export const Route = createFileRoute("/")({
   component: Landing,
 });
+
+// Pexels images keyed by common category slug/name patterns
+const CATEGORY_IMAGES: Record<string, string> = {
+  technology: "https://images.pexels.com/photos/574071/pexels-photo-574071.jpeg?auto=compress&cs=tinysrgb&w=400",
+  software: "https://images.pexels.com/photos/574071/pexels-photo-574071.jpeg?auto=compress&cs=tinysrgb&w=400",
+  engineering: "https://images.pexels.com/photos/257736/pexels-photo-257736.jpeg?auto=compress&cs=tinysrgb&w=400",
+  design: "https://images.pexels.com/photos/196644/pexels-photo-196644.jpeg?auto=compress&cs=tinysrgb&w=400",
+  marketing: "https://images.pexels.com/photos/905163/pexels-photo-905163.jpeg?auto=compress&cs=tinysrgb&w=400",
+  finance: "https://images.pexels.com/photos/534216/pexels-photo-534216.jpeg?auto=compress&cs=tinysrgb&w=400",
+  accounting: "https://images.pexels.com/photos/534216/pexels-photo-534216.jpeg?auto=compress&cs=tinysrgb&w=400",
+  healthcare: "https://images.pexels.com/photos/40568/medical-appointment-doctor-healthcare-40568.jpeg?auto=compress&cs=tinysrgb&w=400",
+  medical: "https://images.pexels.com/photos/40568/medical-appointment-doctor-healthcare-40568.jpeg?auto=compress&cs=tinysrgb&w=400",
+  education: "https://images.pexels.com/photos/256395/pexels-photo-256395.jpeg?auto=compress&cs=tinysrgb&w=400",
+  teaching: "https://images.pexels.com/photos/256395/pexels-photo-256395.jpeg?auto=compress&cs=tinysrgb&w=400",
+  sales: "https://images.pexels.com/photos/3184465/pexels-photo-3184465.jpeg?auto=compress&cs=tinysrgb&w=400",
+  hr: "https://images.pexels.com/photos/3184338/pexels-photo-3184338.jpeg?auto=compress&cs=tinysrgb&w=400",
+  human: "https://images.pexels.com/photos/3184338/pexels-photo-3184338.jpeg?auto=compress&cs=tinysrgb&w=400",
+  legal: "https://images.pexels.com/photos/5668473/pexels-photo-5668473.jpeg?auto=compress&cs=tinysrgb&w=400",
+  law: "https://images.pexels.com/photos/5668473/pexels-photo-5668473.jpeg?auto=compress&cs=tinysrgb&w=400",
+  data: "https://images.pexels.com/photos/590022/pexels-photo-590022.jpeg?auto=compress&cs=tinysrgb&w=400",
+  analytics: "https://images.pexels.com/photos/590022/pexels-photo-590022.jpeg?auto=compress&cs=tinysrgb&w=400",
+  science: "https://images.pexels.com/photos/590022/pexels-photo-590022.jpeg?auto=compress&cs=tinysrgb&w=400",
+  construction: "https://images.pexels.com/photos/1078884/pexels-photo-1078884.jpeg?auto=compress&cs=tinysrgb&w=400",
+  retail: "https://images.pexels.com/photos/1884581/pexels-photo-1884581.jpeg?auto=compress&cs=tinysrgb&w=400",
+  hospitality: "https://images.pexels.com/photos/941861/pexels-photo-941861.jpeg?auto=compress&cs=tinysrgb&w=400",
+  media: "https://images.pexels.com/photos/1092671/pexels-photo-1092671.jpeg?auto=compress&cs=tinysrgb&w=400",
+  content: "https://images.pexels.com/photos/1092671/pexels-photo-1092671.jpeg?auto=compress&cs=tinysrgb&w=400",
+  logistics: "https://images.pexels.com/photos/1267338/pexels-photo-1267338.jpeg?auto=compress&cs=tinysrgb&w=400",
+  manufacturing: "https://images.pexels.com/photos/1267338/pexels-photo-1267338.jpeg?auto=compress&cs=tinysrgb&w=400",
+  it: "https://images.pexels.com/photos/574071/pexels-photo-574071.jpeg?auto=compress&cs=tinysrgb&w=400",
+  customer: "https://images.pexels.com/photos/3184418/pexels-photo-3184418.jpeg?auto=compress&cs=tinysrgb&w=400",
+  management: "https://images.pexels.com/photos/3183197/pexels-photo-3183197.jpeg?auto=compress&cs=tinysrgb&w=400",
+  default: "https://images.pexels.com/photos/3184291/pexels-photo-3184291.jpeg?auto=compress&cs=tinysrgb&w=400",
+};
+
+function getCategoryImage(name: string, slug: string): string {
+  const key = (slug + " " + name).toLowerCase();
+  for (const [pattern, url] of Object.entries(CATEGORY_IMAGES)) {
+    if (key.includes(pattern)) return url;
+  }
+  return CATEGORY_IMAGES.default;
+}
+
+function fmtSalary(min: number | null): string | null {
+  if (!min) return null;
+  return `Rs. ${min.toLocaleString("en-IN")}`;
+}
 
 function Landing() {
   const [q, setQ] = useState("");
@@ -169,6 +217,12 @@ function Landing() {
             to="/jobs"
           />
           <FeatureCard
+            icon={BrainCircuit}
+            title="AI Career Coach"
+            desc="Chat with your personal AI career advisor — ask about skills to learn, rejection reasons, salary negotiation, and growth paths."
+            to="/career-coach"
+          />
+          <FeatureCard
             icon={Video}
             title="Interview Prep"
             desc="AI-generated interview questions, scheduling, and Google Meet integration for seamless interviews."
@@ -181,12 +235,6 @@ function Landing() {
             to="/resume-builder"
           />
           <FeatureCard
-            icon={TrendingUp}
-            title="Career Roadmap"
-            desc="Personalized paths, certifications, and trending skills to help you grow into your next role."
-            to="/resume-scanner"
-          />
-          <FeatureCard
             icon={Rocket}
             title="Referrals & Rewards"
             desc="Refer friends to jobs and earn rewards. Build your network while helping others succeed."
@@ -195,7 +243,7 @@ function Landing() {
         </div>
       </section>
 
-      {/* Categories */}
+      {/* Categories with Pexels images */}
       {categories && categories.length > 0 && (
         <section className="container mx-auto px-4 py-20">
           <div className="mb-8 flex items-end justify-between">
@@ -210,14 +258,23 @@ function Landing() {
             </Button>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            {categories.map((c, i) => (
+            {categories.map((c: any) => (
               <Link key={c.id} to="/jobs" search={{ category: c.slug }}>
-                <Card className="hover:shadow-glow hover:-translate-y-1 transition-all cursor-pointer animate-fade-in-up">
-                  <CardContent className="p-6 text-center">
-                    <div className="h-12 w-12 rounded-xl gradient-brand mx-auto mb-3 flex items-center justify-center shadow-glow">
-                      <Briefcase className="h-6 w-6 text-primary-foreground" />
-                    </div>
-                    <div className="font-semibold text-sm">{c.name}</div>
+                <Card className="hover:shadow-glow hover:-translate-y-1 transition-all cursor-pointer animate-fade-in-up overflow-hidden group">
+                  <div className="relative h-24 overflow-hidden">
+                    <img
+                      src={getCategoryImage(c.name ?? "", c.slug ?? "")}
+                      alt={c.name}
+                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
+                      loading="lazy"
+                    />
+                    <div className="absolute inset-0 bg-black/30 group-hover:bg-black/20 transition-colors" />
+                  </div>
+                  <CardContent className="p-3 text-center">
+                    <div className="font-semibold text-sm truncate">{c.name}</div>
+                    {c.job_count != null && (
+                      <div className="text-xs text-muted-foreground">{c.job_count} jobs</div>
+                    )}
                   </CardContent>
                 </Card>
               </Link>
@@ -241,7 +298,7 @@ function Landing() {
         </div>
         {featuredJobs && featuredJobs.length > 0 ? (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {featuredJobs.map((job: any, i: number) => (
+            {featuredJobs.map((job: any) => (
               <Link key={job.id} to="/jobs/$jobId" params={{ jobId: job.id }}>
                 <Card className="h-full hover:shadow-glow hover:-translate-y-1 transition-all cursor-pointer animate-fade-in-up">
                   <CardContent className="p-6">
@@ -273,7 +330,9 @@ function Landing() {
                       )}
                       <Badge variant="secondary">{String(job.job_type).replace("_", " ")}</Badge>
                       {job.salary_min && (
-                        <Badge variant="outline">${Math.round(job.salary_min / 1000)}k+</Badge>
+                        <Badge variant="outline">
+                          Rs. {Number(job.salary_min).toLocaleString("en-IN")}+
+                        </Badge>
                       )}
                     </div>
                   </CardContent>

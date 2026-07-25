@@ -52,6 +52,18 @@ function Support() {
     setSaving(false);
     if (error) return toast.error(error.message);
     toast.success("Ticket submitted!");
+
+    const adminEmail = import.meta.env.VITE_ADMIN_EMAIL ?? "admin@jagire.com";
+    supabase.functions
+      .invoke("send-email", {
+        body: {
+          to: adminEmail,
+          subject: `[Support] New ticket: ${subject}`,
+          html: `<h2>New Support Ticket</h2><p><b>User:</b> ${user.email ?? user.id}</p><p><b>Subject:</b> ${subject}</p><p><b>Message:</b><br/>${message}</p><p><b>Time:</b> ${new Date().toLocaleString()}</p>`,
+        },
+      })
+      .catch(() => {});
+
     setSubject("");
     setMessage("");
     qc.invalidateQueries({ queryKey: ["tickets"] });

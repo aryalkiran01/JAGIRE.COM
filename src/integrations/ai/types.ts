@@ -20,6 +20,7 @@ export type AITask =
   | "company-candidate-analysis"
   | "linkedin-import"
   | "learning-recommendations"
+  | "career-coach"
   | "reasoning"
   | "fast"
   | "general";

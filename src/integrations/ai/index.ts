@@ -12,6 +12,7 @@ export { OllamaProvider } from "./ollama-provider";
 export { resolveOllamaModel, getOllamaModelCategory, OLLAMA_TIMEOUT_MS } from "./ollama-models";
 export {
   resumeAnalysisSchema,
+  fullResumeScanSchema,
   careerRecommendationsSchema,
   linkedinImportSchema,
   learningRecommendationsSchema,
@@ -22,6 +23,7 @@ export {
   hiringRecommendationSchema,
   strengthWeaknessSchema,
   companyCandidateAnalysisSchema,
+  careerCoachResponseSchema,
 } from "./schemas";
 export type {
   AIProvider,

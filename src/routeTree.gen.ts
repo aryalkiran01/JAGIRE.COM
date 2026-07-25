@@ -25,6 +25,7 @@ import { Route as AuthenticatedApplicationsRouteImport } from './routes/_authent
 import { Route as AuthenticatedAssessmentsRouteImport } from './routes/_authenticated/assessments'
 import { Route as AuthenticatedBlogEditorRouteImport } from './routes/_authenticated/blog-editor'
 import { Route as AuthenticatedCareerRouteImport } from './routes/_authenticated/career'
+import { Route as AuthenticatedCareerCoachRouteImport } from './routes/_authenticated/career-coach'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedEmployerRouteImport } from './routes/_authenticated/employer'
 import { Route as AuthenticatedFeedRouteImport } from './routes/_authenticated/feed'
@@ -132,6 +133,12 @@ const AuthenticatedCareerRoute = AuthenticatedCareerRouteImport.update({
   path: '/career',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedCareerCoachRoute =
+  AuthenticatedCareerCoachRouteImport.update({
+    id: '/career-coach',
+    path: '/career-coach',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -282,6 +289,7 @@ export interface FileRoutesByFullPath {
   '/assessments': typeof AuthenticatedAssessmentsRoute
   '/blog-editor': typeof AuthenticatedBlogEditorRoute
   '/career': typeof AuthenticatedCareerRoute
+  '/career-coach': typeof AuthenticatedCareerCoachRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/employer': typeof AuthenticatedEmployerRouteWithChildren
   '/feed': typeof AuthenticatedFeedRoute
@@ -324,6 +332,7 @@ export interface FileRoutesByTo {
   '/assessments': typeof AuthenticatedAssessmentsRoute
   '/blog-editor': typeof AuthenticatedBlogEditorRoute
   '/career': typeof AuthenticatedCareerRoute
+  '/career-coach': typeof AuthenticatedCareerCoachRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/feed': typeof AuthenticatedFeedRoute
   '/interviews': typeof AuthenticatedInterviewsRoute
@@ -367,6 +376,7 @@ export interface FileRoutesById {
   '/_authenticated/assessments': typeof AuthenticatedAssessmentsRoute
   '/_authenticated/blog-editor': typeof AuthenticatedBlogEditorRoute
   '/_authenticated/career': typeof AuthenticatedCareerRoute
+  '/_authenticated/career-coach': typeof AuthenticatedCareerCoachRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/employer': typeof AuthenticatedEmployerRouteWithChildren
   '/_authenticated/feed': typeof AuthenticatedFeedRoute
@@ -411,6 +421,7 @@ export interface FileRouteTypes {
     | '/assessments'
     | '/blog-editor'
     | '/career'
+    | '/career-coach'
     | '/dashboard'
     | '/employer'
     | '/feed'
@@ -453,6 +464,7 @@ export interface FileRouteTypes {
     | '/assessments'
     | '/blog-editor'
     | '/career'
+    | '/career-coach'
     | '/dashboard'
     | '/feed'
     | '/interviews'
@@ -495,6 +507,7 @@ export interface FileRouteTypes {
     | '/_authenticated/assessments'
     | '/_authenticated/blog-editor'
     | '/_authenticated/career'
+    | '/_authenticated/career-coach'
     | '/_authenticated/dashboard'
     | '/_authenticated/employer'
     | '/_authenticated/feed'
@@ -656,6 +669,13 @@ declare module '@tanstack/react-router' {
       path: '/career'
       fullPath: '/career'
       preLoaderRoute: typeof AuthenticatedCareerRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/career-coach': {
+      id: '/_authenticated/career-coach'
+      path: '/career-coach'
+      fullPath: '/career-coach'
+      preLoaderRoute: typeof AuthenticatedCareerCoachRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/dashboard': {
@@ -863,6 +883,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedAssessmentsRoute: typeof AuthenticatedAssessmentsRoute
   AuthenticatedBlogEditorRoute: typeof AuthenticatedBlogEditorRoute
   AuthenticatedCareerRoute: typeof AuthenticatedCareerRoute
+  AuthenticatedCareerCoachRoute: typeof AuthenticatedCareerCoachRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedEmployerRoute: typeof AuthenticatedEmployerRouteWithChildren
   AuthenticatedFeedRoute: typeof AuthenticatedFeedRoute
@@ -883,6 +904,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAssessmentsRoute: AuthenticatedAssessmentsRoute,
   AuthenticatedBlogEditorRoute: AuthenticatedBlogEditorRoute,
   AuthenticatedCareerRoute: AuthenticatedCareerRoute,
+  AuthenticatedCareerCoachRoute: AuthenticatedCareerCoachRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedEmployerRoute: AuthenticatedEmployerRouteWithChildren,
   AuthenticatedFeedRoute: AuthenticatedFeedRoute,
