@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { SubscriptionBadge } from "@/components/subscription-badge";
 import {
   LayoutDashboard,
   LogOut,
@@ -171,6 +172,7 @@ export function SiteHeader() {
 
           {user ? (
             <>
+              <SubscriptionBadge />
               <Button variant="ghost" size="icon" asChild className="relative h-9 w-9">
                 <Link to="/notifications">
                   <Bell className="h-4 w-4" />
