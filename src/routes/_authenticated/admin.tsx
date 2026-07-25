@@ -27,12 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   Shield,
   Users,
@@ -339,8 +334,7 @@ function Admin() {
                         <Select
                           value={u.role}
                           onValueChange={(newRole) => {
-                            if (newRole !== u.role)
-                              changeRole.mutate({ userId: u.id, newRole });
+                            if (newRole !== u.role) changeRole.mutate({ userId: u.id, newRole });
                           }}
                         >
                           <SelectTrigger className="w-32 h-8 text-xs">
@@ -433,9 +427,7 @@ function Admin() {
                   </div>
                 ))}
                 {!applicants?.length && (
-                  <div className="p-8 text-center text-muted-foreground">
-                    No applications yet.
-                  </div>
+                  <div className="p-8 text-center text-muted-foreground">No applications yet.</div>
                 )}
               </div>
             </CardContent>
@@ -651,12 +643,24 @@ function UserDetailDialog({ user }: { user: any }) {
             <div>
               <div className="font-semibold mb-1">Personal</div>
               <div className="grid grid-cols-2 gap-1 text-muted-foreground">
-                <span>Email</span><span className="text-foreground">{user.email ?? "—"}</span>
-                <span>Role</span><span><Badge variant={roleColor(user.role) as any} className="text-xs">{user.role}</Badge></span>
-                <span>Headline</span><span className="text-foreground">{user.headline ?? "—"}</span>
-                <span>Location</span><span className="text-foreground">{user.location ?? "—"}</span>
-                <span>Experience</span><span className="text-foreground">{user.experience_years ?? 0} yrs</span>
-                <span>Joined</span><span className="text-foreground">{new Date(user.created_at).toLocaleDateString()}</span>
+                <span>Email</span>
+                <span className="text-foreground">{user.email ?? "—"}</span>
+                <span>Role</span>
+                <span>
+                  <Badge variant={roleColor(user.role) as any} className="text-xs">
+                    {user.role}
+                  </Badge>
+                </span>
+                <span>Headline</span>
+                <span className="text-foreground">{user.headline ?? "—"}</span>
+                <span>Location</span>
+                <span className="text-foreground">{user.location ?? "—"}</span>
+                <span>Experience</span>
+                <span className="text-foreground">{user.experience_years ?? 0} yrs</span>
+                <span>Joined</span>
+                <span className="text-foreground">
+                  {new Date(user.created_at).toLocaleDateString()}
+                </span>
               </div>
             </div>
 
@@ -665,10 +669,14 @@ function UserDetailDialog({ user }: { user: any }) {
               <div>
                 <div className="font-semibold mb-1">AI Resume Scores</div>
                 <div className="grid grid-cols-2 gap-1 text-muted-foreground">
-                  <span>Overall</span><span className="text-foreground">{user.overall_score ?? "—"}</span>
-                  <span>ATS</span><span className="text-foreground">{user.ats_score ?? "—"}</span>
-                  <span>Grammar</span><span className="text-foreground">{user.grammar_score ?? "—"}</span>
-                  <span>Keywords</span><span className="text-foreground">{user.keyword_score ?? "—"}</span>
+                  <span>Overall</span>
+                  <span className="text-foreground">{user.overall_score ?? "—"}</span>
+                  <span>ATS</span>
+                  <span className="text-foreground">{user.ats_score ?? "—"}</span>
+                  <span>Grammar</span>
+                  <span className="text-foreground">{user.grammar_score ?? "—"}</span>
+                  <span>Keywords</span>
+                  <span className="text-foreground">{user.keyword_score ?? "—"}</span>
                 </div>
               </div>
             )}
@@ -679,7 +687,9 @@ function UserDetailDialog({ user }: { user: any }) {
                 <div className="font-semibold mb-1">Skills</div>
                 <div className="flex flex-wrap gap-1">
                   {(user.skills as string[]).map((s: string) => (
-                    <Badge key={s} variant="secondary" className="text-xs">{s}</Badge>
+                    <Badge key={s} variant="secondary" className="text-xs">
+                      {s}
+                    </Badge>
                   ))}
                 </div>
               </div>
@@ -698,11 +708,15 @@ function UserDetailDialog({ user }: { user: any }) {
 
             {/* Applications */}
             <div>
-              <div className="font-semibold mb-1">Applications ({detail?.applications?.length ?? 0})</div>
+              <div className="font-semibold mb-1">
+                Applications ({detail?.applications?.length ?? 0})
+              </div>
               {detail?.applications?.map((a: any) => (
                 <div key={a.id} className="flex justify-between text-muted-foreground">
                   <span className="truncate flex-1">{a.job?.title ?? "—"}</span>
-                  <Badge variant="outline" className="text-xs ml-2">{a.status}</Badge>
+                  <Badge variant="outline" className="text-xs ml-2">
+                    {a.status}
+                  </Badge>
                 </div>
               ))}
               {!detail?.applications?.length && <div className="text-muted-foreground">None</div>}
@@ -745,18 +759,10 @@ function AdminTicket({
           <Button size="sm" onClick={() => onReply(ticket.id, reply, "in_progress")}>
             Send reply
           </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => onReply(ticket.id, reply, "resolved")}
-          >
+          <Button size="sm" variant="outline" onClick={() => onReply(ticket.id, reply, "resolved")}>
             Resolve
           </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => onReply(ticket.id, reply, "closed")}
-          >
+          <Button size="sm" variant="ghost" onClick={() => onReply(ticket.id, reply, "closed")}>
             Close
           </Button>
         </div>

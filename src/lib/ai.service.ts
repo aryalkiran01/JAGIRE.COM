@@ -227,7 +227,8 @@ export const scanResumeFromStorage = createServerFn({ method: "POST" })
       matches = (jobs ?? [])
         .map((j: any) => {
           const js = ((j.required_skills ?? []) as string[]).map((s) => s.toLowerCase());
-          if (!js.length) return { id: j.id, title: j.title, company: j.company?.name ?? null, score: 0 };
+          if (!js.length)
+            return { id: j.id, title: j.title, company: j.company?.name ?? null, score: 0 };
           const hits = js.filter((s) => skills.some((k) => s.includes(k) || k.includes(s))).length;
           const score = Math.round((hits / Math.max(js.length, 1)) * 100);
           return { id: j.id, title: j.title, company: j.company?.name ?? null, score };
@@ -276,7 +277,9 @@ export const importFromGitHub = createServerFn({ method: "POST" })
     };
     const [uRes, rRes] = await Promise.all([
       fetch(`https://api.github.com/users/${data.username}`, { headers }),
-      fetch(`https://api.github.com/users/${data.username}/repos?sort=stars&per_page=100`, { headers }),
+      fetch(`https://api.github.com/users/${data.username}/repos?sort=stars&per_page=100`, {
+        headers,
+      }),
     ]);
     if (uRes.status === 404) throw new Error("GitHub user not found");
     if (!uRes.ok) throw new Error(`GitHub error (${uRes.status})`);
@@ -361,7 +364,10 @@ export const importFromLinkedInText = createServerFn({ method: "POST" })
     if (parsed.location) patch.location = parsed.location;
     if (parsed.current_position) patch.current_position = parsed.current_position;
     if (Number.isFinite(parsed.experience_years))
-      patch.experience_years = Math.max(0, Math.min(60, Math.round(Number(parsed.experience_years))));
+      patch.experience_years = Math.max(
+        0,
+        Math.min(60, Math.round(Number(parsed.experience_years))),
+      );
     if (parsed.skills?.length) patch.skills = parsed.skills.slice(0, 20);
     if (data.url) patch.linkedin_url = data.url;
 
@@ -470,7 +476,9 @@ async function buildUserContext(supabase: any, userId: string, role: string | nu
         .maybeSingle(),
       supabase
         .from("resumes")
-        .select("overall_score,ats_score,grammar_score,suggestions,parsed_data,career_roadmap,missing_skills")
+        .select(
+          "overall_score,ats_score,grammar_score,suggestions,parsed_data,career_roadmap,missing_skills",
+        )
         .eq("user_id", userId)
         .eq("is_default", true)
         .maybeSingle(),
@@ -480,38 +488,39 @@ async function buildUserContext(supabase: any, userId: string, role: string | nu
         .eq("applicant_id", userId)
         .order("created_at", { ascending: false })
         .limit(10),
-      supabase
-        .from("saved_jobs")
-        .select("job:jobs(id,title)")
-        .eq("user_id", userId)
-        .limit(5),
+      supabase.from("saved_jobs").select("job:jobs(id,title)").eq("user_id", userId).limit(5),
     ]);
 
   if (profile) {
-    ctx.push(`## User Profile\n${JSON.stringify({
-      name: profile.full_name,
-      headline: profile.headline,
-      location: profile.location,
-      experience_years: profile.experience_years,
-      current_position: profile.current_position,
-      skills: profile.skills ?? [],
-      expected_salary: profile.expected_salary,
-      preferred_job_type: profile.preferred_job_type,
-      preferred_location: profile.preferred_location,
-    })}`);
+    ctx.push(
+      `## User Profile\n${JSON.stringify({
+        name: profile.full_name,
+        headline: profile.headline,
+        location: profile.location,
+        experience_years: profile.experience_years,
+        current_position: profile.current_position,
+        skills: profile.skills ?? [],
+        expected_salary: profile.expected_salary,
+        preferred_job_type: profile.preferred_job_type,
+        preferred_location: profile.preferred_location,
+      })}`,
+    );
   }
 
   if (resume) {
     const parsed = resume.parsed_data as any;
-    ctx.push(`## Resume Analysis\n${JSON.stringify({
-      overall_score: resume.overall_score,
-      ats_score: resume.ats_score,
-      grammar_score: resume.grammar_score,
-      suggestions: resume.suggestions ?? [],
-      extracted_skills: parsed?.skills ?? [],
-      summary: parsed?.summary ?? "",
-      missing_skills: resume.missing_skills ?? (resume.career_roadmap as any)?.missing_skills ?? [],
-    })}`);
+    ctx.push(
+      `## Resume Analysis\n${JSON.stringify({
+        overall_score: resume.overall_score,
+        ats_score: resume.ats_score,
+        grammar_score: resume.grammar_score,
+        suggestions: resume.suggestions ?? [],
+        extracted_skills: parsed?.skills ?? [],
+        summary: parsed?.summary ?? "",
+        missing_skills:
+          resume.missing_skills ?? (resume.career_roadmap as any)?.missing_skills ?? [],
+      })}`,
+    );
   }
 
   if (applications?.length) {
@@ -523,24 +532,25 @@ async function buildUserContext(supabase: any, userId: string, role: string | nu
   }
 
   if (savedJobs?.length) {
-    ctx.push(
-      `## Saved Jobs\n${savedJobs.map((s: any) => `- ${s.job?.title}`).join("\n")}`,
-    );
+    ctx.push(`## Saved Jobs\n${savedJobs.map((s: any) => `- ${s.job?.title}`).join("\n")}`);
   }
 
   // For job-related questions, fetch active jobs
   ctx.push(`## Active Jobs (sample)`);
   const { data: activeJobs } = await supabase
     .from("jobs")
-    .select("id,title,required_skills,salary_min,salary_max,location,job_type, company:companies(name)")
+    .select(
+      "id,title,required_skills,salary_min,salary_max,location,job_type, company:companies(name)",
+    )
     .eq("status", "active")
     .order("created_at", { ascending: false })
     .limit(20);
   if (activeJobs?.length) {
     ctx.push(
       activeJobs
-        .map((j: any) =>
-          `- ${j.title} at ${j.company?.name ?? "?"} | Skills: ${(j.required_skills ?? []).join(", ")} | Salary: Rs. ${j.salary_min ?? "?"} - ${j.salary_max ?? "?"} | ${j.location ?? "Remote"}`,
+        .map(
+          (j: any) =>
+            `- ${j.title} at ${j.company?.name ?? "?"} | Skills: ${(j.required_skills ?? []).join(", ")} | Salary: Rs. ${j.salary_min ?? "?"} - ${j.salary_max ?? "?"} | ${j.location ?? "Remote"}`,
         )
         .join("\n"),
     );
@@ -614,13 +624,11 @@ export const aiAssistantChat = createServerFn({ method: "POST" })
     }
 
     // 2. Save user message
-    const { error: msgErr } = await context.supabase
-      .from("ai_messages")
-      .insert({
-        conversation_id: conversationId,
-        role: "user",
-        content: data.message,
-      });
+    const { error: msgErr } = await context.supabase.from("ai_messages").insert({
+      conversation_id: conversationId,
+      role: "user",
+      content: data.message,
+    });
     if (msgErr) throw new Error(msgErr.message);
 
     // 3. Retrieve conversation history (last 10 messages for context)
@@ -650,13 +658,11 @@ export const aiAssistantChat = createServerFn({ method: "POST" })
     );
 
     // 6. Save assistant response
-    const { error: aiMsgErr } = await context.supabase
-      .from("ai_messages")
-      .insert({
-        conversation_id: conversationId,
-        role: "assistant",
-        content: response,
-      });
+    const { error: aiMsgErr } = await context.supabase.from("ai_messages").insert({
+      conversation_id: conversationId,
+      role: "assistant",
+      content: response,
+    });
     if (aiMsgErr) throw new Error(aiMsgErr.message);
 
     return {

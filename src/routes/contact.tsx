@@ -53,7 +53,9 @@ function ContactPage() {
             `,
           },
         })
-        .catch(() => {/* silent — notification best-effort */});
+        .catch(() => {
+          /* silent — notification best-effort */
+        });
 
       toast.success("Message sent — we'll be in touch!");
       setName("");

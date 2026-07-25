@@ -9,7 +9,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { BrainCircuit, Send, Loader as Loader2, Lightbulb, Target, TrendingUp, Plus, Clock } from "lucide-react";
+import {
+  BrainCircuit,
+  Send,
+  Loader as Loader2,
+  Lightbulb,
+  Target,
+  TrendingUp,
+  Plus,
+  Clock,
+} from "lucide-react";
 import { toast } from "sonner";
 import { careerCoach } from "@/lib/ai.service";
 
@@ -244,7 +253,11 @@ function CareerCoachPage() {
               disabled={!input.trim() || ask.isPending}
               className="gradient-brand text-primary-foreground h-auto"
             >
-              {ask.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              {ask.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
             </Button>
           </div>
           <p className="text-xs text-muted-foreground">
@@ -270,9 +283,7 @@ function MessageBubble({ message }: { message: Message }) {
   const res = message.content as CoachResponse;
   if (typeof res === "string") {
     return (
-      <div className="bg-muted rounded-2xl rounded-tl-sm px-4 py-3 text-sm max-w-prose">
-        {res}
-      </div>
+      <div className="bg-muted rounded-2xl rounded-tl-sm px-4 py-3 text-sm max-w-prose">{res}</div>
     );
   }
 

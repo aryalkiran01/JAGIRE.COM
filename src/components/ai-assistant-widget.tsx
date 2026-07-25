@@ -8,13 +8,16 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
-import { BrainCircuit, Send, Loader as Loader2, Plus, MessageSquare, X, Sparkles } from "lucide-react";
+  BrainCircuit,
+  Send,
+  Loader as Loader2,
+  Plus,
+  MessageSquare,
+  X,
+  Sparkles,
+} from "lucide-react";
 import { toast } from "sonner";
 import { aiAssistantChat } from "@/lib/ai.service";
 
@@ -63,7 +66,9 @@ function MiniMarkdown({ text }: { text: string }) {
       const content = line.replace(/^#+\s/, "");
       const sizes = ["text-base font-bold", "text-sm font-bold", "text-sm font-semibold"];
       elements.push(
-        <div key={i} className={`${sizes[level - 1]} mt-3 mb-1`}>{content}</div>,
+        <div key={i} className={`${sizes[level - 1]} mt-3 mb-1`}>
+          {content}
+        </div>,
       );
       return;
     }
@@ -71,14 +76,20 @@ function MiniMarkdown({ text }: { text: string }) {
       elements.push(
         <div key={i} className="flex gap-2 text-sm ml-2 my-0.5">
           <span className="text-primary shrink-0">•</span>
-          <span dangerouslySetInnerHTML={{ __html: inlineFormat(line.replace(/^\s*[-*]\s/, "")) }} />
+          <span
+            dangerouslySetInnerHTML={{ __html: inlineFormat(line.replace(/^\s*[-*]\s/, "")) }}
+          />
         </div>,
       );
       return;
     }
     if (/^\s*\d+\.\s/.test(line)) {
       elements.push(
-        <div key={i} className="text-sm ml-2 my-0.5" dangerouslySetInnerHTML={{ __html: inlineFormat(line) }} />,
+        <div
+          key={i}
+          className="text-sm ml-2 my-0.5"
+          dangerouslySetInnerHTML={{ __html: inlineFormat(line) }}
+        />,
       );
       return;
     }
@@ -87,7 +98,11 @@ function MiniMarkdown({ text }: { text: string }) {
       return;
     }
     elements.push(
-      <p key={i} className="text-sm leading-relaxed my-1" dangerouslySetInnerHTML={{ __html: inlineFormat(line) }} />,
+      <p
+        key={i}
+        className="text-sm leading-relaxed my-1"
+        dangerouslySetInnerHTML={{ __html: inlineFormat(line) }}
+      />,
     );
   });
 
@@ -218,7 +233,12 @@ export function AIAssistantWidget() {
           {/* Conversation switcher */}
           {conversations && conversations.length > 0 && (
             <div className="px-3 py-2 border-b flex items-center gap-2 overflow-x-auto">
-              <Button size="sm" variant="outline" onClick={newChat} className="shrink-0 h-7 text-xs">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={newChat}
+                className="shrink-0 h-7 text-xs"
+              >
                 <Plus className="h-3 w-3 mr-1" /> New
               </Button>
               {conversations.map((c: any) => (
@@ -226,7 +246,9 @@ export function AIAssistantWidget() {
                   key={c.id}
                   onClick={() => loadConversation(c)}
                   className={`shrink-0 text-xs px-2 py-1 rounded-md transition-colors max-w-28 truncate ${
-                    c.id === conversationId ? "bg-primary text-primary-foreground" : "hover:bg-muted"
+                    c.id === conversationId
+                      ? "bg-primary text-primary-foreground"
+                      : "hover:bg-muted"
                   }`}
                 >
                   {c.title}
@@ -240,9 +262,12 @@ export function AIAssistantWidget() {
             {messages.length === 0 && (
               <div className="h-full flex flex-col items-center justify-center text-center py-8">
                 <BrainCircuit className="h-12 w-12 mb-3 text-primary/30" />
-                <p className="text-sm font-medium mb-1">Hi {user.user_metadata?.full_name ?? "there"}!</p>
+                <p className="text-sm font-medium mb-1">
+                  Hi {user.user_metadata?.full_name ?? "there"}!
+                </p>
                 <p className="text-xs text-muted-foreground mb-4 max-w-xs">
-                  I'm your AI career companion. Ask me anything about your career, resume, jobs, interviews, or salary.
+                  I'm your AI career companion. Ask me anything about your career, resume, jobs,
+                  interviews, or salary.
                 </p>
                 <div className="grid grid-cols-1 gap-1.5 w-full max-w-xs">
                   {QUICK_PROMPTS.map((p) => (
@@ -272,9 +297,18 @@ export function AIAssistantWidget() {
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex gap-1">
-                  <span className="h-2 w-2 rounded-full bg-muted-foreground animate-bounce" style={{ animationDelay: "0ms" }} />
-                  <span className="h-2 w-2 rounded-full bg-muted-foreground animate-bounce" style={{ animationDelay: "150ms" }} />
-                  <span className="h-2 w-2 rounded-full bg-muted-foreground animate-bounce" style={{ animationDelay: "300ms" }} />
+                  <span
+                    className="h-2 w-2 rounded-full bg-muted-foreground animate-bounce"
+                    style={{ animationDelay: "0ms" }}
+                  />
+                  <span
+                    className="h-2 w-2 rounded-full bg-muted-foreground animate-bounce"
+                    style={{ animationDelay: "150ms" }}
+                  />
+                  <span
+                    className="h-2 w-2 rounded-full bg-muted-foreground animate-bounce"
+                    style={{ animationDelay: "300ms" }}
+                  />
                 </div>
               </div>
             )}
@@ -304,7 +338,11 @@ export function AIAssistantWidget() {
                 size="icon"
                 className="gradient-brand text-primary-foreground h-10 w-10 shrink-0"
               >
-                {chat.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                {chat.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
               </Button>
             </div>
             <p className="text-[10px] text-muted-foreground text-center">
@@ -339,9 +377,7 @@ function MessageRow({ message, userName }: { message: Msg; userName?: string }) 
       </Avatar>
       <div
         className={`rounded-2xl px-3 py-2 max-w-[85%] ${
-          isUser
-            ? "bg-primary text-primary-foreground rounded-tr-sm"
-            : "bg-muted rounded-tl-sm"
+          isUser ? "bg-primary text-primary-foreground rounded-tr-sm" : "bg-muted rounded-tl-sm"
         }`}
       >
         {isUser ? (

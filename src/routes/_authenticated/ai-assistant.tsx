@@ -10,7 +10,20 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { BrainCircuit, Send, Loader as Loader2, Plus, Sparkles, Target, FileText, Briefcase, Video, IndianRupee, RefreshCw, Clock } from "lucide-react";
+import {
+  BrainCircuit,
+  Send,
+  Loader as Loader2,
+  Plus,
+  Sparkles,
+  Target,
+  FileText,
+  Briefcase,
+  Video,
+  IndianRupee,
+  RefreshCw,
+  Clock,
+} from "lucide-react";
 import { toast } from "sonner";
 import { aiAssistantChat } from "@/lib/ai.service";
 
@@ -50,7 +63,10 @@ function MiniMarkdown({ text }: { text: string }) {
     if (line.startsWith("```")) {
       if (inCode) {
         elements.push(
-          <pre key={`code-${i}`} className="bg-zinc-900 text-zinc-100 rounded-lg p-3 text-xs overflow-x-auto my-2">
+          <pre
+            key={`code-${i}`}
+            className="bg-zinc-900 text-zinc-100 rounded-lg p-3 text-xs overflow-x-auto my-2"
+          >
             <code>{codeBuffer.join("\n")}</code>
           </pre>,
         );
@@ -69,21 +85,31 @@ function MiniMarkdown({ text }: { text: string }) {
       const level = line.match(/^(#+)/)?.[1].length ?? 1;
       const content = line.replace(/^#+\s/, "");
       const sizes = ["text-lg font-bold", "text-base font-bold", "text-sm font-semibold"];
-      elements.push(<div key={i} className={`${sizes[level - 1]} mt-3 mb-1`}>{content}</div>);
+      elements.push(
+        <div key={i} className={`${sizes[level - 1]} mt-3 mb-1`}>
+          {content}
+        </div>,
+      );
       return;
     }
     if (/^\s*[-*]\s/.test(line)) {
       elements.push(
         <div key={i} className="flex gap-2 text-sm ml-2 my-0.5">
           <span className="text-primary shrink-0">•</span>
-          <span dangerouslySetInnerHTML={{ __html: inlineFormat(line.replace(/^\s*[-*]\s/, "")) }} />
+          <span
+            dangerouslySetInnerHTML={{ __html: inlineFormat(line.replace(/^\s*[-*]\s/, "")) }}
+          />
         </div>,
       );
       return;
     }
     if (/^\s*\d+\.\s/.test(line)) {
       elements.push(
-        <div key={i} className="text-sm ml-2 my-0.5" dangerouslySetInnerHTML={{ __html: inlineFormat(line) }} />,
+        <div
+          key={i}
+          className="text-sm ml-2 my-0.5"
+          dangerouslySetInnerHTML={{ __html: inlineFormat(line) }}
+        />,
       );
       return;
     }
@@ -92,7 +118,11 @@ function MiniMarkdown({ text }: { text: string }) {
       return;
     }
     elements.push(
-      <p key={i} className="text-sm leading-relaxed my-1" dangerouslySetInnerHTML={{ __html: inlineFormat(line) }} />,
+      <p
+        key={i}
+        className="text-sm leading-relaxed my-1"
+        dangerouslySetInnerHTML={{ __html: inlineFormat(line) }}
+      />,
     );
   });
 
@@ -142,12 +172,18 @@ function AIAssistantPage() {
       });
     },
     onMutate: (message) => {
-      setMessages((prev) => [...prev, { role: "user", content: message, ts: new Date().toISOString() }]);
+      setMessages((prev) => [
+        ...prev,
+        { role: "user", content: message, ts: new Date().toISOString() },
+      ]);
       setInput("");
     },
     onSuccess: (result) => {
       setConversationId(result.conversationId);
-      setMessages((prev) => [...prev, { role: "assistant", content: result.response, ts: new Date().toISOString() }]);
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: result.response, ts: new Date().toISOString() },
+      ]);
       qc.invalidateQueries({ queryKey: ["ai-conversations"] });
     },
     onError: (e: any) => toast.error(e.message),
@@ -172,7 +208,9 @@ function AIAssistantPage() {
       .eq("conversation_id", conv.id)
       .order("created_at", { ascending: true })
       .limit(100);
-    setMessages((msgs ?? []).map((m: any) => ({ role: m.role, content: m.content, ts: m.created_at })));
+    setMessages(
+      (msgs ?? []).map((m: any) => ({ role: m.role, content: m.content, ts: m.created_at })),
+    );
   }
 
   async function deleteConversation(id: string) {
@@ -229,7 +267,9 @@ function AIAssistantPage() {
                   ))}
                 </div>
               ) : (
-                <p className="text-xs text-muted-foreground text-center py-4">No conversations yet</p>
+                <p className="text-xs text-muted-foreground text-center py-4">
+                  No conversations yet
+                </p>
               )}
             </CardContent>
           </Card>
@@ -249,8 +289,8 @@ function AIAssistantPage() {
                     Hi {user?.user_metadata?.full_name ?? "there"}!
                   </h2>
                   <p className="text-sm text-muted-foreground mb-6 max-w-md">
-                    I'm your AI career companion. I know your profile, resume, applications, and
-                    the job market. Ask me anything — I'm here to help you grow.
+                    I'm your AI career companion. I know your profile, resume, applications, and the
+                    job market. Ask me anything — I'm here to help you grow.
                   </p>
 
                   {/* Capabilities */}
@@ -292,9 +332,18 @@ function AIAssistantPage() {
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex gap-1">
-                    <span className="h-2 w-2 rounded-full bg-muted-foreground animate-bounce" style={{ animationDelay: "0ms" }} />
-                    <span className="h-2 w-2 rounded-full bg-muted-foreground animate-bounce" style={{ animationDelay: "150ms" }} />
-                    <span className="h-2 w-2 rounded-full bg-muted-foreground animate-bounce" style={{ animationDelay: "300ms" }} />
+                    <span
+                      className="h-2 w-2 rounded-full bg-muted-foreground animate-bounce"
+                      style={{ animationDelay: "0ms" }}
+                    />
+                    <span
+                      className="h-2 w-2 rounded-full bg-muted-foreground animate-bounce"
+                      style={{ animationDelay: "150ms" }}
+                    />
+                    <span
+                      className="h-2 w-2 rounded-full bg-muted-foreground animate-bounce"
+                      style={{ animationDelay: "300ms" }}
+                    />
                   </div>
                 </div>
               )}
@@ -324,7 +373,11 @@ function AIAssistantPage() {
                   size="icon"
                   className="gradient-brand text-primary-foreground h-10 w-10 shrink-0"
                 >
-                  {chat.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                  {chat.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
                 </Button>
               </div>
               <p className="text-[10px] text-muted-foreground text-center mt-1.5">

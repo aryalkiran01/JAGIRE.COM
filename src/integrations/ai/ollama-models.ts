@@ -3,8 +3,8 @@ import type { AITask } from "./types";
 export const OLLAMA_TIMEOUT_MS = 120_000;
 
 // Model constants — all overridable via env vars
-const DEFAULT_FAST = "llama3.2";       // for analysis, extraction, scoring
-const DEFAULT_GENERATIVE = "qwen3";    // for generation: cover letters, questions, suggestions
+const DEFAULT_FAST = "llama3.2"; // for analysis, extraction, scoring
+const DEFAULT_GENERATIVE = "qwen3"; // for generation: cover letters, questions, suggestions
 const DEFAULT_EMBEDDING = "mxbai-embed-large";
 // deepseek-r1 is kept as an optional future model; set OLLAMA_REASONING_MODEL to activate it
 
