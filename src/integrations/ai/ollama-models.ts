@@ -35,6 +35,7 @@ const TASK_TO_CATEGORY: Record<AITask, "generative" | "fast" | "embedding"> = {
   "hiring-recommendation": "generative",
   "company-candidate-analysis": "generative",
   "career-coach": "generative",
+  "career-assistant": "generative",
   reasoning: "generative",
   general: "generative",
 

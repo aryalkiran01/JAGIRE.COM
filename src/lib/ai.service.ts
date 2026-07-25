@@ -443,3 +443,225 @@ export const careerCoach = createServerFn({ method: "POST" })
 
     return response;
   });
+
+// ── AI Assistant (RAG-powered career companion) ──────────────────────────────
+
+const ASSISTANT_SYSTEM =
+  "You are Jagire AI Assistant, an expert career mentor for a Nepal-focused job platform. " +
+  "Help users: find better jobs, improve resumes, develop skills, prepare interviews, make career decisions. " +
+  "Use the provided user context to give personalised, practical answers — not generic advice. " +
+  "Give concrete steps and recommendations. Be professional, supportive, career-focused. " +
+  "Always display salary in NPR / Rs. (e.g. Rs. 50,000/month). Never use dollars. " +
+  "Format responses in clean markdown with headings, bullet points, and bold where helpful. " +
+  "Keep responses concise but thorough — typically 150-400 words.";
+
+async function buildUserContext(supabase: any, userId: string, role: string | null) {
+  const isEmployer = role === "employer";
+  const ctx: string[] = [];
+
+  const [{ data: profile }, { data: resume }, { data: applications }, { data: savedJobs }] =
+    await Promise.all([
+      supabase
+        .from("profiles")
+        .select(
+          "full_name,headline,bio,location,experience_years,current_position,skills,expected_salary,preferred_job_type,preferred_location",
+        )
+        .eq("id", userId)
+        .maybeSingle(),
+      supabase
+        .from("resumes")
+        .select("overall_score,ats_score,grammar_score,suggestions,parsed_data,career_roadmap,missing_skills")
+        .eq("user_id", userId)
+        .eq("is_default", true)
+        .maybeSingle(),
+      supabase
+        .from("applications")
+        .select("id,status,created_at, job:jobs(id,title,company:companies(name))")
+        .eq("applicant_id", userId)
+        .order("created_at", { ascending: false })
+        .limit(10),
+      supabase
+        .from("saved_jobs")
+        .select("job:jobs(id,title)")
+        .eq("user_id", userId)
+        .limit(5),
+    ]);
+
+  if (profile) {
+    ctx.push(`## User Profile\n${JSON.stringify({
+      name: profile.full_name,
+      headline: profile.headline,
+      location: profile.location,
+      experience_years: profile.experience_years,
+      current_position: profile.current_position,
+      skills: profile.skills ?? [],
+      expected_salary: profile.expected_salary,
+      preferred_job_type: profile.preferred_job_type,
+      preferred_location: profile.preferred_location,
+    })}`);
+  }
+
+  if (resume) {
+    const parsed = resume.parsed_data as any;
+    ctx.push(`## Resume Analysis\n${JSON.stringify({
+      overall_score: resume.overall_score,
+      ats_score: resume.ats_score,
+      grammar_score: resume.grammar_score,
+      suggestions: resume.suggestions ?? [],
+      extracted_skills: parsed?.skills ?? [],
+      summary: parsed?.summary ?? "",
+      missing_skills: resume.missing_skills ?? (resume.career_roadmap as any)?.missing_skills ?? [],
+    })}`);
+  }
+
+  if (applications?.length) {
+    ctx.push(
+      `## Recent Applications\n${applications
+        .map((a: any) => `- ${a.job?.title} at ${a.job?.company?.name ?? "Unknown"} — ${a.status}`)
+        .join("\n")}`,
+    );
+  }
+
+  if (savedJobs?.length) {
+    ctx.push(
+      `## Saved Jobs\n${savedJobs.map((s: any) => `- ${s.job?.title}`).join("\n")}`,
+    );
+  }
+
+  // For job-related questions, fetch active jobs
+  ctx.push(`## Active Jobs (sample)`);
+  const { data: activeJobs } = await supabase
+    .from("jobs")
+    .select("id,title,required_skills,salary_min,salary_max,location,job_type, company:companies(name)")
+    .eq("status", "active")
+    .order("created_at", { ascending: false })
+    .limit(20);
+  if (activeJobs?.length) {
+    ctx.push(
+      activeJobs
+        .map((j: any) =>
+          `- ${j.title} at ${j.company?.name ?? "?"} | Skills: ${(j.required_skills ?? []).join(", ")} | Salary: Rs. ${j.salary_min ?? "?"} - ${j.salary_max ?? "?"} | ${j.location ?? "Remote"}`,
+        )
+        .join("\n"),
+    );
+  }
+
+  if (isEmployer) {
+    const { data: company } = await supabase
+      .from("companies")
+      .select("id,name,industry,headquarters,description")
+      .eq("owner_id", userId)
+      .maybeSingle();
+    if (company) {
+      ctx.push(`## Your Company\n${JSON.stringify(company)}`);
+      const { data: postedJobs } = await supabase
+        .from("jobs")
+        .select("id,title,status,applications_count")
+        .eq("company_id", company.id)
+        .limit(10);
+      if (postedJobs?.length) {
+        ctx.push(
+          `## Posted Jobs\n${postedJobs.map((j: any) => `- ${j.title} (${j.status}, ${j.applications_count} applicants)`).join("\n")}`,
+        );
+      }
+    }
+  }
+
+  return ctx.join("\n\n");
+}
+
+function extractConversationTitle(question: string): string {
+  const cleaned = question.trim().replace(/\s+/g, " ");
+  return cleaned.length > 50 ? cleaned.slice(0, 50) + "…" : cleaned || "New conversation";
+}
+
+export const aiAssistantChat = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => {
+    const i = input as { message: string; conversationId?: string; role?: string };
+    if (!i?.message?.trim()) throw new Error("Message is required");
+    return {
+      message: i.message.trim().slice(0, 4000),
+      conversationId: i.conversationId,
+      role: i.role ?? "job_seeker",
+    };
+  })
+  .handler(async ({ data, context }) => {
+    // 1. Resolve or create conversation
+    let conversationId = data.conversationId;
+    let isNewConversation = false;
+    if (!conversationId) {
+      const { data: newConv, error } = await context.supabase
+        .from("ai_conversations")
+        .insert({
+          user_id: context.userId,
+          title: extractConversationTitle(data.message),
+        })
+        .select("id")
+        .single();
+      if (error) throw new Error(error.message);
+      conversationId = newConv.id;
+      isNewConversation = true;
+    } else {
+      // Verify ownership
+      const { data: conv } = await context.supabase
+        .from("ai_conversations")
+        .select("id, user_id")
+        .eq("id", conversationId)
+        .eq("user_id", context.userId)
+        .maybeSingle();
+      if (!conv) throw new Error("Conversation not found");
+    }
+
+    // 2. Save user message
+    const { error: msgErr } = await context.supabase
+      .from("ai_messages")
+      .insert({
+        conversation_id: conversationId,
+        role: "user",
+        content: data.message,
+      });
+    if (msgErr) throw new Error(msgErr.message);
+
+    // 3. Retrieve conversation history (last 10 messages for context)
+    const { data: history } = await context.supabase
+      .from("ai_messages")
+      .select("role, content, created_at")
+      .eq("conversation_id", conversationId)
+      .order("created_at", { ascending: true })
+      .limit(20);
+
+    const historyText = (history ?? [])
+      .slice(-12) // last 12 messages = 6 turns
+      .map((m: any) => `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`)
+      .join("\n\n");
+
+    // 4. Build RAG context from user data
+    const userContext = await buildUserContext(context.supabase, context.userId, data.role);
+
+    // 5. Generate response
+    const fullPrompt = `## Conversation History\n${historyText}\n\n## User Context (use this to personalise your answer)\n${userContext}\n\n## Current Question\n${data.message}`;
+
+    const response = await aiGenerateText(
+      fullPrompt,
+      ASSISTANT_SYSTEM,
+      undefined,
+      "career-assistant",
+    );
+
+    // 6. Save assistant response
+    const { error: aiMsgErr } = await context.supabase
+      .from("ai_messages")
+      .insert({
+        conversation_id: conversationId,
+        role: "assistant",
+        content: response,
+      });
+    if (aiMsgErr) throw new Error(aiMsgErr.message);
+
+    return {
+      conversationId,
+      response,
+      isNewConversation,
+    };
+  });

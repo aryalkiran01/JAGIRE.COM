@@ -2,6 +2,7 @@ import { createFileRoute, Outlet, Navigate } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/use-auth";
 import { SiteHeader } from "@/components/layout/site-header";
 import { AppSidebar } from "@/components/layout/app-sidebar";
+import { AIAssistantWidget } from "@/components/ai-assistant-widget";
 import { Loader as Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated")({
@@ -28,6 +29,7 @@ function AuthLayout() {
           <Outlet />
         </main>
       </div>
+      <AIAssistantWidget />
     </div>
   );
 }

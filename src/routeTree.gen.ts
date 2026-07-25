@@ -21,6 +21,7 @@ import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SupportRouteImport } from './routes/support'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
+import { Route as AuthenticatedAiAssistantRouteImport } from './routes/_authenticated/ai-assistant'
 import { Route as AuthenticatedApplicationsRouteImport } from './routes/_authenticated/applications'
 import { Route as AuthenticatedAssessmentsRouteImport } from './routes/_authenticated/assessments'
 import { Route as AuthenticatedBlogEditorRouteImport } from './routes/_authenticated/blog-editor'
@@ -111,6 +112,12 @@ const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedAiAssistantRoute =
+  AuthenticatedAiAssistantRouteImport.update({
+    id: '/ai-assistant',
+    path: '/ai-assistant',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedApplicationsRoute =
   AuthenticatedApplicationsRouteImport.update({
     id: '/applications',
@@ -285,6 +292,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/support': typeof SupportRoute
   '/admin': typeof AuthenticatedAdminRoute
+  '/ai-assistant': typeof AuthenticatedAiAssistantRoute
   '/applications': typeof AuthenticatedApplicationsRoute
   '/assessments': typeof AuthenticatedAssessmentsRoute
   '/blog-editor': typeof AuthenticatedBlogEditorRoute
@@ -328,6 +336,7 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/support': typeof SupportRoute
   '/admin': typeof AuthenticatedAdminRoute
+  '/ai-assistant': typeof AuthenticatedAiAssistantRoute
   '/applications': typeof AuthenticatedApplicationsRoute
   '/assessments': typeof AuthenticatedAssessmentsRoute
   '/blog-editor': typeof AuthenticatedBlogEditorRoute
@@ -372,6 +381,7 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/support': typeof SupportRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
+  '/_authenticated/ai-assistant': typeof AuthenticatedAiAssistantRoute
   '/_authenticated/applications': typeof AuthenticatedApplicationsRoute
   '/_authenticated/assessments': typeof AuthenticatedAssessmentsRoute
   '/_authenticated/blog-editor': typeof AuthenticatedBlogEditorRoute
@@ -417,6 +427,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/support'
     | '/admin'
+    | '/ai-assistant'
     | '/applications'
     | '/assessments'
     | '/blog-editor'
@@ -460,6 +471,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/support'
     | '/admin'
+    | '/ai-assistant'
     | '/applications'
     | '/assessments'
     | '/blog-editor'
@@ -503,6 +515,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/support'
     | '/_authenticated/admin'
+    | '/_authenticated/ai-assistant'
     | '/_authenticated/applications'
     | '/_authenticated/assessments'
     | '/_authenticated/blog-editor'
@@ -641,6 +654,13 @@ declare module '@tanstack/react-router' {
       path: '/admin'
       fullPath: '/admin'
       preLoaderRoute: typeof AuthenticatedAdminRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/ai-assistant': {
+      id: '/_authenticated/ai-assistant'
+      path: '/ai-assistant'
+      fullPath: '/ai-assistant'
+      preLoaderRoute: typeof AuthenticatedAiAssistantRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/applications': {
@@ -879,6 +899,7 @@ const AuthenticatedEmployerRouteWithChildren =
 
 interface AuthenticatedRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
+  AuthenticatedAiAssistantRoute: typeof AuthenticatedAiAssistantRoute
   AuthenticatedApplicationsRoute: typeof AuthenticatedApplicationsRoute
   AuthenticatedAssessmentsRoute: typeof AuthenticatedAssessmentsRoute
   AuthenticatedBlogEditorRoute: typeof AuthenticatedBlogEditorRoute
@@ -900,6 +921,7 @@ interface AuthenticatedRouteChildren {
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRoute,
+  AuthenticatedAiAssistantRoute: AuthenticatedAiAssistantRoute,
   AuthenticatedApplicationsRoute: AuthenticatedApplicationsRoute,
   AuthenticatedAssessmentsRoute: AuthenticatedAssessmentsRoute,
   AuthenticatedBlogEditorRoute: AuthenticatedBlogEditorRoute,

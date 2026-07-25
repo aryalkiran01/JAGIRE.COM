@@ -21,6 +21,7 @@ export type AITask =
   | "linkedin-import"
   | "learning-recommendations"
   | "career-coach"
+  | "career-assistant"
   | "reasoning"
   | "fast"
   | "general";

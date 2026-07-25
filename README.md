@@ -396,6 +396,78 @@ applied → viewed → reviewing → shortlisted → interview → interview_sch
 - Plans: Starter (Rs. 4,900), Pro (Rs. 9,900)
 - Success/failure redirect pages
 
+### 19. AI Career Coach
+
+**Files**: `src/routes/_authenticated/career-coach.tsx`, `src/lib/ai.service.ts` (`careerCoach` server fn)
+
+- Chat-based AI career advisor using `qwen3` via Ollama
+- Users ask career questions (skills to learn, rejection reasons, salary, career switching)
+- AI returns structured JSON: advice, recommended skills, action plan, improvement suggestions, follow-up questions
+- Conversation history saved per session in `career_coach_sessions` table
+- Past sessions browsable in sidebar
+
+### 20. AI Assistant (Career Companion)
+
+**Files**: `src/routes/_authenticated/ai-assistant.tsx`, `src/components/ai-assistant-widget.tsx`, `src/lib/ai.service.ts` (`aiAssistantChat` server fn)
+
+A full ChatGPT-style AI career companion with RAG (Retrieval-Augmented Generation) context:
+
+**Capabilities**:
+- Career coaching (skills to learn, rejection analysis, career paths)
+- Resume assistance (improvement tips, ATS score explanation, missing skills)
+- Job matching (find suitable jobs, explain job fit, required skills)
+- Interview preparation (practice questions, answer feedback, technical roadmap)
+- Salary advice (NPR context, offer evaluation — always Rs. format, never USD)
+
+**Architecture**:
+- Uses `career-assistant` AI task with `qwen3` as default model
+- RAG context retrieval: fetches user profile, resume analysis, applications, saved jobs, and active job listings before generating each response
+- Conversation memory: messages stored in `ai_conversations` + `ai_messages` tables with full history
+- Last 12 messages (6 turns) included as context for follow-up questions
+- Fallback chain preserved: Ollama → Gemini → OpenRouter
+
+**UI**:
+- Full-page chat interface at `/ai-assistant` with conversation sidebar
+- Floating assistant button on every authenticated page (bottom-right) opening a slide-in chat panel
+- Markdown rendering (headings, bold, bullets, code blocks)
+- User/AI avatars, typing indicator with animated dots
+- Quick prompt buttons for common questions
+- Mobile responsive (slide-in sheet on mobile, sidebar on desktop)
+
+**Database Tables**:
+- `ai_conversations`: id, user_id, title, created_at, updated_at (owner-scoped RLS)
+- `ai_messages`: id, conversation_id, role (user/assistant/system), content, created_at (RLS via parent conversation ownership)
+- Auto-updates `ai_conversations.updated_at` via trigger when messages are inserted
+
+**System Prompt**: Dedicated career mentor persona — professional, supportive, personalized, Nepal salary context (NPR/Rs. only).
+
+### 21. Salary Currency (NPR)
+
+All salary displays across the app use Nepalese Rupees (NPR / Rs.) format:
+- Job cards: `Rs. 50,000+`
+- Job detail: `Rs. 50,000 – Rs. 80,000`
+- Database default: `salary_currency` defaults to `'NPR'`
+- AI responses: system prompt instructs NPR-only formatting
+
+### 22. Support Email Notifications
+
+**Files**: `src/routes/support.tsx`, `src/routes/contact.tsx`, `supabase/functions/send-email/index.ts`
+
+- Support tickets: admin email notification on new ticket submission
+- Contact form: saves to `contact_messages` table + sends admin email notification
+- Both use the existing `send-email` edge function (Resend API)
+- Fire-and-forget pattern — email failures don't break the form submission
+
+### 23. Resume Scan → Profile Auto-Update
+
+**Files**: `src/lib/ai.service.ts` (`scanResumeFromStorage`)
+
+After AI resume scanning:
+- Extracted skills saved to `profiles.ai_profile_data` JSONB column
+- If user has no skills set, extracted skills auto-populate `profiles.skills`
+- Full AI insights (summary, strengths, keywords, missing skills) stored for admin viewing
+- Users can edit AI-generated information later via profile editor
+
 ---
 
 ## Database Schema
@@ -435,6 +507,10 @@ applied → viewed → reviewing → shortlisted → interview → interview_sch
 | `categories`           | Job/content categories                               |
 | `resumes`              | User resumes with parsed data                        |
 | `activity_logs`        | User activity audit log                              |
+| `contact_messages`     | Contact form submissions (public insert, admin read) |
+| `career_coach_sessions`| Legacy AI Career Coach sessions (JSONB messages)     |
+| `ai_conversations`     | AI Assistant conversation threads (owner-scoped)    |
+| `ai_messages`          | AI Assistant messages within conversations           |
 
 ### Enums
 
@@ -805,6 +881,20 @@ All server functions in `src/lib/` use `createServerFn` from TanStack Start with
 | `learningRecommendations` | POST   | —                    | 8 learning resources                      |
 | `importFromGitHub`        | POST   | `{ username }`       | Projects + skills imported                |
 | `importFromLinkedInText`  | POST   | `{ text, url? }`     | Profile fields imported                   |
+| `careerCoach`             | POST   | `{ question, sessionId? }` | Structured career advice (JSON)      |
+| `aiAssistantChat`         | POST   | `{ message, conversationId?, role? }` | Markdown response + conversation memory |
+
+### AI Model Configuration
+
+The AI Assistant uses the existing provider fallback chain: **Ollama → Gemini → OpenRouter**.
+
+| Model | Purpose | Task |
+| ----- | ------- | ---- |
+| `qwen3` | Main AI Assistant conversation model | `career-assistant`, `career-coach` |
+| `mxbai-embed-large` | Semantic search / embeddings | `generateEmbedding` |
+| `llama3.2` | Fast resume/task processing | `resume-analysis` |
+
+AI tasks are mapped in `src/integrations/ai/ollama-models.ts`. New task `career-assistant` defaults to `qwen3`.
 
 ### `src/lib/google-calendar.functions.ts`
 
@@ -831,6 +921,11 @@ OAuth tokens encrypted with AES-256-GCM (`src/lib/connection-key-crypto.server.t
 | `GOOGLE_OAUTH_CLIENT_SECRET` | Google OAuth client secret              |
 | `RESEND_API_KEY`             | Resend API key for emails               |
 | `GEMINI_API_KEY`             | Google Gemini AI API key                |
+| `OPENROUTER_API_KEY`         | OpenRouter AI API key (fallback)        |
+| `OLLAMA_HOST`                | Ollama host URL (default: localhost)    |
+| `AI_PROVIDER`                | Provider order: `ollama`/`gemini`/`openrouter` |
+| `VITE_ADMIN_EMAIL`           | Admin email for contact/support notifications |
+| `APP_USER_CONNECTION_KEY_SECRET` | AES-256-GCM key for OAuth token encryption |
 
 ---
 
@@ -840,6 +935,7 @@ OAuth tokens encrypted with AES-256-GCM (`src/lib/connection-key-crypto.server.t
 src/
 ├── components/
 │   ├── apply-job-dialog.tsx        # Job application dialog
+│   ├── ai-assistant-widget.tsx    # Floating AI assistant widget
 │   ├── schedule-interview-dialog.tsx # Interview scheduling with Google Calendar
 │   ├── layout/
 │   │   ├── site-header.tsx         # Navigation header
@@ -891,6 +987,8 @@ src/
 │   │   ├── referrals.tsx           # Referral tracking
 │   │   ├── resume-builder.tsx      # Resume builder
 │   │   ├── resume-scanner.tsx      # ATS resume scanner
+│   │   ├── career-coach.tsx        # AI Career Coach (structured advice)
+│   │   ├── ai-assistant.tsx       # AI Assistant (full chat page)
 │   │   └── saved.tsx               # Saved jobs
 │   ├── blog/
 │   │   ├── index.tsx               # Blog listing
