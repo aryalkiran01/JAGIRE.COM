@@ -9,9 +9,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Send, Loader as Loader2, Lightbulb, Target, TrendingUp, Plus, Clock } from "lucide-react";
+import { Send, Loader as Loader2, Lightbulb, Target, TrendingUp, Plus, Clock, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { careerCoach } from "@/lib/ai.service";
+import { useSubscription } from "@/hooks/use-subscription";
+import { Link } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/_authenticated/career-coach")({
   component: CareerCoachPage,
@@ -43,6 +45,7 @@ function CareerCoachPage() {
   const { user } = useAuth();
   const qc = useQueryClient();
   const runCoach = useServerFn(careerCoach);
+  const { data: subscription } = useSubscription();
   const [input, setInput] = useState("");
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -139,6 +142,21 @@ function CareerCoachPage() {
           </p>
         </div>
       </div>
+
+      {!subscription?.isPremium && (
+        <div className="rounded-xl border border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950 p-4 mb-4 flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-2 text-sm text-amber-800 dark:text-amber-300">
+            <Lock className="h-4 w-4 shrink-0" />
+            <span>
+              Buy Premium to access AI-powered features. Upgrade your plan to unlock AI career
+              tools.
+            </span>
+          </div>
+          <Button asChild size="sm" className="gradient-brand text-primary-foreground">
+            <Link to="/pricing">Upgrade now</Link>
+          </Button>
+        </div>
+      )}
 
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Sidebar: sessions */}

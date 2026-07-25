@@ -1,5 +1,6 @@
 import { useEffect, useState, createContext, useContext, type ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 export type AppRole = "job_seeker" | "employer" | "admin";
@@ -24,10 +25,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
   const [loading, setLoading] = useState(true);
+  const qc = useQueryClient();
 
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
       setSession(s);
+      // Clear ALL cached queries whenever the signed-in user changes so that
+      // a previous user's posts, messages, notifications, etc. can never
+      // leak into a newly signed-in account's view.
+      qc.clear();
       if (s?.user) {
         // Defer to avoid deadlock
         setTimeout(() => fetchRole(s.user.id), 0);
