@@ -954,30 +954,6 @@ export type Database = {
           },
         ];
       };
-      contact_messages: {
-        Row: {
-          created_at: string;
-          email: string;
-          id: string;
-          message: string;
-          name: string;
-        };
-        Insert: {
-          created_at?: string;
-          email: string;
-          id?: string;
-          message: string;
-          name: string;
-        };
-        Update: {
-          created_at?: string;
-          email?: string;
-          id?: string;
-          message?: string;
-          name?: string;
-        };
-        Relationships: [];
-      };
       follows: {
         Row: {
           company_id: string | null;
@@ -2030,7 +2006,6 @@ export type Database = {
           employment_type_preference: string | null;
           expected_salary_usd: number | null;
           experience: Json | null;
-          experience_years: number | null;
           followers_count: number | null;
           following_count: number | null;
           full_name: string | null;
@@ -2084,7 +2059,6 @@ export type Database = {
           employment_type_preference?: string | null;
           expected_salary_usd?: number | null;
           experience?: Json | null;
-          experience_years?: number | null;
           followers_count?: number | null;
           following_count?: number | null;
           full_name?: string | null;
@@ -2138,7 +2112,6 @@ export type Database = {
           employment_type_preference?: string | null;
           expected_salary_usd?: number | null;
           experience?: Json | null;
-          experience_years?: number | null;
           followers_count?: number | null;
           following_count?: number | null;
           full_name?: string | null;

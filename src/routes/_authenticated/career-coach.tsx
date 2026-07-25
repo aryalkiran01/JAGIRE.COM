@@ -34,10 +34,10 @@ type Message = {
 
 type CoachResponse = {
   advice: string;
-  recommended_skills: string[];
-  action_plan: string[];
-  improvement_suggestions: string[];
-  follow_up_questions: string[];
+  recommended_skills?: string[];
+  action_plan?: string[];
+  improvement_suggestions?: string[];
+  follow_up_questions?: string[];
 };
 
 const QUICK_QUESTIONS = [
@@ -83,7 +83,11 @@ function CareerCoachPage() {
         // Create a new session
         const { data: newSession, error } = await supabase
           .from("career_coach_sessions")
-          .insert({ messages: [] })
+          .insert({
+            user_id: user!.id,
+            title: "New conversation",
+            messages: [],
+          })
           .select("id")
           .single();
         if (error) throw error;
@@ -295,23 +299,23 @@ function MessageBubble({ message }: { message: Message }) {
       </div>
 
       {/* Skills */}
-      {res.recommended_skills?.length > 0 && (
+      {res.recommended_skills?.length ? (
         <div className="px-1">
           <div className="flex items-center gap-1 text-xs font-semibold text-muted-foreground mb-1">
             <TrendingUp className="h-3 w-3" /> Recommended skills
           </div>
           <div className="flex flex-wrap gap-1">
-            {res.recommended_skills.map((s) => (
+            {res.recommended_skills?.map((s) => (
               <Badge key={s} variant="secondary" className="text-xs">
                 {s}
               </Badge>
             ))}
           </div>
         </div>
-      )}
+      ) : null}
 
       {/* Action plan */}
-      {res.action_plan?.length > 0 && (
+      {res.action_plan && res.action_plan.length > 0 && (
         <div className="px-1">
           <div className="flex items-center gap-1 text-xs font-semibold text-muted-foreground mb-1">
             <Target className="h-3 w-3" /> Action plan
@@ -328,7 +332,7 @@ function MessageBubble({ message }: { message: Message }) {
       )}
 
       {/* Improvements */}
-      {res.improvement_suggestions?.length > 0 && (
+      {res.improvement_suggestions && res.improvement_suggestions.length > 0 && (
         <div className="px-1">
           <div className="flex items-center gap-1 text-xs font-semibold text-muted-foreground mb-1">
             <Lightbulb className="h-3 w-3" /> Suggestions
@@ -344,7 +348,7 @@ function MessageBubble({ message }: { message: Message }) {
       )}
 
       {/* Follow-up questions */}
-      {res.follow_up_questions?.length > 0 && (
+      {res.follow_up_questions && res.follow_up_questions.length > 0 && (
         <div className="flex flex-wrap gap-1 px-1">
           {res.follow_up_questions.map((q) => (
             <Badge key={q} variant="outline" className="text-xs cursor-pointer hover:bg-muted">

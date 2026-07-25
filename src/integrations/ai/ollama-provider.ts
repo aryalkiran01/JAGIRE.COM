@@ -36,10 +36,10 @@ async function callChat(req: AIRequest, json: boolean): Promise<string> {
   const messages = buildMessages(req);
   const ollama = getClient();
 
-  const chatRequest: ChatRequest = {
+  const chatRequest = {
     model,
     messages,
-    stream: false,
+    stream: false as const,
     options: { temperature: 0.3 },
     ...(json ? { format: "json" } : {}),
   };
@@ -48,7 +48,7 @@ async function callChat(req: AIRequest, json: boolean): Promise<string> {
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), OLLAMA_TIMEOUT_MS);
-    response = await ollama.chat({ ...chatRequest, signal: controller.signal } as ChatRequest);
+    response = await ollama.chat(chatRequest);
     clearTimeout(timer);
   } catch (e) {
     const err = e as Error;

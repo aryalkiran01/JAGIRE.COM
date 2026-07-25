@@ -34,12 +34,12 @@ function getConfiguredProviderOrder(): AIProvider[] {
     case "gemini":
       if (process.env.GEMINI_API_KEY) list.push(new GeminiProvider());
       if (process.env.OPENROUTER_API_KEY) list.push(new OpenRouterProvider());
-      if (process.env.OLLAMA_HOST || true) list.push(new OllamaProvider());
+      if (process.env.OLLAMA_HOST) list.push(new OllamaProvider());
       break;
     case "openrouter":
       if (process.env.OPENROUTER_API_KEY) list.push(new OpenRouterProvider());
       if (process.env.GEMINI_API_KEY) list.push(new GeminiProvider());
-      if (true) list.push(new OllamaProvider());
+      if (process.env.OLLAMA_HOST) list.push(new OllamaProvider());
       break;
     case "ollama":
     default:
@@ -136,6 +136,78 @@ class AIServiceImpl {
           "generateJsonValidated",
           req,
         );
+
+        // ✅ ADD THIS: Normalize and truncate arrays before validation
+        if (req.task === "resume-analysis" && typeof raw === "object" && raw !== null) {
+          const result = raw as Record<string, any>;
+
+          // Truncate arrays that exceed maximum lengths
+          const maxLengths: Record<string, number> = {
+            suggestions: 8,
+            extracted_skills: 20,
+            strengths: 5,
+            weaknesses: 5,
+            missing_skills: 10,
+            keywords: 15,
+            skill_gaps: 8,
+            resume_improvements: 8,
+            career_paths: 4,
+            recommended_certifications: 5,
+            suggested_projects: 4,
+            recommended_jobs: 5,
+            companies_hiring: 5,
+          };
+
+          for (const [field, max] of Object.entries(maxLengths)) {
+            if (Array.isArray(result[field]) && result[field].length > max) {
+              result[field] = result[field].slice(0, max);
+            }
+          }
+
+          // Fix string arrays that came as comma-separated strings
+          const arrayFields = [
+            "suggestions",
+            "extracted_skills",
+            "strengths",
+            "weaknesses",
+            "missing_skills",
+            "keywords",
+            "skill_gaps",
+            "resume_improvements",
+          ];
+
+          for (const field of arrayFields) {
+            if (typeof result[field] === "string") {
+              result[field] = result[field]
+                .split(/[,•\-\n]/)
+                .map((s: string) => s.trim())
+                .filter(Boolean)
+                .slice(0, maxLengths[field] || 20);
+            }
+          }
+
+          // Fix salary_prediction
+          if (typeof result.salary_prediction === "string") {
+            try {
+              result.salary_prediction = JSON.parse(result.salary_prediction);
+            } catch {
+              result.salary_prediction = null;
+            }
+          }
+
+          // Fix interview_prep_plan
+          if (typeof result.interview_prep_plan === "string") {
+            try {
+              result.interview_prep_plan = JSON.parse(result.interview_prep_plan);
+            } catch {
+              result.interview_prep_plan = null;
+            }
+          }
+
+          // Assign back to raw
+          Object.assign(raw as any, result);
+        }
+
         const parsed = schema.parse(raw);
         if (attempt > 0) {
           log("info", `Validation succeeded on retry ${attempt}`, { label: req.task });

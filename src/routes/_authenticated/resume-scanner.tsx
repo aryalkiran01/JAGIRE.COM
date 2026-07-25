@@ -143,7 +143,29 @@ function ResumeScanner() {
     if (!resume) return toast.error("Upload a resume first");
     setBusy(true);
     try {
-      const result = await runScan({ data: { resumeId: resume.id } });
+      let scanId = resume.id;
+
+      // If this resume has no stored text, try to find a builder-saved resume
+      const parsedData = resume.parsed_data as Record<string, any> | null;
+      const hasStoredText = parsedData?.raw_text || resume.resume_data;
+
+      if (!hasStoredText) {
+        const { data: builderResume } = await supabase
+          .from("resumes")
+          .select("id, resume_data, parsed_data")
+          .eq("user_id", user!.id)
+          .not("resume_data", "is", null)
+          .order("updated_at", { ascending: false })
+          .limit(1)
+          .single();
+
+        if (builderResume) {
+          toast.info("Using builder-saved resume data...");
+          scanId = builderResume.id;
+        }
+      }
+
+      const result = await runScan({ data: { resumeId: scanId } });
       setMatches(result.matches ?? []);
       toast.success("Re-analyzed! Career roadmap updated.");
       qc.invalidateQueries({ queryKey: ["my-resume-full"] });

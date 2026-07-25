@@ -2,7 +2,7 @@
 
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth.middleware";
-import { aiGenerateJsonValidated } from "@/integrations/ai/ai-service";
+import { aiGenerateJsonValidated, aiGenerateText } from "@/integrations/ai/ai-service";
 import {
   resumeAnalysisSchema,
   fullResumeScanSchema,
@@ -13,26 +13,33 @@ import {
 } from "@/integrations/ai/schemas";
 
 // ── Prompts ──────────────────────────────────────────────────────────────────
-// Kept tight to reduce token usage. No filler prose — models are instructed
-// to return only the JSON keys listed.
 
 const RESUME_SYSTEM =
   "ATS resume reviewer. Score 0-100. Return JSON only: {overall_score,ats_score,grammar_score,formatting_score,keyword_score,professionalism_score,suggestions[8],summary,extracted_skills[20]}";
 
-// Combined single-call system prompt for full resume upload scan.
-// Merges scoring + strengths/weaknesses + keywords + career roadmap so
-// only ONE model call is made per resume upload.
 const FULL_SCAN_SYSTEM =
-  "Expert resume analyst and career coach. Analyse the resume and return ONE JSON object with ALL of these keys (no extra text): " +
-  "overall_score(0-100), ats_score(0-100), grammar_score(0-100), formatting_score(0-100), keyword_score(0-100), professionalism_score(0-100), " +
-  "suggestions(string[8]), summary(string), extracted_skills(string[20]), " +
-  "strengths(string[5]), weaknesses(string[5]), missing_skills(string[10]), keywords(string[15]), " +
-  "career_paths([{title,why,next_steps[]}][4]), skill_gaps(string[8]), " +
-  "recommended_certifications([{name,provider}][5]), suggested_projects([{title,description}][4]), " +
-  "recommended_jobs([{title,why}][5]), companies_hiring([{name,sector}][5]), " +
-  "salary_prediction({low,mid,high,currency}|null), resume_improvements(string[8]), " +
-  "interview_prep_plan({thirty_days[],sixty_days[],ninety_days[],one_eighty_days[]}|null). " +
-  "Keep each list to the max count shown. Numbers only, no units.";
+  "Expert resume analyst and career coach. Analyse the resume and return ONE valid JSON object.\n" +
+  "CRITICAL: Use ONLY JSON syntax. Arrays in brackets []. Objects in braces {}.\n" +
+  'Example: "skills": ["React", "TypeScript"] NOT "skills": "React, TypeScript"\n\n' +
+  "Return these keys:\n" +
+  "- overall_score, ats_score, grammar_score, formatting_score, keyword_score, professionalism_score: numbers 0-100\n" +
+  "- suggestions: array of 8 strings\n" +
+  "- summary: string\n" +
+  "- extracted_skills: array of 20 strings\n" +
+  "- strengths: array of 5 strings\n" +
+  "- weaknesses: array of 5 strings\n" +
+  "- missing_skills: array of 10 strings\n" +
+  "- keywords: array of 15 strings\n" +
+  "- career_paths: array of 4 objects {title, why, next_steps[]}\n" +
+  "- skill_gaps: array of 8 strings\n" +
+  "- recommended_certifications: array of 5 objects {name, provider}\n" +
+  "- suggested_projects: array of 4 objects {title, description}\n" +
+  "- recommended_jobs: array of 5 objects {title, why}\n" +
+  "- companies_hiring: array of 5 objects {name, sector}\n" +
+  "- salary_prediction: object {low, mid, high, currency} or null\n" +
+  "- resume_improvements: array of 8 strings\n" +
+  "- interview_prep_plan: object {thirty_days[], sixty_days[], ninety_days[], one_eighty_days[]} or null\n\n" +
+  "Return ONLY the JSON. No markdown, no explanations.";
 
 const CAREER_SYSTEM =
   "Senior career coach. JSON only: {career_paths([{title,why,next_steps[]}]),skill_gaps([]),missing_skills([]),recommended_certifications([{name,provider}]),suggested_projects([{title,description}]),recommended_jobs([{title,why}]),companies_hiring([{name,sector}]),salary_prediction({low,mid,high,currency}),resume_improvements([]),interview_prep_plan({thirty_days[],sixty_days[],ninety_days[],one_eighty_days[]}),suggested_search_keywords([])}. 3-5 items per list.";
@@ -49,8 +56,6 @@ function clamp(n: unknown): number {
   return Math.max(0, Math.min(100, Math.round(Number(n) || 0)));
 }
 
-// scoreResume: used when the caller passes raw text directly (no file upload).
-// Uses the lightweight resumeAnalysisSchema — no career roadmap needed here.
 export const scoreResume = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => {
@@ -118,9 +123,7 @@ export const careerRecommendations = createServerFn({ method: "POST" })
     };
   });
 
-// scanResumeFromStorage: full upload scan.
-// A SINGLE AI call returns scores + career roadmap + strengths/weaknesses + improvements.
-// Result stored and reused — no second AI call.
+// ✅ ONLY ONE scanResumeFromStorage - complete and correct
 export const scanResumeFromStorage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => {
@@ -128,49 +131,141 @@ export const scanResumeFromStorage = createServerFn({ method: "POST" })
     if (!i?.resumeId) throw new Error("Missing resumeId");
     return { resumeId: i.resumeId };
   })
+
   .handler(async ({ data, context }) => {
     const { data: resume, error: rErr } = await context.supabase
       .from("resumes")
-      .select("id, file_path, mime_type, file_name, user_id")
+      .select("id, file_path, mime_type, file_name, user_id, resume_data, parsed_data")
       .eq("id", data.resumeId)
       .eq("user_id", context.userId)
       .maybeSingle();
     if (rErr || !resume) throw new Error("Resume not found");
-    if (!resume.file_path) throw new Error("Resume has no uploaded file");
-
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const dl = await supabaseAdmin.storage.from("resumes").download(resume.file_path);
-    if (dl.error || !dl.data) throw new Error(dl.error?.message ?? "Failed to download resume");
-    const buf = new Uint8Array(await dl.data.arrayBuffer());
 
     let text = "";
-    const name = (resume.file_name ?? "").toLowerCase();
-    const isDocx = name.endsWith(".docx") || resume.mime_type?.includes("wordprocessingml");
-    const isPdf = name.endsWith(".pdf") || resume.mime_type?.includes("pdf");
+    const parsedData = resume.parsed_data as Record<string, unknown> | null | undefined;
+    const storedRawText = typeof parsedData?.raw_text === "string" ? parsedData.raw_text : "";
+    console.log("=== SCANNING RESUME ===");
+    console.log({
+      resumeId: resume.id,
+      title: (resume as any).title,
+      fileName: resume.file_name,
+      rawTextLength: storedRawText.length,
+      hasResumeData: !!resume.resume_data,
+    });
+    // ✅ FIRST: Check if we have stored text data (from resume builder or previous scan)
+    if (storedRawText) {
+      text = storedRawText;
+      console.log(`Using stored parsed_data text: ${text.length} characters`);
+    }
+    // If no stored text, try resume_data JSON
+    else if (resume.resume_data) {
+      const resumeData = resume.resume_data as any;
+      text = [
+        resumeData.full_name,
+        resumeData.headline,
+        resumeData.summary,
+        ...(resumeData.experience?.items || []),
+        ...(resumeData.education?.items || []),
+        ...(resumeData.projects?.items || []),
+        ...(resumeData.skills?.items || []),
+      ]
+        .filter(Boolean)
+        .join("\n");
+      console.log(`Extracted from resume_data JSON: ${text.length} characters`);
+    }
+    // If no stored text, try file extraction
+    else if (resume.file_path) {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const dl = await supabaseAdmin.storage.from("resumes").download(resume.file_path);
+      if (dl.error || !dl.data) throw new Error(dl.error?.message ?? "Failed to download resume");
+      const buf = new Uint8Array(await dl.data.arrayBuffer());
 
-    try {
-      if (isDocx) {
-        const mammoth = await import("mammoth");
-        const res = await mammoth.extractRawText({ buffer: Buffer.from(buf) });
-        text = res.value ?? "";
-      } else if (isPdf) {
-        const { extractText, getDocumentProxy } = await import("unpdf");
-        const pdf = await getDocumentProxy(buf);
-        const out = await extractText(pdf, { mergePages: true });
-        text = Array.isArray(out.text) ? out.text.join("\n") : (out.text as string);
-      } else {
-        text = new TextDecoder().decode(buf);
+      const name = (resume.file_name ?? "").toLowerCase();
+      const isDocx = name.endsWith(".docx") || resume.mime_type?.includes("wordprocessingml");
+      const isPdf = name.endsWith(".pdf") || resume.mime_type?.includes("pdf");
+
+      try {
+        if (isDocx) {
+          const mammoth = await import("mammoth");
+          const res = await mammoth.extractRawText({ buffer: Buffer.from(buf) });
+          text = res.value ?? "";
+        } else if (isPdf) {
+          let extractedSuccessfully = false;
+
+          // Method 1: pdf-parse
+          // Method 1: pdf-parse
+          try {
+            const pdfParseModule = await import("pdf-parse");
+
+            const pdfParse = pdfParseModule.default ?? pdfParseModule;
+
+            const pdfData = await pdfParse(Buffer.from(buf));
+
+            text = pdfData.text ?? "";
+
+            extractedSuccessfully = text.trim().length >= 50;
+
+            if (extractedSuccessfully) {
+              console.log(`pdf-parse extracted ${text.length} characters successfully`);
+            } else {
+              console.warn(
+                `pdf-parse extracted only ${text.trim().length} characters, trying unpdf...`,
+              );
+            }
+          } catch (err) {
+            console.warn("pdf-parse failed:", err);
+          }
+
+          // Method 2: unpdf fallback
+          if (!extractedSuccessfully) {
+            try {
+              const { extractText, getDocumentProxy } = await import("unpdf");
+              const pdf = await getDocumentProxy(buf);
+              const out = await extractText(pdf, { mergePages: true });
+              text = Array.isArray(out.text) ? out.text.join("\n") : (out.text as string);
+              extractedSuccessfully = text?.trim().length >= 50;
+
+              if (extractedSuccessfully) {
+                console.log(`unpdf extracted ${text.length} characters successfully`);
+              } else {
+                console.warn(`unpdf extracted only ${text?.trim().length || 0} characters`);
+              }
+            } catch (unpdfError) {
+              console.warn("unpdf failed:", unpdfError);
+            }
+          }
+
+          // Method 3: raw text extraction as last resort
+          if (!extractedSuccessfully) {
+            console.warn("Both PDF parsers failed. Attempting raw text extraction...");
+            const rawText = new TextDecoder().decode(buf);
+            const readableParts = rawText.match(/[a-zA-Z0-9\s.,!?@#&*()\-–—:;'"/\\]{4,}/g) || [];
+            text = readableParts.join(" ").replace(/\s+/g, " ").trim();
+
+            if (text.length < 50) {
+              throw new Error(
+                "Could not extract enough text from the PDF file. " +
+                  "Please ensure your PDF contains selectable text, not scanned images. " +
+                  "Try uploading a DOCX version instead.",
+              );
+            }
+
+            console.log(`Raw text extraction recovered ${text.length} characters`);
+          }
+        } else {
+          text = new TextDecoder().decode(buf);
+        }
+      } catch (e) {
+        throw new Error(`Failed to parse resume: ${(e as Error).message}`);
       }
-    } catch (e) {
-      throw new Error(`Failed to parse resume: ${(e as Error).message}`);
+    } else {
+      throw new Error("No resume data or file found");
     }
 
     text = text.replace(/\s+/g, " ").trim();
     if (text.length < 50) throw new Error("Could not extract enough text from the resume file");
-    // Truncate to 8 000 chars — enough signal for analysis; saves ~30% tokens vs 20 000
     if (text.length > 8000) text = text.slice(0, 8000);
 
-    // ONE AI call — returns both scoring and career roadmap
     const scan = await aiGenerateJsonValidated(
       `Resume:\n${text}`,
       FULL_SCAN_SYSTEM,
@@ -215,7 +310,6 @@ export const scanResumeFromStorage = createServerFn({ method: "POST" })
       .eq("user_id", context.userId);
     if (error) throw new Error(error.message);
 
-    // Job matching is pure client-side math — no extra AI call needed
     const skills = (scan.extracted_skills ?? []).map((s) => s.toLowerCase()).filter(Boolean);
     let matches: Array<{ id: string; title: string; company: string | null; score: number }> = [];
     if (skills.length) {
@@ -227,7 +321,8 @@ export const scanResumeFromStorage = createServerFn({ method: "POST" })
       matches = (jobs ?? [])
         .map((j: any) => {
           const js = ((j.required_skills ?? []) as string[]).map((s) => s.toLowerCase());
-          if (!js.length) return { id: j.id, title: j.title, company: j.company?.name ?? null, score: 0 };
+          if (!js.length)
+            return { id: j.id, title: j.title, company: j.company?.name ?? null, score: 0 };
           const hits = js.filter((s) => skills.some((k) => s.includes(k) || k.includes(s))).length;
           const score = Math.round((hits / Math.max(js.length, 1)) * 100);
           return { id: j.id, title: j.title, company: j.company?.name ?? null, score };
@@ -237,8 +332,7 @@ export const scanResumeFromStorage = createServerFn({ method: "POST" })
         .slice(0, 8);
     }
 
-    // Profile auto-update from resume scan
-    const profilePatch: Record<string, any> = {
+    const profilePatch = {
       ai_profile_data: {
         summary: scan.summary,
         skills: scan.extracted_skills ?? [],
@@ -246,17 +340,25 @@ export const scanResumeFromStorage = createServerFn({ method: "POST" })
         keywords: scan.keywords ?? [],
         missing_skills: scan.missing_skills ?? [],
       },
-    };
-    // Only overwrite skills if user has none set yet
+    } as any;
+
     const { data: existingProfile } = await context.supabase
       .from("profiles")
       .select("skills")
       .eq("id", context.userId)
       .maybeSingle();
-    if (!existingProfile?.skills?.length && scan.extracted_skills?.length) {
+    const existingSkills = Array.isArray(existingProfile?.skills) ? existingProfile.skills : [];
+    if (
+      !existingSkills.length &&
+      Array.isArray(scan.extracted_skills) &&
+      scan.extracted_skills.length
+    ) {
       profilePatch.skills = scan.extracted_skills.slice(0, 20);
     }
-    await context.supabase.from("profiles").update(profilePatch).eq("id", context.userId);
+    await context.supabase
+      .from("profiles")
+      .update(profilePatch as any)
+      .eq("id", context.userId);
 
     return { ...scoringUpdate, matches };
   });
@@ -276,7 +378,9 @@ export const importFromGitHub = createServerFn({ method: "POST" })
     };
     const [uRes, rRes] = await Promise.all([
       fetch(`https://api.github.com/users/${data.username}`, { headers }),
-      fetch(`https://api.github.com/users/${data.username}/repos?sort=stars&per_page=100`, { headers }),
+      fetch(`https://api.github.com/users/${data.username}/repos?sort=stars&per_page=100`, {
+        headers,
+      }),
     ]);
     if (uRes.status === 404) throw new Error("GitHub user not found");
     if (!uRes.ok) throw new Error(`GitHub error (${uRes.status})`);
@@ -361,7 +465,10 @@ export const importFromLinkedInText = createServerFn({ method: "POST" })
     if (parsed.location) patch.location = parsed.location;
     if (parsed.current_position) patch.current_position = parsed.current_position;
     if (Number.isFinite(parsed.experience_years))
-      patch.experience_years = Math.max(0, Math.min(60, Math.round(Number(parsed.experience_years))));
+      patch.experience_years = Math.max(
+        0,
+        Math.min(60, Math.round(Number(parsed.experience_years))),
+      );
     if (parsed.skills?.length) patch.skills = parsed.skills.slice(0, 20);
     if (data.url) patch.linkedin_url = data.url;
 
@@ -409,7 +516,11 @@ export const careerCoach = createServerFn({ method: "POST" })
       .join(", ");
 
     const contextBlock = [
-      `Profile: ${JSON.stringify({ ...profile })}`,
+      `Profile: ${JSON.stringify(
+        profile && typeof profile === "object" && !Array.isArray(profile)
+          ? { ...(profile as Record<string, any>) }
+          : (profile ?? {}),
+      )}`,
       `Resume scores: overall=${resume?.overall_score ?? "?"}, ats=${resume?.ats_score ?? "?"}, grammar=${resume?.grammar_score ?? "?"}`,
       `Recent applications: ${appSummary || "none"}`,
       `User question: ${data.question}`,
@@ -480,45 +591,45 @@ async function buildUserContext(supabase: any, userId: string, role: string | nu
         .eq("seeker_id", userId)
         .order("created_at", { ascending: false })
         .limit(10),
-      supabase
-        .from("saved_jobs")
-        .select("job:jobs(id,title)")
-        .eq("user_id", userId)
-        .limit(5),
+      supabase.from("saved_jobs").select("job:jobs(id,title)").eq("user_id", userId).limit(5),
     ]);
 
   if (profile) {
-    ctx.push(`## User Profile\n${JSON.stringify({
-      name: profile.full_name,
-      headline: profile.headline,
-      bio: profile.bio,
-      location: profile.location,
-      years_experience: profile.years_experience,
-      current_position: profile.current_position,
-      skills: profile.skills ?? [],
-      technologies: profile.technologies ?? [],
-      education: profile.education ?? [],
-      experience: profile.experience ?? [],
-      expected_salary_usd: profile.expected_salary_usd,
-      preferred_job_type: profile.job_type_preference,
-      preferred_location: profile.preferred_location,
-    })}`);
+    ctx.push(
+      `## User Profile\n${JSON.stringify({
+        name: profile.full_name,
+        headline: profile.headline,
+        bio: profile.bio,
+        location: profile.location,
+        years_experience: profile.years_experience,
+        current_position: profile.current_position,
+        skills: profile.skills ?? [],
+        technologies: profile.technologies ?? [],
+        education: profile.education ?? [],
+        experience: profile.experience ?? [],
+        expected_salary_usd: profile.expected_salary_usd,
+        preferred_job_type: profile.job_type_preference,
+        preferred_location: profile.preferred_location,
+      })}`,
+    );
   }
 
   if (resume) {
     const parsed = resume.parsed_data as any;
     const roadmap = resume.career_roadmap as any;
-    ctx.push(`## Resume Analysis\n${JSON.stringify({
-      overall_score: resume.overall_score,
-      ats_score: resume.ats_score,
-      grammar_score: resume.grammar_score,
-      suggestions: resume.suggestions ?? [],
-      extracted_skills: parsed?.skills ?? [],
-      summary: parsed?.summary ?? "",
-      missing_skills: roadmap?.missing_skills ?? [],
-      strengths: roadmap?.strengths ?? [],
-      weaknesses: roadmap?.weaknesses ?? [],
-    })}`);
+    ctx.push(
+      `## Resume Analysis\n${JSON.stringify({
+        overall_score: resume.overall_score,
+        ats_score: resume.ats_score,
+        grammar_score: resume.grammar_score,
+        suggestions: resume.suggestions ?? [],
+        extracted_skills: parsed?.skills ?? [],
+        summary: parsed?.summary ?? "",
+        missing_skills: roadmap?.missing_skills ?? [],
+        strengths: roadmap?.strengths ?? [],
+        weaknesses: roadmap?.weaknesses ?? [],
+      })}`,
+    );
   }
 
   if (applications?.length) {
@@ -530,24 +641,25 @@ async function buildUserContext(supabase: any, userId: string, role: string | nu
   }
 
   if (savedJobs?.length) {
-    ctx.push(
-      `## Saved Jobs\n${savedJobs.map((s: any) => `- ${s.job?.title}`).join("\n")}`,
-    );
+    ctx.push(`## Saved Jobs\n${savedJobs.map((s: any) => `- ${s.job?.title}`).join("\n")}`);
   }
 
   // For job-related questions, fetch active jobs
   ctx.push(`## Active Jobs (sample)`);
   const { data: activeJobs } = await supabase
     .from("jobs")
-    .select("id,title,required_skills,salary_min,salary_max,salary_currency,location,job_type, company:companies(name)")
+    .select(
+      "id,title,required_skills,salary_min,salary_max,salary_currency,location,job_type, company:companies(name)",
+    )
     .eq("status", "active")
     .order("created_at", { ascending: false })
     .limit(20);
   if (activeJobs?.length) {
     ctx.push(
       activeJobs
-        .map((j: any) =>
-          `- ${j.title} at ${j.company?.name ?? "?"} | Skills: ${(j.required_skills ?? []).join(", ")} | Salary: Rs. ${j.salary_min ?? "?"} - ${j.salary_max ?? "?"} | ${j.location ?? "Remote"}`,
+        .map(
+          (j: any) =>
+            `- ${j.title} at ${j.company?.name ?? "?"} | Skills: ${(j.required_skills ?? []).join(", ")} | Salary: Rs. ${j.salary_min ?? "?"} - ${j.salary_max ?? "?"} | ${j.location ?? "Remote"}`,
         )
         .join("\n"),
     );
@@ -621,13 +733,11 @@ export const aiAssistantChat = createServerFn({ method: "POST" })
     }
 
     // 2. Save user message
-    const { error: msgErr } = await context.supabase
-      .from("ai_messages")
-      .insert({
-        conversation_id: conversationId,
-        role: "user",
-        content: data.message,
-      });
+    const { error: msgErr } = await context.supabase.from("ai_messages").insert({
+      conversation_id: conversationId,
+      role: "user",
+      content: data.message,
+    });
     if (msgErr) throw new Error(msgErr.message);
 
     // 3. Retrieve conversation history (last 10 messages for context)
@@ -657,13 +767,11 @@ export const aiAssistantChat = createServerFn({ method: "POST" })
     );
 
     // 6. Save assistant response
-    const { error: aiMsgErr } = await context.supabase
-      .from("ai_messages")
-      .insert({
-        conversation_id: conversationId,
-        role: "assistant",
-        content: response,
-      });
+    const { error: aiMsgErr } = await context.supabase.from("ai_messages").insert({
+      conversation_id: conversationId,
+      role: "assistant",
+      content: response,
+    });
     if (aiMsgErr) throw new Error(aiMsgErr.message);
 
     return {

@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Briefcase, Twitter, Linkedin, Github, Mail } from "lucide-react";
+import { Twitter, Linkedin, Github, Mail } from "lucide-react";
 
 export function SiteFooter() {
   return (
@@ -7,12 +7,11 @@ export function SiteFooter() {
       <div className="container mx-auto px-4 py-12">
         <div className="grid gap-8 md:grid-cols-4">
           <div>
-            <div className="flex items-center gap-2 mb-4">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg gradient-brand">
-                <Briefcase className="h-4 w-4 text-primary-foreground" />
-              </div>
-              <span className="font-bold text-lg gradient-text">Jagire</span>
-            </div>
+            <img
+              src="/Jagire-logo.png"
+              alt="Jagire Logo"
+              className="max-h-20 w-auto object-contain"
+            />
             <p className="text-sm text-muted-foreground mb-4">
               AI-powered job portal connecting talent with opportunity.
             </p>

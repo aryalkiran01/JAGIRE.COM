@@ -303,9 +303,6 @@ function AboutPage() {
       {/* Testimonials */}
       <section className="container mx-auto px-4 py-20">
         <div className="text-center mb-14">
-          <Badge variant="outline" className="mb-4">
-            <Star className="mr-1 h-3 w-3 fill-accent text-accent" /> Testimonials
-          </Badge>
           <h2 className="text-4xl font-bold mb-3">What people say about Jagire</h2>
         </div>
         <div className="grid md:grid-cols-3 gap-6">

@@ -3,7 +3,6 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import {
   LayoutDashboard,
-  Briefcase,
   Bookmark,
   Building2,
   Rss,
@@ -26,12 +25,13 @@ import {
 type NavItem = {
   to: string;
   label: string;
-  icon: LucideIcon;
+  icon?: LucideIcon;
+  image?: string;
 };
 
 const SEEKER_NAV: NavItem[] = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/jobs", label: "Browse Jobs", icon: Briefcase },
+  { to: "/jobs", label: "Browse Jobs", image: "/Jagire-logo.png" },
   { to: "/applications", label: "Applications", icon: Target },
   { to: "/saved", label: "Saved Jobs", icon: Bookmark },
   { to: "/interviews", label: "Interviews", icon: Video },
@@ -51,7 +51,7 @@ const SEEKER_NAV: NavItem[] = [
 
 const EMPLOYER_NAV: NavItem[] = [
   { to: "/employer", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/employer/jobs", label: "Job Posts", icon: Briefcase },
+  { to: "/employer/jobs", label: "Job Posts", image: "/Jagire-logo.png" },
   { to: "/employer/interviews", label: "Interviews", icon: Video },
   { to: "/employer/company", label: "Company", icon: Building2 },
   { to: "/applications", label: "Applications", icon: Target },
@@ -83,7 +83,15 @@ export function AppSidebar() {
                   : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
               )}
             >
-              <item.icon className="h-4 w-4 shrink-0" />
+              {item.image ? (
+                <img
+                  src={item.image}
+                  alt={item.label}
+                  className="h-8 w-auto shrink-0 object-contain"
+                />
+              ) : (
+                item.icon && <item.icon className="h-4 w-4 shrink-0" />
+              )}{" "}
               <span className="truncate">{item.label}</span>
             </Link>
           );
@@ -92,7 +100,7 @@ export function AppSidebar() {
       <div className="p-3 border-t border-border/40">
         <Link
           to="/referrals"
-          className="block rounded-xl border border-border/40 bg-gradient-to-br from-primary/5 to-accent/5 p-4 hover:shadow-card-soft transition-all"
+          className="block rounded-xl border border-border/40 bg-linear-to-br from-primary/5 to-accent/5 p-4 hover:shadow-card-soft transition-all"
         >
           <div className="flex items-center gap-2 mb-1">
             <Gift className="h-4 w-4 text-primary" />

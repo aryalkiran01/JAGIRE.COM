@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { toast } from "sonner";
-import { Briefcase, Loader as Loader2 } from "lucide-react";
+import { Loader as Loader2 } from "lucide-react";
 
 const authSchema = z.object({
   email: z.string().trim().email("Invalid email").max(255),
@@ -42,11 +42,8 @@ function AuthPage() {
     <div className="min-h-screen flex items-center justify-center px-4 gradient-hero relative overflow-hidden">
       <div className="absolute inset-0 bg-background/80 backdrop-blur-3xl" />
       <div className="w-full max-w-md relative">
-        <Link to="/" className="flex items-center justify-center gap-2 mb-8">
-          <div className="h-10 w-10 rounded-xl gradient-brand flex items-center justify-center shadow-glow">
-            <Briefcase className="h-5 w-5 text-primary-foreground" />
-          </div>
-          <span className="text-2xl font-bold gradient-text">Jagire</span>
+        <Link to="/" className="flex items-center justify-center gap-2 mb-2">
+          <img src="/Jagire-logo.png" alt="Jagire Logo" className="h-52 w-auto object-contain" />
         </Link>
         <Card className="glass shadow-glow">
           <CardHeader>
@@ -173,10 +170,10 @@ function SignUpForm() {
           onValueChange={(v) => setRole(v as any)}
           className="grid grid-cols-2 gap-2 mt-2"
         >
-          <label className="flex items-center gap-2 border rounded-lg p-3 cursor-pointer hover:bg-muted has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+          <label className="flex items-center gap-2 border rounded-lg p-3 cursor-pointer hover:bg-muted has-checked:border-primary has-checked:bg-primary/5">
             <RadioGroupItem value="job_seeker" /> Job seeker
           </label>
-          <label className="flex items-center gap-2 border rounded-lg p-3 cursor-pointer hover:bg-muted has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+          <label className="flex items-center gap-2 border rounded-lg p-3 cursor-pointer hover:bg-muted has-checked:border-primary has-checked:bg-primary/5">
             <RadioGroupItem value="employer" /> Employer
           </label>
         </RadioGroup>

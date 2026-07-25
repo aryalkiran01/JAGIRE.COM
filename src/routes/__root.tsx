@@ -75,13 +75,19 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
+
       { title: "Jagire — AI Smart Job Portal" },
+
       {
         name: "description",
         content:
           "AI-powered job search, resume scoring, and career matching. Find your dream role or hire top talent with Jagire.",
       },
+
       { name: "author", content: "Jagire" },
+      { name: "theme-color", content: "#6366f1" },
+
+      // Open Graph
       { property: "og:title", content: "Jagire — AI Smart Job Portal" },
       {
         property: "og:description",
@@ -89,6 +95,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           "AI-powered job search, resume scoring, and career matching. Find your dream role or hire top talent with Jagire.",
       },
       { property: "og:type", content: "website" },
+      { property: "og:image", content: "/og-image.png" },
+      { property: "og:site_name", content: "Jagire" },
+
+      // Twitter
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: "Jagire — AI Smart Job Portal" },
       {
@@ -96,21 +106,40 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         content:
           "AI-powered job search, resume scoring, and career matching. Find your dream role or hire top talent with Jagire.",
       },
-      { property: "og:image", content: "/og-image.png" },
       { name: "twitter:image", content: "/og-image.png" },
     ],
+
     links: [
       {
         rel: "stylesheet",
         href: appCss,
       },
+
+      // Browser favicon
+      {
+        rel: "icon",
+        href: "/Jagire-logo.png",
+        type: "image/png",
+      },
+      // Mobile icon
+      {
+        rel: "apple-touch-icon",
+        href: "/Jagire-logo.png",
+        sizes: "180x180",
+      },
+
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
-      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
+      {
+        rel: "preconnect",
+        href: "https://fonts.gstatic.com",
+        crossOrigin: "anonymous",
+      },
       {
         rel: "stylesheet",
         href: "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap",
       },
     ],
+
     scripts: [
       {
         type: "text/javascript",

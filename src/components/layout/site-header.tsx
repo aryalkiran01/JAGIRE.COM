@@ -16,7 +16,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import {
-  Briefcase,
   LayoutDashboard,
   LogOut,
   User,
@@ -121,9 +120,7 @@ export function SiteHeader() {
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2 shrink-0">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl gradient-brand shadow-glow">
-            <Briefcase className="h-5 w-5 text-primary-foreground" />
-          </div>
+          <img src="/Jagire-logo.png" alt="Jagire" className="h-10 w-auto" />
           <span className="text-xl font-bold gradient-text">Jagire</span>
         </Link>
 
@@ -143,7 +140,7 @@ export function SiteHeader() {
                 <ChevronDown className="h-3.5 w-3.5" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="center" className="w-[420px] p-2">
+            <DropdownMenuContent align="center" className="w-105 p-2">
               <div className="grid grid-cols-2 gap-1">
                 {FEATURE_LINKS.map((f) => (
                   <DropdownMenuItem key={f.to} asChild className="p-3 rounded-lg">
@@ -178,7 +175,7 @@ export function SiteHeader() {
                 <Link to="/notifications">
                   <Bell className="h-4 w-4" />
                   {unread ? (
-                    <span className="absolute -top-0.5 -right-0.5 h-4 min-w-[16px] px-1 rounded-full gradient-brand text-[10px] font-bold text-primary-foreground flex items-center justify-center">
+                    <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-1 rounded-full gradient-brand text-[10px] font-bold text-primary-foreground flex items-center justify-center">
                       {unread > 9 ? "9+" : unread}
                     </span>
                   ) : null}
@@ -199,7 +196,7 @@ export function SiteHeader() {
                 <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuLabel>
                     <div className="flex flex-col">
-                      <span className="text-sm font-medium truncate max-w-[200px]">
+                      <span className="text-sm font-medium truncate max-w-50">
                         {user.user_metadata?.full_name ?? user.email}
                       </span>
                       <span className="text-xs text-muted-foreground capitalize">
@@ -310,17 +307,14 @@ export function SiteHeader() {
             </SheetTrigger>
             <SheetContent side="right" className="w-[320px] overflow-y-auto">
               <SheetHeader>
-                <SheetTitle className="flex items-center gap-2">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg gradient-brand">
-                    <Briefcase className="h-4 w-4 text-primary-foreground" />
-                  </div>
-                  Jagire
+                <SheetTitle>
+                  <img src="/Jagire-logo.png" alt="Jagire" className="h-10 w-auto" />
                 </SheetTitle>
               </SheetHeader>
               <div className="mt-4 space-y-1">
                 <MobileLink
                   to="/jobs"
-                  icon={Briefcase}
+                  image="/Jagire-logo.png"
                   label="Browse Jobs"
                   onClick={() => setMobileOpen(false)}
                 />
@@ -401,11 +395,14 @@ function NavLink({ to, children }: { to: string; children: React.ReactNode }) {
 function MobileLink({
   to,
   icon: Icon,
+  image,
   label,
   onClick,
 }: {
   to: string;
-  icon: LucideIcon;
+  icon?: LucideIcon;
+  image?: string;
+
   label: string;
   onClick: () => void;
 }) {
@@ -415,7 +412,7 @@ function MobileLink({
       onClick={onClick}
       className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-muted/50"
     >
-      <Icon className="h-4 w-4" />
+      {Icon ? <Icon className="h-4 w-4" /> : null}
       {label}
     </Link>
   );
