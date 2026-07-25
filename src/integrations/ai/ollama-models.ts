@@ -3,7 +3,7 @@ import type { AITask } from "./types";
 export const OLLAMA_TIMEOUT_MS = 120_000;
 
 const DEFAULT_CHAT = "qwen3";
-const DEFAULT_REASONING = "deepseek-r1";
+const DEFAULT_REASONING = "qwen3";
 const DEFAULT_FAST = "llama3.2";
 const DEFAULT_EMBEDDING = "mxbai-embed-large";
 
