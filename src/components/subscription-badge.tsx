@@ -2,12 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { Crown, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useSubscription, PLAN_NAMES } from "@/hooks/use-subscription";
 
 /**
@@ -46,10 +41,7 @@ export function SubscriptionBadge() {
             <Crown className="h-3.5 w-3.5" />
             {planLabel}
             {days != null && days > 0 ? (
-              <Badge
-                variant="secondary"
-                className="ml-0.5 h-4 px-1 text-[10px] leading-none"
-              >
+              <Badge variant="secondary" className="ml-0.5 h-4 px-1 text-[10px] leading-none">
                 {days}d
               </Badge>
             ) : null}

@@ -27,7 +27,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import {
   Shield,
   Users,
@@ -798,11 +804,13 @@ const SUB_PLANS = [
 
 function statusBadge(status?: string) {
   if (status === "active")
-    return <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">Active</Badge>;
-  if (status === "expired")
-    return <Badge variant="secondary">Expired</Badge>;
-  if (status === "cancelled")
-    return <Badge variant="destructive">Cancelled</Badge>;
+    return (
+      <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+        Active
+      </Badge>
+    );
+  if (status === "expired") return <Badge variant="secondary">Expired</Badge>;
+  if (status === "cancelled") return <Badge variant="destructive">Cancelled</Badge>;
   return <Badge variant="outline">{status ?? "—"}</Badge>;
 }
 
@@ -810,7 +818,9 @@ function AdminSubscriptions() {
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [actionTarget, setActionTarget] = useState<any | null>(null);
-  const [actionType, setActionType] = useState<"activate" | "extend" | "cancel" | "changePlan" | null>(null);
+  const [actionType, setActionType] = useState<
+    "activate" | "extend" | "cancel" | "changePlan" | null
+  >(null);
   const [extendDays, setExtendDays] = useState("30");
   const [newPlan, setNewPlan] = useState("starter");
 
@@ -819,7 +829,9 @@ function AdminSubscriptions() {
     queryFn: async () => {
       let q = supabase.from("subscriptions").select("*").order("created_at", { ascending: false });
       if (search) {
-        q = q.or(`transaction_id.ilike.%${search}%,esewa_ref_id.ilike.%${search}%,plan_type.ilike.%${search}%,status.ilike.%${search}%`);
+        q = q.or(
+          `transaction_id.ilike.%${search}%,esewa_ref_id.ilike.%${search}%,plan_type.ilike.%${search}%,status.ilike.%${search}%`,
+        );
       }
       const { data } = await q;
       return data ?? [];
@@ -843,7 +855,10 @@ function AdminSubscriptions() {
 
   const updateMutation = useMutation({
     mutationFn: async (payload: { id: string; updates: Record<string, unknown> }) => {
-      const { error } = await supabase.from("subscriptions").update(payload.updates).eq("id", payload.id);
+      const { error } = await supabase
+        .from("subscriptions")
+        .update(payload.updates)
+        .eq("id", payload.id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -946,32 +961,64 @@ function AdminSubscriptions() {
                     <tr key={s.id} className="hover:bg-muted/30">
                       <td className="p-3">
                         <div className="font-medium">{profile?.full_name ?? "—"}</div>
-                        <div className="text-xs text-muted-foreground">{profile?.email ?? s.user_id?.slice(0, 8)}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {profile?.email ?? s.user_id?.slice(0, 8)}
+                        </div>
                       </td>
                       <td className="p-3 capitalize">{s.plan_type}</td>
-                      <td className="p-3">{statusBadge(expired && s.status === "active" ? "expired" : s.status)}</td>
-                      <td className="p-3 text-xs">{s.started_at ? new Date(s.started_at).toLocaleDateString() : "—"}</td>
-                      <td className="p-3 text-xs">{s.expires_at ? new Date(s.expires_at).toLocaleDateString() : "—"}</td>
+                      <td className="p-3">
+                        {statusBadge(expired && s.status === "active" ? "expired" : s.status)}
+                      </td>
+                      <td className="p-3 text-xs">
+                        {s.started_at ? new Date(s.started_at).toLocaleDateString() : "—"}
+                      </td>
+                      <td className="p-3 text-xs">
+                        {s.expires_at ? new Date(s.expires_at).toLocaleDateString() : "—"}
+                      </td>
                       <td className="p-3 text-xs">
                         {s.amount ? `Rs. ${Number(s.amount).toLocaleString()}` : "—"}
                       </td>
-                      <td className="p-3 text-xs font-mono truncate max-w-32">{s.transaction_id ?? "—"}</td>
-                      <td className="p-3 text-xs font-mono truncate max-w-32">{s.esewa_ref_id ?? "—"}</td>
+                      <td className="p-3 text-xs font-mono truncate max-w-32">
+                        {s.transaction_id ?? "—"}
+                      </td>
+                      <td className="p-3 text-xs font-mono truncate max-w-32">
+                        {s.esewa_ref_id ?? "—"}
+                      </td>
                       <td className="p-3">
                         <div className="flex gap-1 flex-wrap">
-                          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => openAction(s, "activate")}>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-xs"
+                            onClick={() => openAction(s, "activate")}
+                          >
                             <CheckCircle2 className="h-3 w-3 mr-1" />
                             Activate
                           </Button>
-                          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => openAction(s, "extend")}>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-xs"
+                            onClick={() => openAction(s, "extend")}
+                          >
                             <CalendarClock className="h-3 w-3 mr-1" />
                             Extend
                           </Button>
-                          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => openAction(s, "changePlan")}>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-xs"
+                            onClick={() => openAction(s, "changePlan")}
+                          >
                             <Crown className="h-3 w-3 mr-1" />
                             Plan
                           </Button>
-                          <Button size="sm" variant="outline" className="h-7 text-xs text-destructive" onClick={() => openAction(s, "cancel")}>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-xs text-destructive"
+                            onClick={() => openAction(s, "cancel")}
+                          >
                             <XCircle className="h-3 w-3 mr-1" />
                             Cancel
                           </Button>
@@ -987,7 +1034,15 @@ function AdminSubscriptions() {
       </CardContent>
 
       {/* Action dialog */}
-      <Dialog open={!!actionTarget} onOpenChange={(o) => { if (!o) { setActionTarget(null); setActionType(null); } }}>
+      <Dialog
+        open={!!actionTarget}
+        onOpenChange={(o) => {
+          if (!o) {
+            setActionTarget(null);
+            setActionType(null);
+          }
+        }}
+      >
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>
@@ -997,16 +1052,26 @@ function AdminSubscriptions() {
               {actionType === "changePlan" && "Change plan"}
             </DialogTitle>
             <DialogDescription>
-              {actionTarget?.user_id ? `User: ${profiles?.get(actionTarget.user_id)?.full_name ?? actionTarget.user_id.slice(0, 8)}` : ""}
+              {actionTarget?.user_id
+                ? `User: ${profiles?.get(actionTarget.user_id)?.full_name ?? actionTarget.user_id.slice(0, 8)}`
+                : ""}
             </DialogDescription>
           </DialogHeader>
 
           {actionType === "extend" && (
             <div className="space-y-2">
               <Label htmlFor="days">Days to extend</Label>
-              <Input id="days" type="number" value={extendDays} onChange={(e) => setExtendDays(e.target.value)} />
+              <Input
+                id="days"
+                type="number"
+                value={extendDays}
+                onChange={(e) => setExtendDays(e.target.value)}
+              />
               <p className="text-xs text-muted-foreground">
-                Current expiry: {actionTarget?.expires_at ? new Date(actionTarget.expires_at).toLocaleDateString() : "none"}
+                Current expiry:{" "}
+                {actionTarget?.expires_at
+                  ? new Date(actionTarget.expires_at).toLocaleDateString()
+                  : "none"}
               </p>
             </div>
           )}
@@ -1015,10 +1080,14 @@ function AdminSubscriptions() {
             <div className="space-y-2">
               <Label htmlFor="plan">New plan</Label>
               <Select value={newPlan} onValueChange={setNewPlan}>
-                <SelectTrigger id="plan"><SelectValue /></SelectTrigger>
+                <SelectTrigger id="plan">
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   {SUB_PLANS.map((p) => (
-                    <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                    <SelectItem key={p.value} value={p.value}>
+                      {p.label}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -1027,7 +1096,8 @@ function AdminSubscriptions() {
 
           {actionType === "cancel" && (
             <p className="text-sm text-muted-foreground">
-              This will mark the subscription as cancelled. The user will lose premium access immediately.
+              This will mark the subscription as cancelled. The user will lose premium access
+              immediately.
             </p>
           )}
 
@@ -1038,13 +1108,23 @@ function AdminSubscriptions() {
           )}
 
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => { setActionTarget(null); setActionType(null); }}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setActionTarget(null);
+                setActionType(null);
+              }}
+            >
               Cancel
             </Button>
             <Button
               onClick={submitAction}
               disabled={updateMutation.isPending}
-              className={actionType === "cancel" ? "bg-destructive text-destructive-foreground" : "gradient-brand text-primary-foreground"}
+              className={
+                actionType === "cancel"
+                  ? "bg-destructive text-destructive-foreground"
+                  : "gradient-brand text-primary-foreground"
+              }
             >
               {updateMutation.isPending ? "Saving…" : "Confirm"}
             </Button>

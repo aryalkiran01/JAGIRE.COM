@@ -155,7 +155,7 @@ All routes use TanStack Router file-based routing. `routeTree.gen.ts` is auto-ge
 | `/contact`                  | `src/routes/contact.tsx`                  | Contact form                                                      |
 | `/forgot-password`          | `src/routes/forgot-password.tsx`          | Request reset email                                               |
 | `/reset-password`           | `src/routes/reset-password.tsx`           | Set new password                                                  |
-| `/pricing`                  | `src/routes/pricing.tsx`                  | AI Recruitment & HR OS pricing (Job Seeker / Employer toggle)      |
+| `/pricing`                  | `src/routes/pricing.tsx`                  | AI Recruitment & HR OS pricing (Job Seeker / Employer toggle)     |
 | `/checkout/$plan`           | `src/routes/checkout.$plan.tsx`           | eSewa payment (starter/pro)                                       |
 | `/payment-success`          | `src/routes/payment-success.tsx`          | Payment confirmation                                              |
 | `/payment-failure`          | `src/routes/payment-failure.tsx`          | Payment failure                                                   |
@@ -493,46 +493,46 @@ After AI resume scanning:
 
 ### Core Tables
 
-| Table                   | Purpose                                              |
-| ----------------------- | ---------------------------------------------------- |
-| `profiles`              | User profiles (job seekers, employers, admins)       |
-| `user_roles`            | Role assignments (`job_seeker`, `employer`, `admin`) |
-| `companies`             | Company profiles owned by employers                  |
-| `jobs`                  | Job postings with status, type, experience level     |
-| `applications`          | Job applications with status workflow                |
-| `application_events`    | Event log for each application status change         |
-| `interviews`            | Interview records linked to applications             |
-| `interview_events`      | Google Calendar interview events with Meet links     |
-| `meetings`              | Formal meeting records                               |
-| `notifications`         | User notifications for all events                    |
-| `chats`                 | 1:1 conversation threads between users               |
-| `messages`              | Individual messages in chats                         |
-| `posts`                 | Community feed posts                                 |
-| `post_comments`         | Comments and replies on posts                        |
-| `post_likes`            | Like records                                         |
-| `post_saves`            | Saved posts                                          |
-| `post_reports`          | Reports for moderation                               |
-| `blogs`                 | Blog articles                                        |
-| `assessments`           | Assessment definitions with questions                |
-| `assessment_attempts`   | User attempt records with scores                     |
-| `support_tickets`       | Support ticket system                                |
-| `saved_jobs`            | Bookmarked jobs                                      |
-| `reviews`               | Company reviews                                      |
-| `review_replies`        | Replies to reviews                                   |
-| `app_user_connections`  | OAuth tokens (Google Calendar)                       |
-| `reports`               | General content reports                              |
-| `referrals`             | Referral tracking                                    |
-| `follows`               | User follow relationships                            |
-| `categories`            | Job/content categories                               |
-| `resumes`               | User resumes with parsed data                        |
-| `activity_logs`         | User activity audit log                              |
-| `contact_messages`      | Contact form submissions (public insert, admin read) |
-| `career_coach_sessions` | Legacy AI Career Coach sessions (JSONB messages)     |
-| `ai_conversations`      | AI Assistant conversation threads (owner-scoped)     |
-| `ai_messages`           | AI Assistant messages within conversations           |
+| Table                   | Purpose                                                                         |
+| ----------------------- | ------------------------------------------------------------------------------- |
+| `profiles`              | User profiles (job seekers, employers, admins)                                  |
+| `user_roles`            | Role assignments (`job_seeker`, `employer`, `admin`)                            |
+| `companies`             | Company profiles owned by employers                                             |
+| `jobs`                  | Job postings with status, type, experience level                                |
+| `applications`          | Job applications with status workflow                                           |
+| `application_events`    | Event log for each application status change                                    |
+| `interviews`            | Interview records linked to applications                                        |
+| `interview_events`      | Google Calendar interview events with Meet links                                |
+| `meetings`              | Formal meeting records                                                          |
+| `notifications`         | User notifications for all events                                               |
+| `chats`                 | 1:1 conversation threads between users                                          |
+| `messages`              | Individual messages in chats                                                    |
+| `posts`                 | Community feed posts                                                            |
+| `post_comments`         | Comments and replies on posts                                                   |
+| `post_likes`            | Like records                                                                    |
+| `post_saves`            | Saved posts                                                                     |
+| `post_reports`          | Reports for moderation                                                          |
+| `blogs`                 | Blog articles                                                                   |
+| `assessments`           | Assessment definitions with questions                                           |
+| `assessment_attempts`   | User attempt records with scores                                                |
+| `support_tickets`       | Support ticket system                                                           |
+| `saved_jobs`            | Bookmarked jobs                                                                 |
+| `reviews`               | Company reviews                                                                 |
+| `review_replies`        | Replies to reviews                                                              |
+| `app_user_connections`  | OAuth tokens (Google Calendar)                                                  |
+| `reports`               | General content reports                                                         |
+| `referrals`             | Referral tracking                                                               |
+| `follows`               | User follow relationships                                                       |
+| `categories`            | Job/content categories                                                          |
+| `resumes`               | User resumes with parsed data                                                   |
+| `activity_logs`         | User activity audit log                                                         |
+| `contact_messages`      | Contact form submissions (public insert, admin read)                            |
+| `career_coach_sessions` | Legacy AI Career Coach sessions (JSONB messages)                                |
+| `ai_conversations`      | AI Assistant conversation threads (owner-scoped)                                |
+| `ai_messages`           | AI Assistant messages within conversations                                      |
 | `subscriptions`         | User subscription records (plan, status, dates, payment) — owner + admin access |
-| `payment_verifications` | eSewa payment verification audit log (idempotent, immutable) |
-| `ai_usage_log`          | AI feature usage audit log (owner-scoped, immutable)  |
+| `payment_verifications` | eSewa payment verification audit log (idempotent, immutable)                    |
+| `ai_usage_log`          | AI feature usage audit log (owner-scoped, immutable)                            |
 
 ### Enums
 
