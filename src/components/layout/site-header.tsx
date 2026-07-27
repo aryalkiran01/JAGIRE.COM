@@ -92,22 +92,41 @@ export function SiteHeader() {
   });
 
   useEffect(() => {
-    if (!user) return;
+    if (!user?.id) return;
+
+    const topic = `notif:${user.id}`;
+
+    // Remove any existing channel with the same topic
+    supabase
+      .getChannels()
+      .filter((c) => c.topic === `realtime:${topic}`)
+      .forEach((c) => {
+        void supabase.removeChannel(c);
+      });
+
     const channel = supabase
-      .channel(`notif:${user.id}`)
+      .channel(topic)
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` },
+        {
+          event: "*",
+          schema: "public",
+          table: "notifications",
+          filter: `user_id=eq.${user.id}`,
+        },
         () => {
           qc.invalidateQueries({ queryKey: ["notif-unread"] });
           qc.invalidateQueries({ queryKey: ["notif"] });
         },
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log("Notification channel:", status);
+      });
+
     return () => {
-      supabase.removeChannel(channel);
+      void supabase.removeChannel(channel);
     };
-  }, [user, qc]);
+  }, [user?.id, qc]);
 
   const dashPath = role === "admin" ? "/admin" : role === "employer" ? "/employer" : "/dashboard";
 

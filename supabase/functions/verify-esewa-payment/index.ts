@@ -9,8 +9,7 @@ const corsHeaders = {
 
 // eSewa v2 status verification endpoint (test env by default)
 const ESEWA_STATUS_URL =
-  Deno.env.get("ESEWA_STATUS_URL") ||
-  "https://rc-epay.esewa.com.np/api/epay/status/v2";
+  Deno.env.get("ESEWA_STATUS_URL") || "https://rc-epay.esewa.com.np/api/epay/status/v2";
 const MERCHANT_CODE = Deno.env.get("ESEWA_MERCHANT_CODE") || "EPAYTEST";
 
 // Single source of truth for plan pricing (must mirror src/lib/plans.ts)
@@ -63,19 +62,11 @@ Deno.serve(async (req: Request) => {
     let esewaResponse: Response;
     try {
       esewaResponse = await fetch(statusUrl, { method: "GET" });
-<<<<<<< HEAD
-    } catch (e) {
+    } catch {
       return new Response(JSON.stringify({ error: "Unable to reach eSewa", verified: false }), {
         status: 502,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
-=======
-    } catch {
-      return new Response(
-        JSON.stringify({ error: "Unable to reach eSewa", verified: false }),
-        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
->>>>>>> c0f9c442f318ac15005f01dace25c948375ffc2c
     }
 
     const rawText = await esewaResponse.text();
