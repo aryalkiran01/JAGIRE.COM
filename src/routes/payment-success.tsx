@@ -84,6 +84,14 @@ function PaymentSuccess() {
           return;
         }
 
+        if (!user?.id) {
+          setState({
+            status: "failed",
+            error: "You must be signed in to complete this payment.",
+          });
+          return;
+        }
+
         // Determine plan type based on amount
         const amount = parseFloat(totalAmount);
         let planType = "starter";
@@ -98,18 +106,19 @@ function PaymentSuccess() {
         console.log("Activating plan:", planType, "Expires:", expiresAt);
 
         // Store transaction in database
-        const { error: transactionError } = await supabase.from("payment_transactions").upsert(
+        const { error: transactionError } = await supabase.from("payments").upsert(
           {
-            transaction_uuid: transactionUuid,
-            amount: amount,
+            user_id: user.id,
+            amount,
+            currency: "NPR",
             plan_type: planType,
-            user_id: user?.id,
             status: "completed",
-            esewa_transaction_code: transactionUuid,
+            esewa_transaction_id: transactionUuid,
+            esewa_ref_id: transactionUuid,
             updated_at: now.toISOString(),
           },
           {
-            onConflict: "transaction_uuid",
+            onConflict: "esewa_transaction_id",
           },
         );
 
@@ -121,7 +130,7 @@ function PaymentSuccess() {
         // Update or create subscription
         const { error: subscriptionError } = await supabase.from("subscriptions").upsert(
           {
-            user_id: user?.id,
+            user_id: user.id,
             plan_type: planType,
             status: "active",
             payment_status: "paid",
@@ -141,7 +150,7 @@ function PaymentSuccess() {
           console.error("Failed to update subscription:", subscriptionError);
           // Try to create if update failed
           const { error: insertError } = await supabase.from("subscriptions").insert({
-            user_id: user?.id,
+            user_id: user.id,
             plan_type: planType,
             status: "active",
             payment_status: "paid",
@@ -160,7 +169,7 @@ function PaymentSuccess() {
         // Also update user profile if you have one
         const { error: profileError } = await supabase.from("profiles").upsert(
           {
-            id: user?.id,
+            id: user.id,
             subscription_status: "active",
             subscription_plan: planType,
             subscription_expires_at: expiresAt.toISOString(),

@@ -8,7 +8,7 @@ const DEFAULT_GENERATIVE = "qwen3"; // for generation: cover letters, questions,
 const DEFAULT_EMBEDDING = "mxbai-embed-large";
 // deepseek-r1 is kept as an optional future model; set OLLAMA_REASONING_MODEL to activate it
 
-const TASK_TO_CATEGORY: Record<AITask, "generative" | "fast" | "embedding"> = {
+const TASK_TO_CATEGORY: Record<AITask | "embedding", "generative" | "fast" | "embedding"> = {
   // ── fast analysis tasks (llama3.2) ──────────────────────────────────────
   "resume-analysis": "fast",
   "ats-score": "fast",

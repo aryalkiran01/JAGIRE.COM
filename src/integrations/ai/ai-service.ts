@@ -348,7 +348,6 @@ export async function aiGenerateText(
   systemInstruction?: string,
   model?: string,
   task?: AITask,
-
 ): Promise<string> {
   return getService().generateText({ prompt, systemInstruction, model, task });
 }
