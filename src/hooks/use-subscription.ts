@@ -16,10 +16,6 @@ export interface SubscriptionStatus {
   daysRemaining?: number | null;
 }
 
-/**
- * Reads the current user's subscription status from the `subscriptions`
- * table. RLS guarantees only the owner row is visible, so this is safe.
- */
 export function useSubscription() {
   const { user } = useAuth();
   return useQuery<SubscriptionStatus>({
@@ -63,35 +59,71 @@ export function useSubscription() {
 }
 
 export const PLAN_NAMES: Record<string, string> = {
+  free: "Free",
+  premium: "Premium",
   starter: "Starter",
-  pro: "Pro",
+  professional: "Professional",
   enterprise: "Enterprise",
 };
 
-export const PLAN_BENEFITS: Record<string, string[]> = {
-  starter: [
-    "3 active job posts",
-    "AI candidate ranking",
-    "Applicant management",
-    "Email support",
+export const SEEKER_BENEFITS: Record<string, string[]> = {
+  free: [
+    "Apply to Jobs",
+    "Basic Resume Builder",
+    "Save Jobs",
+    "Track Applications",
+    "Job Alerts",
+    "5 AI Credits/month",
   ],
-  pro: [
-    "10 active job posts",
-    "Priority AI matching",
-    "Interview scheduling",
-    "Priority support",
-    "AI career tools unlocked",
+  premium: [
+    "Unlimited Job Applications",
+    "Unlimited AI Resume Builder",
+    "AI Resume Optimization",
+    "AI Cover Letter Generator",
+    "AI Interview Practice",
+    "ATS Resume Score",
+    "AI Career Coach",
+    "AI Career Roadmap",
+    "Skills Gap Analysis",
+    "Salary Insights",
+    "Resume Templates",
+    "Portfolio Builder",
+    "Application Analytics",
+    "Priority Support",
+  ],
+};
+
+export const EMPLOYER_BENEFITS: Record<string, string[]> = {
+  starter: [
+    "5 Active Job Posts",
+    "Candidate Dashboard",
+    "Resume Search",
+    "Company Profile",
+    "Email Notifications",
+    "Basic Hiring Analytics",
+  ],
+  professional: [
+    "Unlimited Job Posts",
+    "Unlimited Candidates",
+    "Team Collaboration",
+    "Google Calendar Integration",
+    "Interview Scheduling",
+    "Candidate Pipeline",
+    "Hiring Dashboard",
+    "Resume Database",
+    "Company Branding",
+    "Advanced Search",
   ],
   enterprise: [
-    "Unlimited job posts",
-    "Priority AI matching",
-    "Google Meet integration",
-    "Dedicated support",
-    "All AI features unlocked",
-  ],
-  free: [
-    "Unlimited job search",
-    "5 applications/day",
-    "Basic career tips",
+    "Unlimited Recruiters",
+    "Unlimited Jobs",
+    "Unlimited Candidates",
+    "SSO",
+    "API Access",
+    "White Label",
+    "Dedicated Success Manager",
+    "Enterprise Security",
+    "SLA",
+    "Custom Integrations",
   ],
 };
