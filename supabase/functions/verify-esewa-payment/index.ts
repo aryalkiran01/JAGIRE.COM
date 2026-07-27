@@ -7,9 +7,23 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
-// eSewa v2 status verification endpoint
-const ESEWA_STATUS_URL = "https://rc-epay.esewa.com.np/api/epay/status/v2";
-const MERCHANT_CODE = "EPAYTEST";
+// eSewa v2 status verification endpoint (test env by default)
+const ESEWA_STATUS_URL =
+  Deno.env.get("ESEWA_STATUS_URL") ||
+  "https://rc-epay.esewa.com.np/api/epay/status/v2";
+const MERCHANT_CODE = Deno.env.get("ESEWA_MERCHANT_CODE") || "EPAYTEST";
+
+// Single source of truth for plan pricing (must mirror src/lib/plans.ts)
+const PLAN_PRICES: Record<string, number> = {
+  premium: 499,
+  starter: 1999,
+  professional: 4999,
+};
+const PLAN_DURATIONS: Record<string, number> = {
+  premium: 30,
+  starter: 30,
+  professional: 30,
+};
 
 interface VerifyBody {
   transaction_uuid: string;
@@ -49,7 +63,7 @@ Deno.serve(async (req: Request) => {
     let esewaResponse: Response;
     try {
       esewaResponse = await fetch(statusUrl, { method: "GET" });
-    } catch (e) {
+    } catch {
       return new Response(
         JSON.stringify({ error: "Unable to reach eSewa", verified: false }),
         { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -64,13 +78,12 @@ Deno.serve(async (req: Request) => {
       esewaData = { raw: rawText };
     }
 
-    // eSewa status response: { status: "COMPLETE", transaction_code: ..., ... }
     const isVerified =
       esewaResponse.ok &&
       esewaData?.status === "COMPLETE" &&
       String(esewaData?.total_amount ?? "") === String(total_amount);
 
-    // 2. Connect to Supabase with service role (bypass RLS) — server-side only
+    // 2. Connect to Supabase with service role (bypass RLS)
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     if (!supabaseUrl || !serviceRoleKey) {
@@ -97,7 +110,7 @@ Deno.serve(async (req: Request) => {
         JSON.stringify({
           verified: true,
           already_activated: true,
-          message: "Payment already verified and premium activated.",
+          message: "Payment already verified and subscription activated.",
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
@@ -131,17 +144,31 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // 5. Activate premium subscription
+    // 5. Determine plan from the verified amount (single source of truth)
     const amount = Number(total_amount);
-    let planType = "starter";
-    if (amount >= 9900) planType = "pro";
-    else if (amount >= 4900) planType = "starter";
+    let planType: string | null = null;
+    for (const [slug, price] of Object.entries(PLAN_PRICES)) {
+      if (amount === price) {
+        planType = slug;
+        break;
+      }
+    }
+    if (!planType) {
+      return new Response(
+        JSON.stringify({
+          verified: true,
+          error: `No plan matches amount Rs. ${amount}`,
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
 
+    const durationDays = PLAN_DURATIONS[planType] ?? 30;
     const now = new Date();
     const expiresAt = new Date(now);
-    expiresAt.setDate(expiresAt.getDate() + 30); // 30-day premium
+    expiresAt.setDate(expiresAt.getDate() + durationDays);
 
-    // Upsert subscription (one row per user)
+    // 6. Upsert subscription (one row per user)
     if (body.user_id) {
       const { error: subError } = await supabase.from("subscriptions").upsert(
         {
@@ -162,12 +189,12 @@ Deno.serve(async (req: Request) => {
       if (subError) {
         console.error("Failed to activate subscription:", subError.message);
         return new Response(
-          JSON.stringify({ verified: true, error: "Failed to activate premium" }),
+          JSON.stringify({ verified: true, error: "Failed to activate subscription" }),
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       }
 
-      // Also record in payments table for history
+      // Record in payments table for history
       await supabase.from("payments").insert({
         user_id: body.user_id,
         amount,
@@ -183,8 +210,8 @@ Deno.serve(async (req: Request) => {
       await supabase.from("notifications").insert({
         user_id: body.user_id,
         type: "payment_success",
-        title: "Premium activated",
-        message: `Your ${planType} plan is now active for 30 days. AI features unlocked!`,
+        title: `${planType.charAt(0).toUpperCase() + planType.slice(1)} plan activated`,
+        message: `Your ${planType} plan is now active for ${durationDays} days. AI features unlocked!`,
         link: "/dashboard",
         is_read: false,
       });
