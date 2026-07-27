@@ -1,6 +1,11 @@
-# Jagire — AI-Powered Job Portal
+# Jagire — AI-Powered Recruitment, Hiring & HR Operating System
 
-A full-featured AI-powered job portal built with **React 19 + TypeScript + TanStack Router + React Query + Tailwind CSS v4 + Supabase**. Supports job seekers, employers, and admins with real-time messaging, interview scheduling, AI resume scoring, community feed, blogging, assessments, and more.
+Jagire is no longer just a job board. It is an **AI-powered Recruitment, Hiring, and HR Operating System** built with **React 19 + TypeScript + TanStack Router + React Query + Tailwind CSS v4 + Supabase**.
+
+- **Job Seekers** get AI career tools — resume builder, ATS scoring, cover letter generation, interview practice, career coach, and career roadmaps.
+- **Employers** get an enterprise-grade AI recruitment and HR platform — candidate matching, resume screening, smart ranking, interview scheduling, email automation, document generation, and a full AI office assistant.
+
+Supports job seekers, employers, and admins with real-time messaging, interview scheduling, AI resume scoring, community feed, blogging, assessments, subscription management, and more.
 
 ---
 
@@ -150,7 +155,7 @@ All routes use TanStack Router file-based routing. `routeTree.gen.ts` is auto-ge
 | `/contact`                  | `src/routes/contact.tsx`                  | Contact form                                                      |
 | `/forgot-password`          | `src/routes/forgot-password.tsx`          | Request reset email                                               |
 | `/reset-password`           | `src/routes/reset-password.tsx`           | Set new password                                                  |
-| `/pricing`                  | `src/routes/pricing.tsx`                  | Pricing tiers                                                     |
+| `/pricing`                  | `src/routes/pricing.tsx`                  | AI Recruitment & HR OS pricing (Job Seeker / Employer toggle)      |
 | `/checkout/$plan`           | `src/routes/checkout.$plan.tsx`           | eSewa payment (starter/pro)                                       |
 | `/payment-success`          | `src/routes/payment-success.tsx`          | Payment confirmation                                              |
 | `/payment-failure`          | `src/routes/payment-failure.tsx`          | Payment failure                                                   |
@@ -387,7 +392,15 @@ applied → viewed → reviewing → shortlisted → interview → interview_sch
 - Invite by email: inserts `referrals` row (status pending)
 - Track referral status + reward credits
 
-### 18. Payments (eSewa)
+### 18. Payments & Subscriptions (eSewa)
+
+- **eSewa v2 (ePay)** integration with server-side payment verification via the `verify-esewa-payment` edge function.
+- Successful payments automatically activate the user's subscription (`subscriptions` table: `status=active`, `payment_status=paid`).
+- **Admin subscription management** — admins can view all subscriptions (user, plan, status, start/end dates, amount, transaction ID, eSewa ref) and activate, extend, cancel, or change plans.
+- **User subscription status** — logged-in users see their current plan, start date, expiry date, days remaining, and premium benefits on the Pricing page.
+- **Navbar badge** — free users see an "Upgrade" button; premium users see a crown badge with plan name and days remaining.
+- **Reusable `useSubscription` hook** — powers premium access checks across AI features, the pricing page, and the navbar.
+- **Server-side premium gating** — all AI server functions call `requirePremium()` before executing; uses the service-role client so it cannot be spoofed from the frontend.
 
 **Files**: `src/routes/checkout.$plan.tsx`, `src/routes/pricing.tsx`
 
@@ -517,6 +530,9 @@ After AI resume scanning:
 | `career_coach_sessions` | Legacy AI Career Coach sessions (JSONB messages)     |
 | `ai_conversations`      | AI Assistant conversation threads (owner-scoped)     |
 | `ai_messages`           | AI Assistant messages within conversations           |
+| `subscriptions`         | User subscription records (plan, status, dates, payment) — owner + admin access |
+| `payment_verifications` | eSewa payment verification audit log (idempotent, immutable) |
+| `ai_usage_log`          | AI feature usage audit log (owner-scoped, immutable)  |
 
 ### Enums
 
