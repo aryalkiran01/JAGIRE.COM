@@ -50,6 +50,7 @@ import { Route as JobsJobIdRouteImport } from './routes/jobs/$jobId'
 import { Route as AuthenticatedEmployerIndexRouteImport } from './routes/_authenticated/employer/index'
 import { Route as AuthenticatedEmployerCompanyRouteImport } from './routes/_authenticated/employer/company'
 import { Route as AuthenticatedEmployerInterviewsRouteImport } from './routes/_authenticated/employer/interviews'
+import { Route as AuthenticatedEmployerAiFeatureSlugRouteImport } from './routes/_authenticated/employer/ai/$featureSlug'
 import { Route as AuthenticatedEmployerJobsJobIdRouteImport } from './routes/_authenticated/employer/jobs/$jobId'
 import { Route as AuthenticatedEmployerJobsNewRouteImport } from './routes/_authenticated/employer/jobs/new'
 
@@ -267,6 +268,12 @@ const AuthenticatedEmployerInterviewsRoute =
     path: '/interviews',
     getParentRoute: () => AuthenticatedEmployerRoute,
   } as any)
+const AuthenticatedEmployerAiFeatureSlugRoute =
+  AuthenticatedEmployerAiFeatureSlugRouteImport.update({
+    id: '/ai/$featureSlug',
+    path: '/ai/$featureSlug',
+    getParentRoute: () => AuthenticatedEmployerRoute,
+  } as any)
 const AuthenticatedEmployerJobsJobIdRoute =
   AuthenticatedEmployerJobsJobIdRouteImport.update({
     id: '/jobs/$jobId',
@@ -321,6 +328,7 @@ export interface FileRoutesByFullPath {
   '/employer/company': typeof AuthenticatedEmployerCompanyRoute
   '/employer/interviews': typeof AuthenticatedEmployerInterviewsRoute
   '/employer/': typeof AuthenticatedEmployerIndexRoute
+  '/employer/ai/$featureSlug': typeof AuthenticatedEmployerAiFeatureSlugRoute
   '/employer/jobs/$jobId': typeof AuthenticatedEmployerJobsJobIdRoute
   '/employer/jobs/new': typeof AuthenticatedEmployerJobsNewRoute
 }
@@ -364,6 +372,7 @@ export interface FileRoutesByTo {
   '/employer/company': typeof AuthenticatedEmployerCompanyRoute
   '/employer/interviews': typeof AuthenticatedEmployerInterviewsRoute
   '/employer': typeof AuthenticatedEmployerIndexRoute
+  '/employer/ai/$featureSlug': typeof AuthenticatedEmployerAiFeatureSlugRoute
   '/employer/jobs/$jobId': typeof AuthenticatedEmployerJobsJobIdRoute
   '/employer/jobs/new': typeof AuthenticatedEmployerJobsNewRoute
 }
@@ -410,6 +419,7 @@ export interface FileRoutesById {
   '/_authenticated/employer/company': typeof AuthenticatedEmployerCompanyRoute
   '/_authenticated/employer/interviews': typeof AuthenticatedEmployerInterviewsRoute
   '/_authenticated/employer/': typeof AuthenticatedEmployerIndexRoute
+  '/_authenticated/employer/ai/$featureSlug': typeof AuthenticatedEmployerAiFeatureSlugRoute
   '/_authenticated/employer/jobs/$jobId': typeof AuthenticatedEmployerJobsJobIdRoute
   '/_authenticated/employer/jobs/new': typeof AuthenticatedEmployerJobsNewRoute
 }
@@ -456,6 +466,7 @@ export interface FileRouteTypes {
     | '/employer/company'
     | '/employer/interviews'
     | '/employer/'
+    | '/employer/ai/$featureSlug'
     | '/employer/jobs/$jobId'
     | '/employer/jobs/new'
   fileRoutesByTo: FileRoutesByTo
@@ -499,6 +510,7 @@ export interface FileRouteTypes {
     | '/employer/company'
     | '/employer/interviews'
     | '/employer'
+    | '/employer/ai/$featureSlug'
     | '/employer/jobs/$jobId'
     | '/employer/jobs/new'
   id:
@@ -544,6 +556,7 @@ export interface FileRouteTypes {
     | '/_authenticated/employer/company'
     | '/_authenticated/employer/interviews'
     | '/_authenticated/employer/'
+    | '/_authenticated/employer/ai/$featureSlug'
     | '/_authenticated/employer/jobs/$jobId'
     | '/_authenticated/employer/jobs/new'
   fileRoutesById: FileRoutesById
@@ -859,6 +872,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedEmployerInterviewsRouteImport
       parentRoute: typeof AuthenticatedEmployerRoute
     }
+    '/_authenticated/employer/ai/$featureSlug': {
+      id: '/_authenticated/employer/ai/$featureSlug'
+      path: '/ai/$featureSlug'
+      fullPath: '/employer/ai/$featureSlug'
+      preLoaderRoute: typeof AuthenticatedEmployerAiFeatureSlugRouteImport
+      parentRoute: typeof AuthenticatedEmployerRoute
+    }
     '/_authenticated/employer/jobs/$jobId': {
       id: '/_authenticated/employer/jobs/$jobId'
       path: '/jobs/$jobId'
@@ -880,6 +900,7 @@ interface AuthenticatedEmployerRouteChildren {
   AuthenticatedEmployerCompanyRoute: typeof AuthenticatedEmployerCompanyRoute
   AuthenticatedEmployerInterviewsRoute: typeof AuthenticatedEmployerInterviewsRoute
   AuthenticatedEmployerIndexRoute: typeof AuthenticatedEmployerIndexRoute
+  AuthenticatedEmployerAiFeatureSlugRoute: typeof AuthenticatedEmployerAiFeatureSlugRoute
   AuthenticatedEmployerJobsJobIdRoute: typeof AuthenticatedEmployerJobsJobIdRoute
   AuthenticatedEmployerJobsNewRoute: typeof AuthenticatedEmployerJobsNewRoute
 }
@@ -888,6 +909,8 @@ const AuthenticatedEmployerRouteChildren: AuthenticatedEmployerRouteChildren = {
   AuthenticatedEmployerCompanyRoute: AuthenticatedEmployerCompanyRoute,
   AuthenticatedEmployerInterviewsRoute: AuthenticatedEmployerInterviewsRoute,
   AuthenticatedEmployerIndexRoute: AuthenticatedEmployerIndexRoute,
+  AuthenticatedEmployerAiFeatureSlugRoute:
+    AuthenticatedEmployerAiFeatureSlugRoute,
   AuthenticatedEmployerJobsJobIdRoute: AuthenticatedEmployerJobsJobIdRoute,
   AuthenticatedEmployerJobsNewRoute: AuthenticatedEmployerJobsNewRoute,
 }
