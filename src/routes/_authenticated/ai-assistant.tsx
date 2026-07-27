@@ -21,6 +21,7 @@ import {
   IndianRupee,
   RefreshCw,
   Clock,
+  Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
 import { aiAssistantChat } from "@/lib/ai.service";
@@ -57,77 +58,242 @@ const QUICK_PROMPTS = [
 function MiniMarkdown({ text }: { text: string }) {
   const lines = text.split("\n");
   const elements: React.ReactNode[] = [];
-  let inCode = false;
-  let codeBuffer: string[] = [];
+  let key = 0;
+  let inCodeBlock = false;
+  let codeLines: string[] = [];
+  let codeLanguage = "";
 
-  lines.forEach((line, i) => {
-    if (line.startsWith("```")) {
-      if (inCode) {
+  const processLine = (line: string, index: number) => {
+    // Code block handling
+    if (line.trim().startsWith("```")) {
+      if (inCodeBlock) {
+        // End code block
         elements.push(
-          <pre
-            key={`code-${i}`}
-            className="bg-zinc-900 text-zinc-100 rounded-lg p-3 text-xs overflow-x-auto my-2"
-          >
-            <code>{codeBuffer.join("\n")}</code>
-          </pre>,
+          <div key={key++} className="my-3 rounded-lg overflow-hidden">
+            {codeLanguage && (
+              <div className="bg-zinc-800 text-zinc-400 text-xs px-4 py-1.5 font-mono">
+                {codeLanguage}
+              </div>
+            )}
+            <pre className="bg-zinc-950 text-zinc-100 p-4 text-xs overflow-x-auto">
+              <code>{codeLines.join("\n")}</code>
+            </pre>
+          </div>,
         );
-        codeBuffer = [];
-        inCode = false;
+        codeLines = [];
+        codeLanguage = "";
+        inCodeBlock = false;
       } else {
-        inCode = true;
+        // Start code block
+        inCodeBlock = true;
+        codeLanguage = line.trim().replace("```", "").trim();
       }
       return;
     }
-    if (inCode) {
-      codeBuffer.push(line);
+
+    if (inCodeBlock) {
+      codeLines.push(line);
       return;
     }
-    if (/^#{1,3}\s/.test(line)) {
-      const level = line.match(/^(#+)/)?.[1].length ?? 1;
-      const content = line.replace(/^#+\s/, "");
-      const sizes = ["text-lg font-bold", "text-base font-bold", "text-sm font-semibold"];
+
+    // Empty line
+    if (!line.trim()) {
+      elements.push(<div key={key++} className="h-3" />);
+      return;
+    }
+
+    // Headers
+    if (line.startsWith("#### ")) {
       elements.push(
-        <div key={i} className={`${sizes[level - 1]} mt-3 mb-1`}>
-          {content}
-        </div>,
+        <h4 key={key++} className="text-sm font-semibold mt-4 mb-2 text-muted-foreground">
+          {formatInline(line.replace("#### ", ""))}
+        </h4>,
       );
       return;
     }
-    if (/^\s*[-*]\s/.test(line)) {
+
+    if (line.startsWith("### ")) {
       elements.push(
-        <div key={i} className="flex gap-2 text-sm ml-2 my-0.5">
-          <span className="text-primary shrink-0">•</span>
-          <span
-            dangerouslySetInnerHTML={{ __html: inlineFormat(line.replace(/^\s*[-*]\s/, "")) }}
-          />
-        </div>,
+        <h3 key={key++} className="text-base font-bold mt-4 mb-2">
+          {formatInline(line.replace("### ", ""))}
+        </h3>,
       );
       return;
     }
-    if (/^\s*\d+\.\s/.test(line)) {
+
+    if (line.startsWith("## ")) {
+      elements.push(
+        <h2 key={key++} className="text-lg font-bold mt-5 mb-2">
+          {formatInline(line.replace("## ", ""))}
+        </h2>,
+      );
+      return;
+    }
+
+    if (line.startsWith("# ")) {
+      elements.push(
+        <h1 key={key++} className="text-xl font-bold mt-6 mb-3">
+          {formatInline(line.replace("# ", ""))}
+        </h1>,
+      );
+      return;
+    }
+
+    // Horizontal rule
+    if (/^[-*_]{3,}\s*$/.test(line.trim())) {
+      elements.push(<hr key={key++} className="my-4 border-border" />);
+      return;
+    }
+
+    // Blockquote
+    if (line.startsWith("> ")) {
+      elements.push(
+        <blockquote
+          key={key++}
+          className="border-l-2 border-primary/30 pl-3 my-2 italic text-muted-foreground"
+        >
+          {formatInline(line.replace(/^>\s*/, ""))}
+        </blockquote>,
+      );
+      return;
+    }
+
+    // Unordered list with indentation
+    const ulMatch = line.match(/^(\s*)[-*•]\s+(.+)/);
+    if (ulMatch) {
+      const indent = Math.floor(ulMatch[1].length / 2); // 2 spaces per indent level
       elements.push(
         <div
-          key={i}
-          className="text-sm ml-2 my-0.5"
-          dangerouslySetInnerHTML={{ __html: inlineFormat(line) }}
-        />,
+          key={key++}
+          className="flex gap-2 text-sm"
+          style={{ paddingLeft: `${indent * 1.5}rem` }}
+        >
+          <span className="text-primary shrink-0 select-none">•</span>
+          <span className="flex-1">{formatInline(ulMatch[2])}</span>
+        </div>,
       );
       return;
     }
-    if (line.trim() === "") {
-      elements.push(<div key={i} className="h-2" />);
+
+    // Ordered list
+    const olMatch = line.match(/^(\s*)(\d+)\.\s+(.+)/);
+    if (olMatch) {
+      const indent = Math.floor(olMatch[1].length / 2);
+      elements.push(
+        <div
+          key={key++}
+          className="flex gap-2 text-sm"
+          style={{ paddingLeft: `${indent * 1.5}rem` }}
+        >
+          <span className="text-muted-foreground shrink-0 min-w-[1.25rem]">{olMatch[2]}.</span>
+          <span className="flex-1">{formatInline(olMatch[3])}</span>
+        </div>,
+      );
       return;
     }
+
+    // Bold text that looks like a heading
+    if (/^\*\*.+\*\*:?\s*$/.test(line.trim())) {
+      elements.push(
+        <div key={key++} className="font-semibold text-sm mt-3 mb-1">
+          {formatInline(line.trim())}
+        </div>,
+      );
+      return;
+    }
+
+    // Regular paragraph
     elements.push(
-      <p
-        key={i}
-        className="text-sm leading-relaxed my-1"
-        dangerouslySetInnerHTML={{ __html: inlineFormat(line) }}
-      />,
+      <p key={key++} className="text-sm leading-relaxed">
+        {formatInline(line)}
+      </p>,
     );
-  });
+  };
+
+  lines.forEach((line, i) => processLine(line, i));
+
+  // Close any open code block at end
+  if (inCodeBlock) {
+    elements.push(
+      <pre
+        key={key++}
+        className="bg-zinc-950 text-zinc-100 rounded-lg p-3 text-xs overflow-x-auto my-2"
+      >
+        <code>{codeLines.join("\n")}</code>
+      </pre>,
+    );
+  }
 
   return <div className="space-y-0">{elements}</div>;
+}
+
+function formatInline(text: string): React.ReactNode {
+  // Process inline markdown: bold, italic, code, links
+  const parts: React.ReactNode[] = [];
+  let remaining = text;
+  let i = 0;
+
+  while (remaining.length > 0) {
+    // Bold
+    const boldMatch = remaining.match(/^\*\*(.+?)\*\*/);
+    if (boldMatch) {
+      parts.push(<strong key={i++}>{boldMatch[1]}</strong>);
+      remaining = remaining.slice(boldMatch[0].length);
+      continue;
+    }
+
+    // Code
+    const codeMatch = remaining.match(/^`(.+?)`/);
+    if (codeMatch) {
+      parts.push(
+        <code key={i++} className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono">
+          {codeMatch[1]}
+        </code>,
+      );
+      remaining = remaining.slice(codeMatch[0].length);
+      continue;
+    }
+
+    // Link
+    const linkMatch = remaining.match(/^\[(.+?)\]\((.+?)\)/);
+    if (linkMatch) {
+      parts.push(
+        <a
+          key={i++}
+          href={linkMatch[2]}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-primary underline underline-offset-2 hover:text-primary/80"
+        >
+          {linkMatch[1]}
+        </a>,
+      );
+      remaining = remaining.slice(linkMatch[0].length);
+      continue;
+    }
+
+    // Italic
+    const italicMatch = remaining.match(/^\*(.+?)\*/);
+    if (italicMatch) {
+      parts.push(<em key={i++}>{italicMatch[1]}</em>);
+      remaining = remaining.slice(italicMatch[0].length);
+      continue;
+    }
+
+    // Plain text (take until next special char)
+    const nextSpecial = remaining.search(/[*`[]/);
+    if (nextSpecial === -1) {
+      parts.push(<span key={i++}>{remaining}</span>);
+      break;
+    }
+
+    if (nextSpecial > 0) {
+      parts.push(<span key={i++}>{remaining.slice(0, nextSpecial)}</span>);
+    }
+    remaining = remaining.slice(nextSpecial);
+  }
+
+  return <>{parts}</>;
 }
 
 function inlineFormat(s: string): string {

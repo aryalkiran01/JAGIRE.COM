@@ -27,8 +27,12 @@ function buildMessages(req: AIRequest): Array<{ role: "system" | "user"; content
 }
 
 function pickModel(req: AIRequest): string {
-  if (req.model) return req.model;
-  return resolveOllamaModel(req.task ?? "general");
+  // Ensure we always return a string
+  if (req.model) {
+    return String(req.model);
+  }
+  const resolvedModel = resolveOllamaModel(req.task ?? "general");
+  return String(resolvedModel);
 }
 
 async function callChat(req: AIRequest, json: boolean): Promise<string> {
@@ -36,13 +40,14 @@ async function callChat(req: AIRequest, json: boolean): Promise<string> {
   const messages = buildMessages(req);
   const ollama = getClient();
 
+  // Build the request with explicit typing to match Ollama's overloads
   const chatRequest = {
-    model,
+    model: String(model),
     messages,
-    stream: false as const,
+    stream: false as const, // Use 'as const' to make it literal type 'false'
     options: { temperature: 0.3 },
-    ...(json ? { format: "json" } : {}),
-  };
+    ...(json ? { format: "json" as const } : {}),
+  } satisfies ChatRequest; // Use 'satisfies' for type checking without widening
 
   let response;
   try {
@@ -90,7 +95,7 @@ export class OllamaProvider implements AIProvider {
   }
 
   async generateEmbedding(req: AIEmbeddingRequest): Promise<AIEmbeddingResponse> {
-    const model = req.model ?? resolveOllamaModel("embedding");
+    const model = String(req.model ?? resolveOllamaModel("embedding"));
     const ollama = getClient();
     try {
       const res = await ollama.embeddings({ model, prompt: req.input });
