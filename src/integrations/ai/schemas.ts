@@ -77,7 +77,6 @@ export const learningRecommendationsSchema = z.object({
         kind: z.string(),
         title: z.string(),
         provider: z.string().optional().default(""),
-        url: z.string().optional().default(""),
         skills: z.array(z.string()).optional().default([]),
         description: z.string().optional().default(""),
       }),

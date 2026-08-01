@@ -53,8 +53,21 @@ Never return null. Use [] instead.
 const LINKEDIN_SYSTEM =
   "Extract LinkedIn profile. JSON only: {full_name,headline,about,location,current_position,experience_years(int),skills[20]}";
 
+type ValidatedLearningItem = {
+  id: string;
+  kind: string;
+  title: string;
+  provider: string;
+  description: string;
+  skills: string[];
+  url: string;
+  route: string;
+};
+
 const LEARNING_SYSTEM =
-  'Career coach. JSON only: {"items":[{"kind":"course|video|challenge|interview","title":"","provider":"","url":"","skills":[],"description":""}]}';
+  'Career coach. JSON only: {"items":[{"kind":"course|video|challenge|interview","title":"","provider":"","skills":[],"description":""}]}. ' +
+  "Do NOT include URLs or links. Only return the topic title, provider, skills, and a short description. " +
+  "The system will match your suggestions to real learning resources in the database.";
 
 function clamp(n: unknown): number {
   return Math.max(0, Math.min(100, Math.round(Number(n) || 0)));
@@ -491,7 +504,103 @@ export const learningRecommendations = createServerFn({ method: "POST" })
       "learning-recommendations",
     );
 
-    return { items: parsed?.items ?? [] };
+
+    const aiItems = parsed?.items ?? [];
+
+    // Fetch all available learning resources from the database
+    const [{ data: dbItems }, { data: dbResources }] = await Promise.all([
+      context.supabase
+        .from("learning_items")
+        .select("id, title, kind, provider, url, skills, description")
+        .limit(200),
+      context.supabase
+        .from("learning_resources")
+        .select("id, title, kind, provider, url, skills, description")
+        .limit(200),
+    ]);
+
+    const allDbRecords = [
+      ...(dbItems ?? []).map((r: any) => ({ ...r, _table: "learning_items" })),
+      ...(dbResources ?? []).map((r: any) => ({ ...r, _table: "learning_resources" })),
+    ];
+
+    // Build a lookup index by normalized title for exact and fuzzy matching
+    const normalize = (s: string) =>
+      s
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    const dbByTitle = new Map<string, any>();
+    for (const r of allDbRecords) {
+      dbByTitle.set(normalize(r.title), r);
+    }
+
+    function findBestMatch(aiTitle: string, aiKind: string): any | null {
+      const norm = normalize(aiTitle);
+      if (!norm) return null;
+
+      // 1. Exact title match
+      const exact = dbByTitle.get(norm);
+      if (exact) return exact;
+
+      // 2. Partial title match (AI title contains DB title or vice versa)
+      for (const [dbNorm, rec] of dbByTitle) {
+        if (norm.includes(dbNorm) || dbNorm.includes(norm)) return rec;
+      }
+
+      // 3. Kind + keyword match: find records of same kind sharing a significant word
+      const aiWords = new Set(norm.split(" ").filter((w) => w.length > 3));
+      let bestRec: any | null = null;
+      let bestScore = 0;
+      for (const rec of allDbRecords) {
+        if (aiKind && rec.kind && rec.kind !== aiKind) continue;
+        const dbWords = new Set(
+          normalize(rec.title)
+            .split(" ")
+            .filter((w) => w.length > 3),
+        );
+        let overlap = 0;
+        for (const w of aiWords) if (dbWords.has(w)) overlap++;
+        if (overlap > bestScore) {
+          bestScore = overlap;
+          bestRec = rec;
+        }
+      }
+      if (bestRec && bestScore > 0) return bestRec;
+
+      // 4. Fallback: any record of the same kind
+      if (aiKind) {
+        const sameKind = allDbRecords.find((r) => r.kind === aiKind);
+        if (sameKind) return sameKind;
+      }
+
+      // 5. Last resort: any record at all
+      return allDbRecords[0] ?? null;
+    }
+
+    const validated: ValidatedLearningItem[] = [];
+    const usedIds = new Set<string>();
+
+    for (const ai of aiItems) {
+      const match = findBestMatch(ai.title, ai.kind);
+      if (!match) continue;
+      if (usedIds.has(match.id)) continue;
+      usedIds.add(match.id);
+
+      validated.push({
+        id: match.id,
+        kind: match.kind ?? ai.kind,
+        title: match.title ?? ai.title,
+        provider: match.provider ?? ai.provider ?? "",
+        description: match.description ?? ai.description ?? "",
+        skills: match.skills ?? ai.skills ?? [],
+        url: match.url ?? "",
+        route: "/learn",
+      });
+    }
+
+    return { items: validated };
   });
 
 async function fetchRealResources(topics: string[], supabase: any) {

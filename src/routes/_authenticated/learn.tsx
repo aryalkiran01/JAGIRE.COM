@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
-import { GraduationCap, ExternalLink, Loader as Loader2, Award, AlertCircle } from "lucide-react";
+import { GraduationCap, ExternalLink, Loader as Loader2, Award, CircleAlert as AlertCircle } from "lucide-react";
 import { learningRecommendations } from "@/lib/ai.service";
 
 export const Route = createFileRoute("/_authenticated/learn")({ component: LearnPage });
