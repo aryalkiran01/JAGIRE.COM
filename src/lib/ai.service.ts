@@ -129,7 +129,7 @@ export const careerRecommendations = createServerFn({ method: "POST" })
     };
   });
 
-//  ONLY ONE scanResumeFromStorage - complete and correct
+//  ONLY ONE scanResumeFromStorage -
 export const scanResumeFromStorage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => {
@@ -159,7 +159,6 @@ export const scanResumeFromStorage = createServerFn({ method: "POST" })
       rawTextLength: storedRawText.length,
       hasResumeData: !!resume.resume_data,
     });
-    // FIRST: Check if we have stored text data (from resume builder or previous scan)
     if (storedRawText) {
       text = storedRawText;
       console.log(`Using stored parsed_data text: ${text.length} characters`);

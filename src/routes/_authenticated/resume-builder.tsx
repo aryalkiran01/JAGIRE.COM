@@ -15,7 +15,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { pdf } from "@react-pdf/renderer";
 
 import { scanResumeFromStorage } from "@/lib/ai.service";
-import { ResumePDF } from "./ResumePdf"; // We'll create this component
+import { ResumePDF } from "./-ResumePdf"; // We'll create this component
 
 export const Route = createFileRoute("/_authenticated/resume-builder")({
   component: ResumeBuilder,

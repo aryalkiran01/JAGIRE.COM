@@ -81,7 +81,7 @@ function CompanyDetail() {
       reviewer_id: user.id,
       rating,
       title: title || "Review",
-      body: content || null,
+      content: content || null,
     });
     if (error) return toast.error(error.message);
     toast.success("Review posted");
