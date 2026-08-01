@@ -25,6 +25,7 @@ import {
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useState } from "react";
 import { EMPLOYER_AI_GROUPS } from "@/lib/employer-ai-features";
+import { JOBSEEKER_AI_GROUPS } from "@/lib/jobseeker-ai-features";
 
 type NavItem = {
   to: string;
@@ -84,13 +85,14 @@ function NavLink({ item }: { item: NavItem }) {
   );
 }
 
-function AiGroupCollapsible({
-  group,
-  defaultOpen,
-}: {
-  group: (typeof EMPLOYER_AI_GROUPS)[number];
-  defaultOpen: boolean;
-}) {
+function AiGroupCollapsible<
+  T extends {
+    id: string;
+    label: string;
+    icon: LucideIcon;
+    items: { slug: string; title: string; description: string; to: string; icon: LucideIcon }[];
+  },
+>({ group, defaultOpen }: { group: T; defaultOpen: boolean }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [open, setOpen] = useState(defaultOpen);
   const hasActive = group.items.some((i) => pathname === i.to || pathname.startsWith(i.to + "/"));
@@ -155,13 +157,23 @@ export function AppSidebar() {
           <NavLink key={item.to} item={item} />
         ))}
 
-        {isEmployer && (
+        {isEmployer ? (
           <>
             <div className="px-3 pt-4 pb-1 text-[11px] font-bold uppercase tracking-wider text-primary/70 flex items-center gap-1.5">
               <Sparkles className="h-3.5 w-3.5" />
               AI Features
             </div>
             {EMPLOYER_AI_GROUPS.map((group, idx) => (
+              <AiGroupCollapsible key={group.id} group={group} defaultOpen={idx === 0} />
+            ))}
+          </>
+        ) : (
+          <>
+            <div className="px-3 pt-4 pb-1 text-[11px] font-bold uppercase tracking-wider text-primary/70 flex items-center gap-1.5">
+              <Sparkles className="h-3.5 w-3.5" />
+              AI Tools
+            </div>
+            {JOBSEEKER_AI_GROUPS.map((group, idx) => (
               <AiGroupCollapsible key={group.id} group={group} defaultOpen={idx === 0} />
             ))}
           </>

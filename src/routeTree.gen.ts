@@ -47,6 +47,7 @@ import { Route as CompaniesSlugRouteImport } from './routes/companies/$slug'
 import { Route as GoogleCalendarCallbackRouteImport } from './routes/google-calendar/callback'
 import { Route as JobsIndexRouteImport } from './routes/jobs/index'
 import { Route as JobsJobIdRouteImport } from './routes/jobs/$jobId'
+import { Route as AuthenticatedAiFeatureSlugRouteImport } from './routes/_authenticated/ai/$featureSlug'
 import { Route as AuthenticatedEmployerIndexRouteImport } from './routes/_authenticated/employer/index'
 import { Route as AuthenticatedEmployerCompanyRouteImport } from './routes/_authenticated/employer/company'
 import { Route as AuthenticatedEmployerInterviewsRouteImport } from './routes/_authenticated/employer/interviews'
@@ -250,6 +251,12 @@ const JobsJobIdRoute = JobsJobIdRouteImport.update({
   path: '/jobs/$jobId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedAiFeatureSlugRoute =
+  AuthenticatedAiFeatureSlugRouteImport.update({
+    id: '/ai/$featureSlug',
+    path: '/ai/$featureSlug',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedEmployerIndexRoute =
   AuthenticatedEmployerIndexRouteImport.update({
     id: '/',
@@ -325,6 +332,7 @@ export interface FileRoutesByFullPath {
   '/blog/': typeof BlogIndexRoute
   '/companies/': typeof CompaniesIndexRoute
   '/jobs/': typeof JobsIndexRoute
+  '/ai/$featureSlug': typeof AuthenticatedAiFeatureSlugRoute
   '/employer/company': typeof AuthenticatedEmployerCompanyRoute
   '/employer/interviews': typeof AuthenticatedEmployerInterviewsRoute
   '/employer/': typeof AuthenticatedEmployerIndexRoute
@@ -369,6 +377,7 @@ export interface FileRoutesByTo {
   '/blog': typeof BlogIndexRoute
   '/companies': typeof CompaniesIndexRoute
   '/jobs': typeof JobsIndexRoute
+  '/ai/$featureSlug': typeof AuthenticatedAiFeatureSlugRoute
   '/employer/company': typeof AuthenticatedEmployerCompanyRoute
   '/employer/interviews': typeof AuthenticatedEmployerInterviewsRoute
   '/employer': typeof AuthenticatedEmployerIndexRoute
@@ -416,6 +425,7 @@ export interface FileRoutesById {
   '/blog/': typeof BlogIndexRoute
   '/companies/': typeof CompaniesIndexRoute
   '/jobs/': typeof JobsIndexRoute
+  '/_authenticated/ai/$featureSlug': typeof AuthenticatedAiFeatureSlugRoute
   '/_authenticated/employer/company': typeof AuthenticatedEmployerCompanyRoute
   '/_authenticated/employer/interviews': typeof AuthenticatedEmployerInterviewsRoute
   '/_authenticated/employer/': typeof AuthenticatedEmployerIndexRoute
@@ -463,6 +473,7 @@ export interface FileRouteTypes {
     | '/blog/'
     | '/companies/'
     | '/jobs/'
+    | '/ai/$featureSlug'
     | '/employer/company'
     | '/employer/interviews'
     | '/employer/'
@@ -507,6 +518,7 @@ export interface FileRouteTypes {
     | '/blog'
     | '/companies'
     | '/jobs'
+    | '/ai/$featureSlug'
     | '/employer/company'
     | '/employer/interviews'
     | '/employer'
@@ -553,6 +565,7 @@ export interface FileRouteTypes {
     | '/blog/'
     | '/companies/'
     | '/jobs/'
+    | '/_authenticated/ai/$featureSlug'
     | '/_authenticated/employer/company'
     | '/_authenticated/employer/interviews'
     | '/_authenticated/employer/'
@@ -851,6 +864,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof JobsJobIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/ai/$featureSlug': {
+      id: '/_authenticated/ai/$featureSlug'
+      path: '/ai/$featureSlug'
+      fullPath: '/ai/$featureSlug'
+      preLoaderRoute: typeof AuthenticatedAiFeatureSlugRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/employer/': {
       id: '/_authenticated/employer/'
       path: '/'
@@ -940,6 +960,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedResumeBuilderRoute: typeof AuthenticatedResumeBuilderRoute
   AuthenticatedResumeScannerRoute: typeof AuthenticatedResumeScannerRoute
   AuthenticatedSavedRoute: typeof AuthenticatedSavedRoute
+  AuthenticatedAiFeatureSlugRoute: typeof AuthenticatedAiFeatureSlugRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
@@ -962,6 +983,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedResumeBuilderRoute: AuthenticatedResumeBuilderRoute,
   AuthenticatedResumeScannerRoute: AuthenticatedResumeScannerRoute,
   AuthenticatedSavedRoute: AuthenticatedSavedRoute,
+  AuthenticatedAiFeatureSlugRoute: AuthenticatedAiFeatureSlugRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(

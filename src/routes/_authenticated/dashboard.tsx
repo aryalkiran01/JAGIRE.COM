@@ -26,6 +26,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { JOBSEEKER_AI_GROUPS } from "@/lib/jobseeker-ai-features";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
@@ -486,6 +487,33 @@ function Dashboard() {
             )}
           </CardContent>
         </Card>
+      </div>
+
+      {/* AI Tools */}
+      <div>
+        <div className="flex items-center gap-2 mb-3">
+          <Sparkles className="h-5 w-5 text-primary" />
+          <h2 className="text-xl font-bold">AI Tools</h2>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+          {JOBSEEKER_AI_GROUPS.flatMap((g) => g.items)
+            .slice(0, 10)
+            .map((f) => (
+              <Link key={f.slug} to="/ai/$featureSlug" params={{ featureSlug: f.slug }}>
+                <Card className="glass hover:shadow-card-soft hover:-translate-y-0.5 transition-all group cursor-pointer h-full">
+                  <CardContent className="p-4">
+                    <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                      <f.icon className="h-4.5 w-4.5 text-primary" />
+                    </div>
+                    <div className="text-sm font-semibold leading-tight">{f.title}</div>
+                    <div className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                      {f.description}
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            ))}
+        </div>
       </div>
 
       {/* Quick actions */}
