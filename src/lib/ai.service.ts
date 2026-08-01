@@ -441,52 +441,86 @@ export const learningRecommendations = createServerFn({ method: "POST" })
     const skills = (profile as any)?.skills ?? [];
     const skillsText = skills.join(", ") || "software engineering";
 
-    // First, get AI to identify what skills to learn
-    const prompt = `For someone with skills: ${skillsText}, headline: ${(profile as any)?.headline ?? "N/A"}, suggest 8 specific skills or topics they should learn. Return only JSON array of strings.`;
+    try {
+      // First, get AI to identify what skills to learn
+      const prompt = `For someone with skills: ${skillsText}, headline: ${(profile as any)?.headline ?? "N/A"}, suggest 8 specific skills or topics they should learn. Return only JSON array of strings.`;
 
-    const skillGaps = await aiGenerateText(
-      prompt,
-      "Career coach. Return only a JSON array of 8 strings representing learning topics/skills.",
-      undefined,
+      const skillGaps = await aiGenerateText(
+        prompt,
+        "Career coach. Return only a JSON array of 8 strings representing learning topics/skills.",
+        undefined,
+        "learning-recommendations",
+      );
+
+      let topics: string[] = [];
+      try {
+        // Clean and parse the response
+        const cleaned = skillGaps.replace(/```json\n?|\n?```/g, "").trim();
+        topics = JSON.parse(cleaned);
+      } catch {
+        topics = skills.slice(0, 8); // Fallback to existing skills
+      }
+
+      // Fetch real resources from your database or external APIs
+      const realResources = await fetchRealResources(topics, context.supabase);
+
+      // If we got real resources, return them
+      if (realResources.length > 0) {
+        return { items: realResources };
+      }
+    } catch (err) {
+      console.warn("Failed to fetch real resources, falling back to AI generation:", err);
+    }
+
+    // FALLBACK: Generate resources directly with AI
+    const fallbackPrompt = `Generate 8 learning resources for someone with skills in ${skillsText}. 
+    Return a JSON object with an "items" array. Each item must have:
+    - kind: "course", "video", "challenge", or "interview"
+    - title: a specific course/video title (use real, popular ones)
+    - provider: platform name (like "Udemy", "YouTube", "Coursera", "freeCodeCamp")
+    - url: the actual URL (use well-known courses/videos)
+    - skills: array of related skills
+    - description: short description
+
+    Return ONLY valid JSON: {"items": [...]}`;
+
+    const parsed = await aiGenerateJsonValidated(
+      fallbackPrompt,
+      LEARNING_SYSTEM,
+      learningRecommendationsSchema,
       "learning-recommendations",
     );
 
-    let topics: string[] = [];
-    try {
-      // Clean and parse the response
-      const cleaned = skillGaps.replace(/```json\n?|\n?```/g, "").trim();
-      topics = JSON.parse(cleaned);
-    } catch {
-      topics = skills.slice(0, 8); // Fallback to existing skills
-    }
-
-    // Fetch real resources from your database or external APIs
-    const realResources = await fetchRealResources(topics, context.supabase);
-
-    return { items: realResources };
+    return { items: parsed?.items ?? [] };
   });
 
 async function fetchRealResources(topics: string[], supabase: any) {
   const resources: any[] = [];
 
   // 1. Get resources from your curated database
-  const { data: dbResources } = await supabase
-    .from("learning_resources")
-    .select("*")
-    .contains(
-      "skills",
-      topics.map((t) => t.toLowerCase()),
-    )
-    .limit(8);
+  try {
+    const { data: dbResources } = await supabase
+      .from("learning_resources")
+      .select("*")
+      .contains(
+        "skills",
+        topics.map((t) => t.toLowerCase()),
+      )
+      .limit(8);
 
-  if (dbResources?.length) {
-    resources.push(...dbResources);
+    if (dbResources?.length) {
+      resources.push(...dbResources);
+      console.log(`Found ${dbResources.length} resources in database`);
+    }
+  } catch (err) {
+    console.warn("Database query failed:", err);
   }
 
   // 2. If not enough resources, search YouTube API
   if (resources.length < 8) {
     const youtubeKey = process.env.YOUTUBE_API_KEY;
     if (youtubeKey) {
+      console.log("Searching YouTube API...");
       for (const topic of topics) {
         if (resources.length >= 8) break;
         try {
@@ -511,6 +545,8 @@ async function fetchRealResources(topics: string[], supabase: any) {
           console.warn("YouTube API failed for topic:", topic, err);
         }
       }
+    } else {
+      console.log("No YouTube API key configured");
     }
   }
 
@@ -520,6 +556,7 @@ async function fetchRealResources(topics: string[], supabase: any) {
     const udemyClientSecret = process.env.UDEMY_CLIENT_SECRET;
 
     if (udemyClientId && udemyClientSecret) {
+      console.log("Searching Udemy API...");
       const auth = btoa(`${udemyClientId}:${udemyClientSecret}`);
 
       for (const topic of topics) {
@@ -547,10 +584,18 @@ async function fetchRealResources(topics: string[], supabase: any) {
           console.warn("Udemy API failed for topic:", topic, err);
         }
       }
+    } else {
+      console.log("No Udemy API credentials configured");
     }
   }
 
-  return resources.slice(0, 8);
+  // Deduplicate by URL
+  const uniqueResources = resources.filter(
+    (resource, index, self) => index === self.findIndex((r) => r.url === resource.url),
+  );
+
+  console.log(`Total resources found: ${uniqueResources.length}`);
+  return uniqueResources.slice(0, 8);
 }
 
 export const importFromLinkedInText = createServerFn({ method: "POST" })
