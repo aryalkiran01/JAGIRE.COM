@@ -239,6 +239,79 @@ class AIServiceImpl {
 
           Object.assign(raw as any, result);
         }
+        // In generateJsonValidated method, add this block after the career-coach handling:
+
+        if (req.task === "learning-recommendations" && typeof raw === "object" && raw !== null) {
+          const result = raw as Record<string, any>;
+
+          // Ensure items is an array
+          if (!Array.isArray(result.items)) {
+            if (typeof result.items === "string") {
+              try {
+                result.items = JSON.parse(result.items);
+              } catch {
+                result.items = [];
+              }
+            } else {
+              result.items = [];
+            }
+          }
+
+          // Validate and fix each item - Generate search URLs instead of fake course URLs
+          result.items = result.items
+            .filter((item: any) => item && typeof item === "object")
+            .map((item: any, index: number) => {
+              // Generate a search URL based on the course details
+              const searchTerms = `${item.title || ""} ${item.provider || "course"}`.trim();
+              const searchUrl = searchTerms
+                ? `https://www.google.com/search?q=${encodeURIComponent(searchTerms + " course")}`
+                : `https://www.google.com/search?q=${encodeURIComponent("learn " + (item.skills?.[0] || "programming"))}`;
+
+              // If provider is known, create a more specific search
+              let url = item.url || "";
+              if (!url || url.includes("google.com/search?q=") === false) {
+                if (item.provider?.toLowerCase().includes("udemy")) {
+                  url = `https://www.udemy.com/courses/search/?q=${encodeURIComponent(item.title || item.skills?.[0] || "")}`;
+                } else if (item.provider?.toLowerCase().includes("youtube")) {
+                  url = `https://www.youtube.com/results?search_query=${encodeURIComponent(item.title || "")}`;
+                } else if (item.provider?.toLowerCase().includes("coursera")) {
+                  url = `https://www.coursera.org/search?query=${encodeURIComponent(item.title || "")}`;
+                } else {
+                  url = searchUrl;
+                }
+              }
+
+              return {
+                kind: ["course", "video", "challenge", "interview"].includes(item.kind)
+                  ? item.kind
+                  : "course",
+                title: item.title || `Learning Resource ${index + 1}`,
+                provider: item.provider || "Online Platform",
+                description: item.description || "",
+                skills: Array.isArray(item.skills)
+                  ? item.skills.filter((s: any) => typeof s === "string")
+                  : [],
+                url: url,
+              };
+            })
+            .slice(0, 8);
+
+          // Ensure we have at least 1 item
+          if (result.items.length === 0) {
+            result.items = [
+              {
+                kind: "course",
+                title: "Professional Skills Development",
+                provider: "Coursera",
+                description: "Develop your professional skills",
+                skills: ["professional development"],
+                url: "https://www.coursera.org/search?query=professional+development",
+              },
+            ];
+          }
+
+          Object.assign(raw as any, result);
+        }
 
         // Then validate
         const parsed = schema.parse(raw);

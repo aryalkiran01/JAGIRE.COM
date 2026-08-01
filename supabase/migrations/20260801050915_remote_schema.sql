@@ -1,5 +1,4 @@
-supabase migration listdrop extension if exists "pg_net";
-
+drop extension if exists "pg_net";
 drop trigger if exists "trg_apps_count" on "public"."applications";
 
 drop trigger if exists "trg_apps_updated" on "public"."applications";

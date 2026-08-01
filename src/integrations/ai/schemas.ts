@@ -70,18 +70,21 @@ export const linkedinImportSchema = z.object({
   skills: z.array(z.string()).max(20).optional().default([]),
 });
 
+// Should look something like this:
 export const learningRecommendationsSchema = z.object({
   items: z
     .array(
       z.object({
-        kind: z.string(),
+        kind: z.enum(["course", "video", "challenge", "interview"]),
         title: z.string(),
-        provider: z.string().optional().default(""),
-        skills: z.array(z.string()).optional().default([]),
-        description: z.string().optional().default(""),
+        provider: z.string(),
+        description: z.string(),
+        skills: z.array(z.string()),
+        url: z.string().optional().default(""),
       }),
     )
-    .default([]),
+    .min(1)
+    .max(8),
 });
 
 export const coverLetterSchema = z.object({

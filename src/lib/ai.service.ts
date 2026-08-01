@@ -66,8 +66,9 @@ type ValidatedLearningItem = {
 
 const LEARNING_SYSTEM =
   'Career coach. JSON only: {"items":[{"kind":"course|video|challenge|interview","title":"","provider":"","skills":[],"description":""}]}. ' +
-  "Do NOT include URLs or links. Only return the topic title, provider, skills, and a short description. " +
-  "The system will match your suggestions to real learning resources in the database.";
+  "Generate specific, realistic learning resources with well-known platforms (Udemy, YouTube, Coursera, freeCodeCamp, edX, Pluralsight). " +
+  "Do NOT include URLs - the system will generate search links automatically. " +
+  "Skills array should contain relevant technologies/topics.";
 
 function clamp(n: unknown): number {
   return Math.max(0, Math.min(100, Math.round(Number(n) || 0)));
@@ -445,162 +446,126 @@ export const learningRecommendations = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await requirePremium(context.userId);
+
     const { data: profile } = await context.supabase
       .from("profiles")
       .select("skills, headline, experience_years")
       .eq("id", context.userId)
       .maybeSingle();
 
-    const skills = (profile as any)?.skills ?? [];
-    const skillsText = skills.join(", ") || "software engineering";
+    const userSkills: string[] = (profile as any)?.skills ?? [];
+    const skillsText = userSkills.join(", ") || "software engineering";
 
+    // Try database first
+    const { data: dbItems } = await context.supabase
+      .from("learning_items")
+      .select("id, title, kind, provider, url, skills, description")
+      .limit(100);
+
+    // Helper function
+    function generateSearchUrl(title: string, provider: string, skills: string[]): string {
+      const searchTerm = title || skills[0] || "learning";
+      const encoded = encodeURIComponent(searchTerm);
+      if (provider?.toLowerCase().includes("udemy")) {
+        return `https://www.udemy.com/courses/search/?q=${encoded}`;
+      } else if (provider?.toLowerCase().includes("youtube")) {
+        return `https://www.youtube.com/results?search_query=${encoded}+course`;
+      } else if (provider?.toLowerCase().includes("coursera")) {
+        return `https://www.coursera.org/search?query=${encoded}`;
+      }
+      return `https://www.google.com/search?q=${encodeURIComponent(searchTerm + " " + provider + " course")}`;
+    }
+
+    // If we have database items, return RANDOMIZED selection
+    if (dbItems && dbItems.length >= 8) {
+      // Shuffle ALL items first for randomness
+      const shuffled = [...dbItems].sort(() => Math.random() - 0.5);
+
+      const result = shuffled.slice(0, 8).map((item: any) => ({
+        id: item.id,
+        kind: item.kind || "course",
+        title: item.title,
+        provider: item.provider || "",
+        description: item.description || "",
+        skills: item.skills || [],
+        url: item.url || generateSearchUrl(item.title, item.provider, item.skills),
+        route: "/learn",
+      }));
+
+      console.log(`Returning ${result.length} randomized database items`);
+      return { items: result };
+    }
+
+    // Fallback to AI generation with timestamp for uniqueness
     try {
-      // First, get AI to identify what skills to learn
-      const prompt = `For someone with skills: ${skillsText}, headline: ${(profile as any)?.headline ?? "N/A"}, suggest 8 specific skills or topics they should learn. Return only JSON array of strings.`;
+      const timestamp = Date.now();
+      const randomSeed = Math.random().toString(36).substring(2, 8);
 
-      const skillGaps = await aiGenerateText(
+      const prompt = `Based on these skills: ${skillsText}, suggest 8 DIFFERENT learning resources. 
+      For each, provide: kind (course/video/challenge/interview), title, provider (Udemy/YouTube/Coursera/etc.), 
+      skills array, and a brief description. Make the suggestions diverse and varied.`;
+
+      const parsed = await aiGenerateJsonValidated(
         prompt,
-        "Career coach. Return only a JSON array of 8 strings representing learning topics/skills.",
-        undefined,
+        LEARNING_SYSTEM,
+        learningRecommendationsSchema,
         "learning-recommendations",
       );
 
-      let topics: string[] = [];
-      try {
-        // Clean and parse the response
-        const cleaned = skillGaps.replace(/```json\n?|\n?```/g, "").trim();
-        topics = JSON.parse(cleaned);
-      } catch {
-        topics = skills.slice(0, 8); // Fallback to existing skills
-      }
-
-      // Fetch real resources from your database or external APIs
-      const realResources = await fetchRealResources(topics, context.supabase);
-
-      // If we got real resources, return them
-      if (realResources.length > 0) {
-        return { items: realResources };
-      }
+      return {
+        items: (parsed?.items || []).map((item: any, index: number) => ({
+          id: `ai-${timestamp}-${randomSeed}-${index}`, // Unique ID every time
+          kind: item.kind || "course",
+          title: item.title,
+          provider: item.provider || "Online Platform",
+          description: item.description || "",
+          skills: item.skills || [],
+          url: generateSearchUrl(item.title, item.provider, item.skills),
+          route: "/learn",
+        })),
+      };
     } catch (err) {
-      console.warn("Failed to fetch real resources, falling back to AI generation:", err);
-    }
+      console.error("AI generation failed:", err);
 
-    // FALLBACK: Generate resources directly with AI
-    const fallbackPrompt = `Generate 8 learning resources for someone with skills in ${skillsText}. 
-    Return a JSON object with an "items" array. Each item must have:
-    - kind: "course", "video", "challenge", or "interview"
-    - title: a specific course/video title (use real, popular ones)
-    - provider: platform name (like "Udemy", "YouTube", "Coursera", "freeCodeCamp")
-    - url: the actual URL (use well-known courses/videos)
-    - skills: array of related skills
-    - description: short description
-
-    Return ONLY valid JSON: {"items": [...]}`;
-
-    const parsed = await aiGenerateJsonValidated(
-      fallbackPrompt,
-      LEARNING_SYSTEM,
-      learningRecommendationsSchema,
-      "learning-recommendations",
-    );
-
-
-    const aiItems = parsed?.items ?? [];
-
-    // Fetch all available learning resources from the database
-    const [{ data: dbItems }, { data: dbResources }] = await Promise.all([
-      context.supabase
-        .from("learning_items")
-        .select("id, title, kind, provider, url, skills, description")
-        .limit(200),
-      context.supabase
-        .from("learning_resources")
-        .select("id, title, kind, provider, url, skills, description")
-        .limit(200),
-    ]);
-
-    const allDbRecords = [
-      ...(dbItems ?? []).map((r: any) => ({ ...r, _table: "learning_items" })),
-      ...(dbResources ?? []).map((r: any) => ({ ...r, _table: "learning_resources" })),
-    ];
-
-    // Build a lookup index by normalized title for exact and fuzzy matching
-    const normalize = (s: string) =>
-      s
-        .toLowerCase()
-        .replace(/[^a-z0-9]/g, " ")
-        .replace(/\s+/g, " ")
-        .trim();
-    const dbByTitle = new Map<string, any>();
-    for (const r of allDbRecords) {
-      dbByTitle.set(normalize(r.title), r);
-    }
-
-    function findBestMatch(aiTitle: string, aiKind: string): any | null {
-      const norm = normalize(aiTitle);
-      if (!norm) return null;
-
-      // 1. Exact title match
-      const exact = dbByTitle.get(norm);
-      if (exact) return exact;
-
-      // 2. Partial title match (AI title contains DB title or vice versa)
-      for (const [dbNorm, rec] of dbByTitle) {
-        if (norm.includes(dbNorm) || dbNorm.includes(norm)) return rec;
+      // Return random database items
+      if (dbItems && dbItems.length > 0) {
+        return {
+          items: [...dbItems]
+            .sort(() => Math.random() - 0.5) // Randomize
+            .slice(0, 8)
+            .map((item: any) => ({
+              id: item.id,
+              kind: item.kind || "course",
+              title: item.title,
+              provider: item.provider || "",
+              description: item.description || "",
+              skills: item.skills || [],
+              url: item.url || generateSearchUrl(item.title, item.provider, item.skills),
+              route: "/learn",
+            })),
+        };
       }
 
-      // 3. Kind + keyword match: find records of same kind sharing a significant word
-      const aiWords = new Set(norm.split(" ").filter((w) => w.length > 3));
-      let bestRec: any | null = null;
-      let bestScore = 0;
-      for (const rec of allDbRecords) {
-        if (aiKind && rec.kind && rec.kind !== aiKind) continue;
-        const dbWords = new Set(
-          normalize(rec.title)
-            .split(" ")
-            .filter((w) => w.length > 3),
-        );
-        let overlap = 0;
-        for (const w of aiWords) if (dbWords.has(w)) overlap++;
-        if (overlap > bestScore) {
-          bestScore = overlap;
-          bestRec = rec;
-        }
-      }
-      if (bestRec && bestScore > 0) return bestRec;
+      // Fallback items
+      const fallbackSkills =
+        userSkills.length > 0
+          ? userSkills.slice(0, 5)
+          : ["web development", "javascript", "python", "react", "node.js"];
 
-      // 4. Fallback: any record of the same kind
-      if (aiKind) {
-        const sameKind = allDbRecords.find((r) => r.kind === aiKind);
-        if (sameKind) return sameKind;
-      }
-
-      // 5. Last resort: any record at all
-      return allDbRecords[0] ?? null;
+      const timestamp = Date.now();
+      return {
+        items: fallbackSkills.map((skill, i) => ({
+          id: `fallback-${timestamp}-${i}`,
+          kind: i % 2 === 0 ? "course" : "video",
+          title: `Learn ${skill} - Complete Guide`,
+          provider: i % 3 === 0 ? "Udemy" : i % 3 === 1 ? "YouTube" : "Coursera",
+          description: `Master ${skill} with hands-on projects and real-world examples`,
+          skills: [skill],
+          url: `https://www.google.com/search?q=${encodeURIComponent(`learn ${skill} course`)}`,
+          route: "/learn",
+        })),
+      };
     }
-
-    const validated: ValidatedLearningItem[] = [];
-    const usedIds = new Set<string>();
-
-    for (const ai of aiItems) {
-      const match = findBestMatch(ai.title, ai.kind);
-      if (!match) continue;
-      if (usedIds.has(match.id)) continue;
-      usedIds.add(match.id);
-
-      validated.push({
-        id: match.id,
-        kind: match.kind ?? ai.kind,
-        title: match.title ?? ai.title,
-        provider: match.provider ?? ai.provider ?? "",
-        description: match.description ?? ai.description ?? "",
-        skills: match.skills ?? ai.skills ?? [],
-        url: match.url ?? "",
-        route: "/learn",
-      });
-    }
-
-    return { items: validated };
   });
 
 async function fetchRealResources(topics: string[], supabase: any) {
