@@ -69,17 +69,52 @@ export function isFatal(err: unknown): boolean {
 }
 
 export function safeJsonParse<T>(text: string): T {
-  try {
-    return JSON.parse(text) as T;
-  } catch {
-    const m = text.match(/\{[\s\S]*\}/);
-    if (m) {
-      try {
-        return JSON.parse(m[0]) as T;
-      } catch {
-        /* noop */
-      }
-    }
-    throw new AIFatalError("AI returned invalid JSON");
+  if (!text || !text.trim()) {
+    throw new AIFatalError("AI returned empty response");
   }
+
+  let cleaned = text.trim();
+
+  // Strip markdown code fences (```json ... ``` or ``` ... ```)
+  const fenceMatch = cleaned.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (fenceMatch) {
+    cleaned = fenceMatch[1].trim();
+  }
+
+  // Attempt 1: direct parse
+  try {
+    return JSON.parse(cleaned) as T;
+  } catch {
+    /* continue to fallbacks */
+  }
+
+  // Attempt 2: extract first JSON object
+  const objMatch = cleaned.match(/\{[\s\S]*\}/);
+  if (objMatch) {
+    try {
+      return JSON.parse(objMatch[0]) as T;
+    } catch {
+      /* continue */
+    }
+  }
+
+  // Attempt 3: extract first JSON array
+  const arrMatch = cleaned.match(/\[[\s\S]*\]/);
+  if (arrMatch) {
+    try {
+      return JSON.parse(arrMatch[0]) as T;
+    } catch {
+      /* continue */
+    }
+  }
+
+  // Attempt 4: fix common issues (trailing commas, single quotes)
+  const fixed = cleaned.replace(/,\s*([}\]])/g, "$1").replace(/'/g, '"');
+  try {
+    return JSON.parse(fixed) as T;
+  } catch {
+    /* continue */
+  }
+
+  throw new AIFatalError("AI returned invalid JSON");
 }

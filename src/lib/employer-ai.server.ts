@@ -2,216 +2,219 @@
 
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth.middleware";
-import { aiGenerateText } from "@/integrations/ai/ai-service";
+import { aiGenerateJsonValidated } from "@/integrations/ai/ai-service";
 import { requirePremium } from "@/lib/premium.server";
 import { getAiFeature } from "@/lib/employer-ai-features";
+import { z } from "zod";
+import {
+  candidateMatchSchema,
+  resumeScreeningSchema,
+  resumeRankingSchema,
+  smartShortlistingSchema,
+  candidateRankingSchema,
+  candidateSummarySchema,
+  hiringRecommendationSchema,
+  candidateSuccessPredictionSchema,
+  talentSearchSchema,
+  duplicateCandidateDetectionSchema,
+  skillGapAnalysisSchema,
+  interviewQuestionGeneratorSchema,
+  jobDescriptionWriterSchema,
+  jobDescriptionOptimizerSchema,
+  hiringAnalyticsSchema,
+  emailAssistantSchema,
+  meetingSchedulerSchema,
+  onboardingAssistantSchema,
+  officeDashboardSchema,
+  recruitmentAutomationSchema,
+  workflowBuilderSchema,
+  predictiveHiringAnalyticsSchema,
+  workforcePlanningSchema,
+  privateAiModelsSchema,
+  companyKnowledgeAiSchema,
+  talentIntelligenceSchema,
+  whiteLabelAssistantSchema,
+  dedicatedAiSuccessManagerSchema,
+} from "@/integrations/ai/employer-ai-schemas";
 
-// Define response types for each feature
-interface CandidateMatchData {
-  candidates: Array<{
-    name: string;
-    score: number;
-    strengths: string[];
-    gaps: string[];
-    recommendation?: string;
-  }>;
+interface FeatureConfig {
+  schema: z.ZodType<any>;
+  systemPrompt: string;
 }
 
-interface ResumeScreeningData {
-  qualified: Array<{ name: string; reasons: string[] }>;
-  borderline: Array<{ name: string; reasons: string[] }>;
-  unqualified: Array<{ name: string; reasons: string[] }>;
-}
-
-interface ResumeRankingData {
-  rankings: Array<{
-    rank: number;
-    name: string;
-    score: number;
-    justification: string;
-  }>;
-}
-
-interface CandidateSummaryData {
-  topSkills: string[];
-  experienceHighlights: string[];
-  redFlags: string[];
-  recommendedNextSteps: string[];
-  overallAssessment: string;
-}
-
-interface HiringRecommendationData {
-  decision: "HIRE" | "NO_HIRE" | "HOLD";
-  confidence: number;
-  reasons: string[];
-  risks: string[];
-  nextSteps: string[];
-}
-
-interface SuccessPredictionData {
-  likelihood: "Low" | "Medium" | "High";
-  score: number;
-  factors: Array<{ factor: string; impact: "positive" | "negative" | "neutral" }>;
-  rationale: string;
-}
-
-interface InterviewQuestionsData {
-  questions: Array<{
-    category: "technical" | "behavioral" | "situational";
-    question: string;
-    expectedAnswer: string;
-    evaluationCriteria: string[];
-  }>;
-}
-
-interface JobDescriptionData {
-  title: string;
-  summary: string;
-  responsibilities: string[];
-  requirements: string[];
-  benefits: string[];
-  keywords: string[];
-}
-
-interface SkillGapData {
-  missingSkills: Array<{
-    skill: string;
-    priority: "high" | "medium" | "low";
-    learningPath: string;
-  }>;
-  recommendations: string[];
-}
-
-interface AIResponse {
-  markdown: string; // Keep for backward compatibility
-  structured?: Record<string, any>; // New structured data
-  featureTitle: string;
-}
-
-// Updated prompts that return BOTH markdown AND JSON
-const FEATURE_PROMPTS: Record<string, string> = {
-  "candidate-match": `You are an AI recruitment assistant. Match candidates to the given job based on skills, experience, and fit.
-    
-    RESPONSE FORMAT - Return a JSON object with two fields:
-    1. "markdown": A detailed markdown report with headings, tables, and formatting
-    2. "structured": An object with a "candidates" array where each candidate has:
-       - name (string)
-       - score (0-100 number)
-       - strengths (string array)
-       - gaps (string array)
-       - recommendation (string)
-    
-    Example response format:
-    {
-      "markdown": "# Candidate Match Analysis\\n\\n## John Doe\\n...",
-      "structured": {
-        "candidates": [
-          {
-            "name": "John Doe",
-            "score": 85,
-            "strengths": ["React expertise", "5 years experience"],
-            "gaps": ["No TypeScript experience", "Limited cloud knowledge"],
-            "recommendation": "Strong candidate, recommend interview"
-          }
-        ]
-      }
-    }`,
-
-  "resume-screening": `You are an AI resume screening assistant. Screen the provided resumes against the job requirements.
-    
-    RESPONSE FORMAT - Return a JSON object with two fields:
-    1. "markdown": A detailed markdown screening report
-    2. "structured": An object with three arrays (qualified, borderline, unqualified) where each item has:
-       - name (string)
-       - reasons (string array)`,
-
-  "resume-ranking": `You are an AI resume ranking assistant. Rank the provided candidates from strongest to weakest.
-    
-    RESPONSE FORMAT - Return a JSON object with two fields:
-    1. "markdown": A ranked markdown list with scores and justifications
-    2. "structured": An object with a "rankings" array where each item has:
-       - rank (number)
-       - name (string)
-       - score (0-100 number)
-       - justification (string)`,
-
-  "candidate-summary": `You are an AI candidate summarizer. Produce a concise professional summary of the candidate.
-    
-    RESPONSE FORMAT - Return a JSON object with two fields:
-    1. "markdown": A formatted markdown summary
-    2. "structured": An object with:
-       - topSkills (string array)
-       - experienceHighlights (string array)
-       - redFlags (string array)
-       - recommendedNextSteps (string array)
-       - overallAssessment (string)`,
-
-  "hiring-recommendation": `You are an AI hiring advisor. Give a data-backed HIRE / NO-HIRE / HOLD recommendation.
-    
-    RESPONSE FORMAT - Return a JSON object with two fields:
-    1. "markdown": A detailed markdown recommendation report
-    2. "structured": An object with:
-       - decision ("HIRE" | "NO_HIRE" | "HOLD")
-       - confidence (0-100 number)
-       - reasons (string array)
-       - risks (string array)
-       - nextSteps (string array)`,
-
-  "candidate-success-prediction": `You are an AI predictive hiring analyst. Predict the candidate's likelihood of on-the-job success.
-    
-    RESPONSE FORMAT - Return a JSON object with two fields:
-    1. "markdown": A detailed markdown prediction report
-    2. "structured": An object with:
-       - likelihood ("Low" | "Medium" | "High")
-       - score (0-100 number)
-       - factors (array of {factor, impact: "positive"|"negative"|"neutral"})
-       - rationale (string)`,
-
-  "interview-question-generator": `You are an AI interview question generator. Generate role-specific interview questions.
-    
-    RESPONSE FORMAT - Return a JSON object with two fields:
-    1. "markdown": Formatted questions in markdown
-    2. "structured": An object with a "questions" array where each question has:
-       - category ("technical" | "behavioral" | "situational")
-       - question (string)
-       - expectedAnswer (string)
-       - evaluationCriteria (string array)`,
-
-  "job-description-writer": `You are an AI job description writer. Write a compelling, inclusive, SEO-friendly job description.
-    
-    RESPONSE FORMAT - Return a JSON object with two fields:
-    1. "markdown": The full job description in markdown format
-    2. "structured": An object with:
-       - title (string)
-       - summary (string)
-       - responsibilities (string array)
-       - requirements (string array)
-       - benefits (string array)
-       - keywords (string array)`,
-
-  "skill-gap-analysis": `You are an AI skill gap analyst. Compare skills against required/target skills.
-    
-    RESPONSE FORMAT - Return a JSON object with two fields:
-    1. "markdown": A detailed markdown gap analysis
-    2. "structured": An object with:
-       - missingSkills (array of {skill, priority: "high"|"medium"|"low", learningPath})
-       - recommendations (string array)`,
-
-  // Default prompt for other features
-  default: `You are Jagire AI, an expert recruitment and HR assistant. Provide clear, actionable, professional answers.
-    
-    RESPONSE FORMAT - Return a JSON object with two fields:
-    1. "markdown": Your detailed response in markdown format
-    2. "structured": A simplified object with key data points relevant to the request`,
+const FEATURE_CONFIGS: Record<string, FeatureConfig> = {
+  "candidate-match": {
+    schema: candidateMatchSchema,
+    systemPrompt:
+      "You are an AI recruitment assistant. Match candidates to the given job. " +
+      "Return JSON: {matches:[{candidate_name,match_score(0-100),matching_strengths[],gaps[],recommendation}],summary}",
+  },
+  "resume-screening": {
+    schema: resumeScreeningSchema,
+    systemPrompt:
+      "You are an AI resume screening assistant. Screen resumes against job requirements. " +
+      'Return JSON: {results:[{candidate_name,status("qualified"|"borderline"|"unqualified"),score(0-100),reasons[]}],summary}',
+  },
+  "resume-ranking": {
+    schema: resumeRankingSchema,
+    systemPrompt:
+      "You are an AI resume ranking assistant. Rank candidates from strongest to weakest. " +
+      "Return JSON: {ranking:[{candidate_name,rank,fit_score(0-100),justification}],summary}",
+  },
+  "smart-shortlisting": {
+    schema: smartShortlistingSchema,
+    systemPrompt:
+      "You are an AI shortlisting assistant. Shortlist top candidates for interview. " +
+      'Return JSON: {shortlisted:[{candidate_name,rationale,priority("high"|"medium"|"low")}],' +
+      "not_shortlisted:[{candidate_name,reason}],summary}",
+  },
+  "candidate-ranking": {
+    schema: candidateRankingSchema,
+    systemPrompt:
+      "You are an AI candidate ranking assistant. Compare candidates side-by-side. " +
+      "Return JSON: {ranking:[{candidate_name,rank,strengths[],concerns[],overall_score(0-100)}],summary}",
+  },
+  "candidate-summary": {
+    schema: candidateSummarySchema,
+    systemPrompt:
+      "You are an AI candidate summarizer. Produce a concise professional summary. " +
+      "Return JSON: {summary,top_skills[],experience_highlights[],red_flags[],recommended_next_steps[]}",
+  },
+  "hiring-recommendation": {
+    schema: hiringRecommendationSchema,
+    systemPrompt:
+      "You are an AI hiring advisor. Give a data-backed recommendation. " +
+      'Return JSON: {recommendation("HIRE"|"NO-HIRE"|"HOLD"),confidence(0-100),reasoning,risk_factors[],suggested_role}',
+  },
+  "candidate-success-prediction": {
+    schema: candidateSuccessPredictionSchema,
+    systemPrompt:
+      "You are an AI predictive hiring analyst. Predict on-the-job success. " +
+      'Return JSON: {prediction("Low"|"Medium"|"High"),confidence(0-100),contributing_factors[],rationale}',
+  },
+  "talent-search": {
+    schema: talentSearchSchema,
+    systemPrompt:
+      "You are an AI talent search assistant. Build a sourcing strategy. " +
+      "Return JSON: {ideal_candidate_profile,search_keywords[],boolean_strings[],sourcing_channels[],summary}",
+  },
+  "duplicate-candidate-detection": {
+    schema: duplicateCandidateDetectionSchema,
+    systemPrompt:
+      "You are an AI duplicate detection assistant. Flag likely duplicate profiles. " +
+      "Return JSON: {duplicates:[{candidate_name,likely_duplicate_of,confidence(0-100),matching_fields[]}],unique_count,summary}",
+  },
+  "skill-gap-analysis": {
+    schema: skillGapAnalysisSchema,
+    systemPrompt:
+      "You are an AI skill gap analyst. Compare current vs target skills. " +
+      'Return JSON: {gaps:[{skill,current_level,target_level,priority("high"|"medium"|"low"),learning_path[]}],summary}',
+  },
+  "interview-question-generator": {
+    schema: interviewQuestionGeneratorSchema,
+    systemPrompt:
+      "You are an AI interview question generator. Generate role-specific questions. " +
+      'Return JSON: {questions:[{question,category("technical"|"behavioral"|"situational"),' +
+      'difficulty("easy"|"medium"|"hard"),guidance}],summary}',
+  },
+  "job-description-writer": {
+    schema: jobDescriptionWriterSchema,
+    systemPrompt:
+      "You are an AI job description writer. Write a compelling, inclusive, SEO-friendly job post. " +
+      "Return JSON: {title,summary,responsibilities[],requirements[],preferred_qualifications[],benefits[],full_description}",
+  },
+  "job-description-optimizer": {
+    schema: jobDescriptionOptimizerSchema,
+    systemPrompt:
+      "You are an AI job description optimizer. Improve for clarity, inclusivity, reach, and conversion. " +
+      "Return JSON: {optimized_description,changes_made[],clarity_score(0-100),inclusivity_score(0-100),seo_score(0-100)}",
+  },
+  "hiring-analytics": {
+    schema: hiringAnalyticsSchema,
+    systemPrompt:
+      "You are an AI hiring analytics assistant. Analyze the hiring funnel. " +
+      "Return JSON: {insights[],bottlenecks:[{stage,issue,impact}],time_to_hire_trend,recommendations[],summary}",
+  },
+  "email-assistant": {
+    schema: emailAssistantSchema,
+    systemPrompt:
+      "You are an AI email assistant for recruiters. Draft a professional candidate email. " +
+      "Return JSON: {subject,body,tone}",
+  },
+  "meeting-scheduler": {
+    schema: meetingSchedulerSchema,
+    systemPrompt:
+      "You are an AI meeting scheduler. Propose interview slots and format invite text. " +
+      "Return JSON: {proposed_slots:[{date,time,duration_minutes}],invite_text,workflow[]}",
+  },
+  "onboarding-assistant": {
+    schema: onboardingAssistantSchema,
+    systemPrompt:
+      "You are an AI onboarding assistant. Build a first-week onboarding plan. " +
+      "Return JSON: {first_week_plan:[{day(1-5),tasks[],owner,resources[]}],summary}",
+  },
+  "office-dashboard": {
+    schema: officeDashboardSchema,
+    systemPrompt:
+      "You are an AI office operations assistant. Summarize HR/office metrics and suggest actions. " +
+      'Return JSON: {metrics_summary[],actions:[{area,action,priority("high"|"medium"|"low")}],summary}',
+  },
+  "recruitment-automation": {
+    schema: recruitmentAutomationSchema,
+    systemPrompt:
+      "You are an AI recruitment automation advisor. Recommend automation opportunities. " +
+      "Return JSON: {opportunities:[{task,current_process,automation_suggestion,expected_impact}],summary}",
+  },
+  "workflow-builder": {
+    schema: workflowBuilderSchema,
+    systemPrompt:
+      "You are an AI workflow builder. Design a step-by-step hiring workflow. " +
+      "Return JSON: {stages:[{name,trigger,owner,sla_hours,actions[]}],summary}",
+  },
+  "predictive-hiring-analytics": {
+    schema: predictiveHiringAnalyticsSchema,
+    systemPrompt:
+      "You are a predictive hiring analytics assistant. Forecast hiring outcomes. " +
+      "Return JSON: {forecasts:[{metric,prediction,confidence(0-100),key_drivers[]}],summary}",
+  },
+  "workforce-planning": {
+    schema: workforcePlanningSchema,
+    systemPrompt:
+      "You are a workforce planning AI assistant. Propose a headcount and role plan. " +
+      'Return JSON: {headcount_plan:[{role,current_count,target_count,gap,priority("high"|"medium"|"low")}],' +
+      "hiring_priorities[],summary}",
+  },
+  "private-ai-models": {
+    schema: privateAiModelsSchema,
+    systemPrompt:
+      "You are an AI advisor for enterprise private model deployment. " +
+      "Return JSON: {recommendations:[{model,use_case,hosting,fine_tuning,governance}],summary}",
+  },
+  "company-knowledge-ai": {
+    schema: companyKnowledgeAiSchema,
+    systemPrompt:
+      "You are a company knowledge AI assistant. Answer using the provided company context. " +
+      "Return JSON: {answer,sources:[{source,relevance}],confidence(0-100)}",
+  },
+  "talent-intelligence": {
+    schema: talentIntelligenceSchema,
+    systemPrompt:
+      "You are an AI talent intelligence assistant. Provide org-wide talent insights. " +
+      'Return JSON: {bench_strength,skill_coverage:[{area,coverage("strong"|"adequate"|"weak"),notes}],risks[],summary}',
+  },
+  "white-label-assistant": {
+    schema: whiteLabelAssistantSchema,
+    systemPrompt:
+      "You are an AI assistant product advisor. Recommend white-label configuration. " +
+      "Return JSON: {recommendations:[{aspect,recommendation,implementation}],summary}",
+  },
+  "dedicated-ai-success-manager": {
+    schema: dedicatedAiSuccessManagerSchema,
+    systemPrompt:
+      "You are an AI success manager advisor. Propose an AI rollout success plan. " +
+      "Return JSON: {rollout_plan:[{milestone,timeline,activities[],success_metrics[]}],summary}",
+  },
 };
-
-function systemPromptFor(slug: string): string {
-  const prompt = FEATURE_PROMPTS[slug] || FEATURE_PROMPTS["default"];
-  return (
-    prompt +
-    "\n\nIMPORTANT: Always return valid JSON with both 'markdown' and 'structured' fields. The 'markdown' field should contain the full formatted response, and 'structured' should contain the key data points in a programmatically accessible format."
-  );
-}
 
 async function buildEmployerContext(supabase: any, userId: string): Promise<string> {
   const ctx: string[] = [];
@@ -220,10 +223,8 @@ async function buildEmployerContext(supabase: any, userId: string): Promise<stri
     .select("id,name,industry,headquarters,description,website")
     .eq("owner_id", userId)
     .maybeSingle();
-
   if (company) {
     ctx.push(`## Company\n${JSON.stringify(company)}`);
-
     const { data: jobs } = await supabase
       .from("jobs")
       .select(
@@ -232,128 +233,37 @@ async function buildEmployerContext(supabase: any, userId: string): Promise<stri
       .eq("company_id", company.id)
       .order("created_at", { ascending: false })
       .limit(10);
-
     if (jobs?.length) {
       ctx.push(`## Posted Jobs\n${JSON.stringify(jobs)}`);
     }
-
     const { data: apps } = await supabase
       .from("applications")
       .select("id,status,created_at,applicant:profiles(full_name,headline,skills),job:jobs(title)")
       .eq("job.company_id", company.id)
       .order("created_at", { ascending: false })
       .limit(15);
-
     if (apps?.length) {
       ctx.push(`## Recent Applications\n${JSON.stringify(apps)}`);
     }
   }
-
   return ctx.join("\n\n");
-}
-
-/**
- * Parses the AI response to extract both markdown and structured data
- */
-function parseAIResponse(rawResponse: string, featureSlug: string): AIResponse {
-  try {
-    // Try to parse the entire response as JSON first
-    const jsonMatch = rawResponse.match(/\{[\s\S]*\}/);
-
-    if (jsonMatch) {
-      const parsed = JSON.parse(jsonMatch[0]);
-
-      // If we got valid JSON with both fields, return it
-      if (parsed.markdown && parsed.structured) {
-        return {
-          markdown: parsed.markdown,
-          structured: parsed.structured,
-          featureTitle: "",
-        };
-      }
-
-      // If only markdown exists, create a basic structured version
-      if (parsed.markdown) {
-        return {
-          markdown: parsed.markdown,
-          structured: extractStructuredFromMarkdown(parsed.markdown, featureSlug),
-          featureTitle: "",
-        };
-      }
-    }
-
-    // Fallback: treat entire response as markdown
-    return {
-      markdown: rawResponse,
-      structured: extractStructuredFromMarkdown(rawResponse, featureSlug),
-      featureTitle: "",
-    };
-  } catch (error) {
-    console.error(`Failed to parse AI response for ${featureSlug}:`, error);
-    return {
-      markdown: rawResponse,
-      structured: {},
-      featureTitle: "",
-    };
-  }
-}
-
-/**
- * Fallback function to extract structured data from markdown when JSON parsing fails
- */
-function extractStructuredFromMarkdown(markdown: string, featureSlug: string): Record<string, any> {
-  // Basic extraction logic based on feature type
-  switch (featureSlug) {
-    case "candidate-match": {
-      const scoreMatch = markdown.match(/score:?\s*(\d+)/i);
-      return {
-        candidates: [
-          {
-            name: "Candidate",
-            score: scoreMatch ? parseInt(scoreMatch[1]) : 0,
-            strengths: [],
-            gaps: [],
-            recommendation: "See detailed analysis above",
-          },
-        ],
-      };
-    }
-
-    case "hiring-recommendation": {
-      const decisionMatch = markdown.match(/(HIRE|NO.HIRE|HOLD)/i);
-      return {
-        decision: decisionMatch ? decisionMatch[1].toUpperCase() : "HOLD",
-        confidence: 0,
-        reasons: [],
-        risks: [],
-        nextSteps: [],
-      };
-    }
-
-    default:
-      return {
-        summary: markdown.substring(0, 200) + "...",
-      };
-  }
 }
 
 export const runEmployerAiFeature = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => {
-    const i = input as { featureSlug: string; message: string; format?: "json" | "markdown" };
+    const i = input as { featureSlug: string; message: string };
     if (!i?.featureSlug) throw new Error("Feature slug is required");
     if (!i?.message?.trim()) throw new Error("Message is required");
-    return {
-      featureSlug: i.featureSlug,
-      message: i.message.trim().slice(0, 6000),
-      format: i.format || "json", // Default to JSON format
-    };
+    return { featureSlug: i.featureSlug, message: i.message.trim().slice(0, 6000) };
   })
   .handler(async ({ data, context }) => {
     await requirePremium(context.userId);
-
     const feature = getAiFeature(data.featureSlug);
     if (!feature) throw new Error("Unknown AI feature");
+
+    const config = FEATURE_CONFIGS[data.featureSlug];
+    if (!config) throw new Error("AI feature not configured");
 
     const employerContext = await buildEmployerContext(context.supabase, context.userId);
     const prompt = [
@@ -361,29 +271,16 @@ export const runEmployerAiFeature = createServerFn({ method: "POST" })
       `## Request\n${data.message}`,
     ].join("\n\n");
 
-    const rawResponse = await aiGenerateText(
+    const result = await aiGenerateJsonValidated(
       prompt,
-      systemPromptFor(data.featureSlug),
-      "qwen3", // Lower temperature for more consistent structured output
+      config.systemPrompt,
+      config.schema,
       "general",
     );
 
-    // Parse the response
-    const parsedResponse = parseAIResponse(rawResponse, data.featureSlug);
-
-    // Return in requested format
-    if (data.format === "markdown") {
-      return {
-        response: parsedResponse.markdown,
-        structured: parsedResponse.structured,
-        featureTitle: feature.title,
-      };
-    }
-
-    // Default: return structured data with markdown fallback
     return {
-      response: parsedResponse.markdown,
-      structured: parsedResponse.structured,
+      response: result as Record<string, unknown>,
+      structured: result as Record<string, unknown>,
       featureTitle: feature.title,
     };
   });
