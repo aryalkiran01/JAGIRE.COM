@@ -437,17 +437,121 @@ export const learningRecommendations = createServerFn({ method: "POST" })
       .select("skills, headline, experience_years")
       .eq("id", context.userId)
       .maybeSingle();
-    const skills = ((profile as any)?.skills ?? []).join(", ") || "software engineering";
-    const prompt = `Suggest 8 learning resources for: skills=${skills}, headline=${(profile as any)?.headline ?? "N/A"}. Mix courses, videos, challenges, interview prep.`;
 
-    const parsed = await aiGenerateJsonValidated(
+    const skills = (profile as any)?.skills ?? [];
+    const skillsText = skills.join(", ") || "software engineering";
+
+    // First, get AI to identify what skills to learn
+    const prompt = `For someone with skills: ${skillsText}, headline: ${(profile as any)?.headline ?? "N/A"}, suggest 8 specific skills or topics they should learn. Return only JSON array of strings.`;
+
+    const skillGaps = await aiGenerateText(
       prompt,
-      LEARNING_SYSTEM,
-      learningRecommendationsSchema,
+      "Career coach. Return only a JSON array of 8 strings representing learning topics/skills.",
+      undefined,
       "learning-recommendations",
     );
-    return { items: parsed?.items ?? [] };
+
+    let topics: string[] = [];
+    try {
+      // Clean and parse the response
+      const cleaned = skillGaps.replace(/```json\n?|\n?```/g, "").trim();
+      topics = JSON.parse(cleaned);
+    } catch {
+      topics = skills.slice(0, 8); // Fallback to existing skills
+    }
+
+    // Fetch real resources from your database or external APIs
+    const realResources = await fetchRealResources(topics, context.supabase);
+
+    return { items: realResources };
   });
+
+async function fetchRealResources(topics: string[], supabase: any) {
+  const resources: any[] = [];
+
+  // 1. Get resources from your curated database
+  const { data: dbResources } = await supabase
+    .from("learning_resources")
+    .select("*")
+    .contains(
+      "skills",
+      topics.map((t) => t.toLowerCase()),
+    )
+    .limit(8);
+
+  if (dbResources?.length) {
+    resources.push(...dbResources);
+  }
+
+  // 2. If not enough resources, search YouTube API
+  if (resources.length < 8) {
+    const youtubeKey = process.env.YOUTUBE_API_KEY;
+    if (youtubeKey) {
+      for (const topic of topics) {
+        if (resources.length >= 8) break;
+        try {
+          const response = await fetch(
+            `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(topic + " tutorial")}&type=video&maxResults=2&key=${youtubeKey}`,
+          );
+          const data = await response.json();
+
+          if (data.items) {
+            for (const item of data.items) {
+              resources.push({
+                kind: "video",
+                title: item.snippet.title,
+                provider: "YouTube",
+                url: `https://youtube.com/watch?v=${item.id.videoId}`,
+                skills: [topic],
+                description: item.snippet.description?.substring(0, 200) || "",
+              });
+            }
+          }
+        } catch (err) {
+          console.warn("YouTube API failed for topic:", topic, err);
+        }
+      }
+    }
+  }
+
+  // 3. If still not enough, search Udemy API
+  if (resources.length < 8) {
+    const udemyClientId = process.env.UDEMY_CLIENT_ID;
+    const udemyClientSecret = process.env.UDEMY_CLIENT_SECRET;
+
+    if (udemyClientId && udemyClientSecret) {
+      const auth = btoa(`${udemyClientId}:${udemyClientSecret}`);
+
+      for (const topic of topics) {
+        if (resources.length >= 8) break;
+        try {
+          const response = await fetch(
+            `https://www.udemy.com/api-2.0/courses/?search=${encodeURIComponent(topic)}&page_size=2`,
+            { headers: { Authorization: `Basic ${auth}` } },
+          );
+          const data = await response.json();
+
+          if (data.results) {
+            for (const course of data.results) {
+              resources.push({
+                kind: "course",
+                title: course.title,
+                provider: "Udemy",
+                url: `https://udemy.com${course.url}`,
+                skills: [topic],
+                description: course.headline || "",
+              });
+            }
+          }
+        } catch (err) {
+          console.warn("Udemy API failed for topic:", topic, err);
+        }
+      }
+    }
+  }
+
+  return resources.slice(0, 8);
+}
 
 export const importFromLinkedInText = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

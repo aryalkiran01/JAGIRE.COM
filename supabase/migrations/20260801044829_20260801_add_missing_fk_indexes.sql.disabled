@@ -56,7 +56,7 @@ CREATE INDEX IF NOT EXISTS idx_applications_resume_id ON applications(resume_id)
 CREATE INDEX IF NOT EXISTS idx_assessments_created_by ON assessments(created_by);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_user_id ON audit_logs(user_id);
 CREATE INDEX IF NOT EXISTS idx_badges_user_id ON badges(user_id);
-CREATE INDEX IF NOT EXISTS idx_blog_comments_author_id ON blog_comments(author_id);
+-- CREATE INDEX IF NOT EXISTS idx_blog_comments_author_id ON blog_comments(author_id);
 CREATE INDEX IF NOT EXISTS idx_blogs_author_id ON blogs(author_id);
 CREATE INDEX IF NOT EXISTS idx_bookmarks_job_id ON bookmarks(job_id);
 CREATE INDEX IF NOT EXISTS idx_career_coach_sessions_user_id ON career_coach_sessions(user_id);

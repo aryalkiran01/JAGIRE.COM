@@ -2,7 +2,25 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
-import { CircleCheck as CheckCircle2, TriangleAlert as AlertTriangle, Circle as XCircle, TrendingUp, Target, Lightbulb, Clock, Mail, Calendar, FileText, Users, Brain, Sparkles, Briefcase, Code as Code2, GraduationCap, Award } from "lucide-react";
+import {
+  CircleCheck as CheckCircle2,
+  TriangleAlert as AlertTriangle,
+  Circle as XCircle,
+  TrendingUp,
+  Target,
+  Lightbulb,
+  Clock,
+  Mail,
+  Calendar,
+  FileText,
+  Users,
+  Brain,
+  Sparkles,
+  Briefcase,
+  Code as Code2,
+  GraduationCap,
+  Award,
+} from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 type FieldRenderer = (value: unknown) => React.ReactNode;

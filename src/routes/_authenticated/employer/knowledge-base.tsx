@@ -16,7 +16,20 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { BookOpen, Upload, Trash2, Search, Loader as Loader2, FileText, CircleCheck as CheckCircle2, CircleAlert as AlertCircle, Clock, Sparkles, ArrowLeft } from "lucide-react";
+import {
+  BookOpen,
+  Upload,
+  Trash2,
+  Search,
+  Loader as Loader2,
+  FileText,
+  CircleCheck as CheckCircle2,
+  CircleAlert as AlertCircle,
+  Clock,
+  Sparkles,
+  ArrowLeft,
+  File as FileIcon,
+} from "lucide-react";
 import { toast } from "sonner";
 import {
   uploadKnowledgeDocument,
@@ -47,6 +60,7 @@ function KnowledgeBasePage() {
     queryFn: async () => listFn(),
   });
 
+  // Update the uploadMutation type to include fileBase64
   const uploadMutation = useMutation({
     mutationFn: async (payload: {
       title: string;
@@ -55,7 +69,31 @@ function KnowledgeBasePage() {
       fileName: string;
       fileType: string;
       tags: string[];
-    }) => uploadFn({ data: payload }),
+      fileBase64?: string;
+    }) => {
+      let fileType = payload.fileType;
+      if (!fileType && payload.fileName) {
+        const ext = payload.fileName.split(".").pop()?.toLowerCase();
+        switch (ext) {
+          case "pdf":
+            fileType = "application/pdf";
+            break;
+          case "txt":
+            fileType = "text/plain";
+            break;
+          case "md":
+            fileType = "text/markdown";
+            break;
+          case "csv":
+            fileType = "text/csv";
+            break;
+          case "json":
+            fileType = "application/json";
+            break;
+        }
+      }
+      return uploadFn({ data: { ...payload, fileType } });
+    },
     onSuccess: (res) => {
       toast.success(`Document processed: ${res.chunkCount} chunks created`);
       setUploadOpen(false);
@@ -92,6 +130,7 @@ function KnowledgeBasePage() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-5xl">
+      {/* Back navigation */}
       <div className="flex items-center gap-4 mb-6">
         <Button variant="ghost" size="sm" asChild>
           <Link to="/employer">
@@ -101,6 +140,7 @@ function KnowledgeBasePage() {
         </Button>
       </div>
 
+      {/* Header */}
       <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
         <div className="flex items-center gap-3">
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 shadow-md">
@@ -109,7 +149,7 @@ function KnowledgeBasePage() {
           <div>
             <h1 className="text-2xl font-bold">Knowledge Base</h1>
             <p className="text-sm text-muted-foreground">
-              Upload documents to power AI with your company's knowledge
+              Upload documents to power AI with your company&apos;s knowledge
             </p>
           </div>
         </div>
@@ -233,7 +273,11 @@ function KnowledgeBasePage() {
                   className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/30 transition-colors"
                 >
                   <div className="flex items-start gap-3 min-w-0 flex-1">
-                    <FileText className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
+                    {doc.file_type === "application/pdf" ? (
+                      <FileIcon className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
+                    ) : (
+                      <FileText className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
+                    )}
                     <div className="min-w-0">
                       <div className="font-medium truncate">{doc.title}</div>
                       <div className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap mt-1">
@@ -318,6 +362,7 @@ function UploadForm({
     fileName: string;
     fileType: string;
     tags: string[];
+    fileBase64?: string;
   }) => void;
   pending: boolean;
 }) {
@@ -326,20 +371,80 @@ function UploadForm({
   const [rawText, setRawText] = useState("");
   const [tagsInput, setTagsInput] = useState("");
   const [fileName, setFileName] = useState("");
+  const [fileLoading, setFileLoading] = useState(false);
+  const [fileBase64, setFileBase64] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // Validate file size (10MB max)
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("File too large. Maximum size is 10MB.");
+      if (fileRef.current) fileRef.current.value = "";
+      return;
+    }
+
+    setFileLoading(true);
     setFileName(file.name);
     if (!title) setTitle(file.name.replace(/\.[^.]+$/, ""));
 
-    const text = await file.text();
-    setRawText(text.slice(0, 100_000));
+    const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+
+    if (isPdf) {
+      // Convert PDF to base64 for server-side processing
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const base64 = (event.target?.result as string).split(",")[1];
+        setFileBase64(base64);
+        setRawText(""); // Clear textarea for PDFs
+        setFileLoading(false);
+        toast.success("PDF ready for upload. Text will be extracted on server.");
+      };
+      reader.onerror = () => {
+        setFileLoading(false);
+        toast.error("Failed to read PDF file");
+      };
+      reader.readAsDataURL(file);
+    } else {
+      // Read text files client-side
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const text = (event.target?.result as string).slice(0, 100_000);
+        setRawText(text);
+        setFileBase64(null);
+        setFileLoading(false);
+        if ((event.target?.result as string).length > 100_000) {
+          toast.info("Document truncated to 100,000 characters");
+        }
+      };
+      reader.onerror = () => {
+        setFileLoading(false);
+        toast.error("Failed to read file");
+      };
+      reader.readAsText(file);
+    }
   }
 
   function handleSubmit() {
-    if (!title.trim() || !rawText.trim()) return;
+    if (!title.trim()) {
+      toast.error("Title is required");
+      return;
+    }
+
+    const isPdf = fileName.toLowerCase().endsWith(".pdf");
+
+    if (isPdf && !fileBase64) {
+      toast.error("Please wait for PDF to finish loading");
+      return;
+    }
+
+    if (!isPdf && !rawText.trim()) {
+      toast.error("Document text is required");
+      return;
+    }
+
     onSubmit({
       title: title.trim(),
       description: description.trim(),
@@ -350,19 +455,23 @@ function UploadForm({
         .split(",")
         .map((t) => t.trim())
         .filter(Boolean),
+      fileBase64: isPdf ? fileBase64! : undefined,
     });
   }
+
+  const isPdf = fileName.toLowerCase().endsWith(".pdf");
 
   return (
     <div className="space-y-4">
       <div>
-        <label className="text-sm font-medium mb-1.5 block">Title</label>
+        <label className="text-sm font-medium mb-1.5 block">Title *</label>
         <Input
-          placeholder="e.g. Company FAQ"
+          placeholder="e.g. Company Employee Handbook"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
         />
       </div>
+
       <div>
         <label className="text-sm font-medium mb-1.5 block">Description (optional)</label>
         <Input
@@ -371,48 +480,85 @@ function UploadForm({
           onChange={(e) => setDescription(e.target.value)}
         />
       </div>
+
       <div>
-        <label className="text-sm font-medium mb-1.5 block">Upload text file</label>
+        <label className="text-sm font-medium mb-1.5 block">Upload file</label>
         <input
           ref={fileRef}
           type="file"
-          accept=".txt,.md,.csv,.json"
+          accept=".txt,.md,.csv,.json,.pdf"
           onChange={handleFile}
-          className="block w-full text-sm text-muted-foreground file:mr-3 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-primary file:text-primary-foreground hover:file:bg-primary/90 cursor-pointer"
+          disabled={fileLoading || pending}
+          className="block w-full text-sm text-muted-foreground 
+            file:mr-3 file:py-2 file:px-4 file:rounded-md file:border-0 
+            file:text-sm file:font-medium file:bg-primary file:text-primary-foreground 
+            hover:file:bg-primary/90 cursor-pointer
+            disabled:opacity-50 disabled:cursor-not-allowed"
         />
-        <p className="text-xs text-muted-foreground mt-1">
-          Or paste text directly below. Supports .txt, .md, .csv, .json
-        </p>
+        {fileLoading ? (
+          <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+            <Loader2 className="h-3 w-3 animate-spin" />
+            Reading file...
+          </p>
+        ) : (
+          <p className="text-xs text-muted-foreground mt-1">
+            Supports .txt, .md, .csv, .json, and .pdf files (max 10MB)
+          </p>
+        )}
+        {fileName && !fileLoading && (
+          <p className="text-xs text-primary mt-1">
+            ✓ {fileName}
+            {isPdf && fileBase64 && " (will be processed on server)"}
+          </p>
+        )}
       </div>
-      <div>
-        <label className="text-sm font-medium mb-1.5 block">Document text</label>
-        <Textarea
-          rows={6}
-          placeholder="Paste document text here…"
-          value={rawText}
-          onChange={(e) => setRawText(e.target.value.slice(0, 100_000))}
-        />
-        <p className="text-xs text-muted-foreground mt-1">
-          {rawText.length.toLocaleString()} / 100,000 characters
-        </p>
-      </div>
+
+      {/* Only show textarea for non-PDF files */}
+      {!isPdf && (
+        <div>
+          <label className="text-sm font-medium mb-1.5 block">Document text</label>
+          <Textarea
+            rows={6}
+            placeholder="Paste document text here, or upload a file above..."
+            value={rawText}
+            onChange={(e) => setRawText(e.target.value.slice(0, 100_000))}
+            disabled={fileLoading || pending}
+          />
+          <p className="text-xs text-muted-foreground mt-1">
+            {rawText.length.toLocaleString()} / 100,000 characters
+          </p>
+        </div>
+      )}
+
+      {/* PDF info */}
+      {isPdf && !fileLoading && fileBase64 && (
+        <div className="rounded-lg border p-3 bg-muted/30">
+          <p className="text-sm font-medium mb-1">PDF Upload Ready</p>
+          <p className="text-xs text-muted-foreground">
+            The PDF will be processed on the server after upload.
+          </p>
+        </div>
+      )}
+
       <div>
         <label className="text-sm font-medium mb-1.5 block">Tags (comma-separated)</label>
         <Input
           placeholder="e.g. onboarding, policy, faq"
           value={tagsInput}
           onChange={(e) => setTagsInput(e.target.value)}
+          disabled={pending}
         />
       </div>
+
       <Button
         onClick={handleSubmit}
-        disabled={!title.trim() || !rawText.trim() || pending}
+        disabled={!title.trim() || (!rawText.trim() && !fileBase64) || pending || fileLoading}
         className="w-full gradient-brand text-primary-foreground shadow-md"
       >
         {pending ? (
           <>
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Processing…
+            Processing & chunking document...
           </>
         ) : (
           <>

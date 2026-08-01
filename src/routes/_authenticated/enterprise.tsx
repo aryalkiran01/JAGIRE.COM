@@ -17,7 +17,20 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Building2, ScrollText, KeyRound, Plus, Trash2, Copy, Check, Loader as Loader2, ArrowLeft, TriangleAlert as AlertTriangle, Clock, Shield } from "lucide-react";
+import {
+  Building2,
+  ScrollText,
+  KeyRound,
+  Plus,
+  Trash2,
+  Copy,
+  Check,
+  Loader as Loader2,
+  ArrowLeft,
+  TriangleAlert as AlertTriangle,
+  Clock,
+  Shield,
+} from "lucide-react";
 import { toast } from "sonner";
 import {
   listDepartments,

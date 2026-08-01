@@ -1,37 +1,73 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { createServerFn } from "@tanstack/react-start";
-import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth.middleware";
 import { requirePremium } from "@/lib/premium.server";
 import { aiGenerateEmbedding } from "@/integrations/ai/ai-service";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import pdf from "pdf-parse";
 
 const CHUNK_SIZE = 1000;
 const CHUNK_OVERLAP = 200;
 
 function chunkText(text: string): string[] {
+  // Ensure text is a valid string
+  if (!text || typeof text !== "string") {
+    return [];
+  }
+
   const clean = text
     .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
-  if (clean.length <= CHUNK_SIZE) return [clean];
+
+  // If text is short enough, return as single chunk
+  if (clean.length <= CHUNK_SIZE) {
+    return clean.length > 0 ? [clean] : [];
+  }
 
   const chunks: string[] = [];
   let start = 0;
-  while (start < clean.length) {
+  const maxIterations = Math.ceil(clean.length / (CHUNK_SIZE - CHUNK_OVERLAP)) + 10; // Safety limit
+
+  let iterations = 0;
+  while (start < clean.length && iterations < maxIterations) {
+    iterations++;
+
     let end = start + CHUNK_SIZE;
-    if (end < clean.length) {
-      const lastSpace = clean.lastIndexOf(" ", end);
-      if (lastSpace > start + CHUNK_SIZE * 0.5) end = lastSpace;
-    } else {
+
+    // If we're past the string length, just go to the end
+    if (end >= clean.length) {
       end = clean.length;
+    } else {
+      // Try to find a good break point
+      const lastSpace = clean.lastIndexOf(" ", end);
+      const lastNewline = clean.lastIndexOf("\n", end);
+      const breakPoint = Math.max(lastSpace, lastNewline);
+
+      if (breakPoint > start + 100) {
+        // Found a good break point
+        end = breakPoint;
+      }
+      // If no good break point found, use the hard cutoff at CHUNK_SIZE
     }
-    chunks.push(clean.slice(start, end).trim());
+
+    const chunk = clean.slice(start, end).trim();
+    if (chunk.length > 0) {
+      chunks.push(chunk);
+    }
+
+    // Move start forward, with overlap
     start = end - CHUNK_OVERLAP;
-    if (start >= clean.length) break;
+
+    // Prevent infinite loops
+    if (start >= clean.length || end >= clean.length) break;
+    if (end <= start) start = end; // Safety check
   }
-  return chunks.filter((c) => c.length > 50);
+
+  // Filter out any empty or very short chunks
+  return chunks.filter((c) => c.length > 10);
 }
 
 async function getCompanyIdForUser(userId: string): Promise<string> {
@@ -55,41 +91,59 @@ export const uploadKnowledgeDocument = createServerFn({ method: "POST" })
     const i = input as {
       title: string;
       description?: string;
-      fileUrl: string;
+      rawText: string;
       fileName: string;
       fileType: string;
-      fileSize: number;
       tags?: string[];
-      rawText: string;
+      fileBase64?: string;
     };
     if (!i?.title?.trim()) throw new Error("Title is required");
-    if (!i?.rawText?.trim()) throw new Error("Document text is required");
+    if (!i?.rawText?.trim() && !i?.fileBase64) {
+      throw new Error("Document text or file is required");
+    }
     return {
       title: i.title.trim().slice(0, 200),
       description: (i.description ?? "").trim().slice(0, 500),
-      fileUrl: i.fileUrl ?? "",
+      rawText: (i.rawText ?? "").trim().slice(0, 100_000),
       fileName: i.fileName ?? "",
       fileType: i.fileType ?? "",
-      fileSize: i.fileSize ?? 0,
       tags: i.tags ?? [],
-      rawText: i.rawText.trim().slice(0, 100_000),
+      fileBase64: i.fileBase64 ?? null,
     };
   })
   .handler(async ({ data, context }) => {
     await requirePremium(context.userId);
     const companyId = await getCompanyIdForUser(context.userId);
 
-    const { data: doc, error: docError } = await supabaseAdmin
+    let finalText = data.rawText;
+
+    // Process PDF on server if base64 data is provided
+    if (data.fileBase64 && data.fileType === "application/pdf") {
+      try {
+        const buffer = Buffer.from(data.fileBase64, "base64");
+        const pdfData = await pdf(buffer);
+        finalText = pdfData.text.slice(0, 100_000);
+        console.log(`Extracted ${finalText.length} characters from PDF`);
+      } catch (err) {
+        throw new Error(
+          `Failed to extract text from PDF: ${err instanceof Error ? err.message : "Unknown error"}`,
+        );
+      }
+    }
+
+    if (!finalText || finalText.length < 10) {
+      throw new Error("Document text is too short or empty");
+    }
+
+    const { data: doc, error: docError } = await (supabaseAdmin as any)
       .from("knowledge_documents")
       .insert({
         company_id: companyId,
         uploaded_by: context.userId,
         title: data.title,
         description: data.description,
-        file_url: data.fileUrl,
         file_name: data.fileName,
         file_type: data.fileType,
-        file_size: data.fileSize,
         status: "processing",
         tags: data.tags,
       })
@@ -99,46 +153,40 @@ export const uploadKnowledgeDocument = createServerFn({ method: "POST" })
     if (docError || !doc) throw new Error("Failed to create document record");
 
     try {
-      const chunks = chunkText(data.rawText);
+      const chunks = chunkText(finalText);
+      console.log(`Created ${chunks.length} chunks`);
 
       for (let idx = 0; idx < chunks.length; idx++) {
         const chunk = chunks[idx];
-        let embedding: number[] | null = null;
-        try {
-          const embRes = await aiGenerateEmbedding(chunk);
-          embedding = embRes.embedding;
-        } catch {
-          // Continue without embedding — chunk is still searchable by text
-        }
 
-        await supabaseAdmin.from("knowledge_chunks").insert({
+        // Skip embeddings for now - just store the text chunks
+        await (supabaseAdmin as any).from("knowledge_chunks").insert({
           document_id: doc.id,
           company_id: companyId,
           chunk_index: idx,
           content: chunk,
-          embedding: embedding ?? null,
+          embedding: null, // Set to null explicitly
           token_count: Math.ceil(chunk.length / 4),
           metadata: {},
         });
       }
 
-      await supabaseAdmin
+      await (supabaseAdmin as any)
         .from("knowledge_documents")
         .update({ status: "ready", chunk_count: chunks.length })
         .eq("id", doc.id);
 
       return { documentId: doc.id, chunkCount: chunks.length, status: "ready" };
     } catch (err) {
-      await supabaseAdmin
+      console.error("Chunk processing error:", err);
+      await (supabaseAdmin as any)
         .from("knowledge_documents")
         .update({
           status: "failed",
           error_message: err instanceof Error ? err.message : "Unknown error",
         })
         .eq("id", doc.id);
-      throw new Error(
-        `Document processing failed: ${err instanceof Error ? err.message : "Unknown error"}`,
-      );
+      throw err;
     }
   });
 
@@ -149,7 +197,7 @@ export const listKnowledgeDocuments = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const companyId = await getCompanyIdForUser(context.userId);
 
-    const { data: docs, error } = await supabaseAdmin
+    const { data: docs, error } = await (supabaseAdmin as any)
       .from("knowledge_documents")
       .select("*")
       .eq("company_id", companyId)
@@ -171,7 +219,7 @@ export const deleteKnowledgeDocument = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const companyId = await getCompanyIdForUser(context.userId);
 
-    const { error } = await supabaseAdmin
+    const { error } = await (supabaseAdmin as any)
       .from("knowledge_documents")
       .delete()
       .eq("id", data.documentId)
@@ -181,7 +229,7 @@ export const deleteKnowledgeDocument = createServerFn({ method: "POST" })
     return { success: true };
   });
 
-// ── Semantic search (RAG retrieval) ─────────────────────────────────────────────
+// ── Semantic search ─────────────────────────────────────────────────────────────
 
 export const searchKnowledgeBase = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -194,37 +242,8 @@ export const searchKnowledgeBase = createServerFn({ method: "POST" })
     await requirePremium(context.userId);
     const companyId = await getCompanyIdForUser(context.userId);
 
-    let embedding: number[] | null = null;
-    try {
-      const embRes = await aiGenerateEmbedding(data.query);
-      embedding = embRes.embedding;
-    } catch {
-      // Fall back to text search
-    }
-
-    if (embedding) {
-      const { data: chunks, error } = await supabaseAdmin.rpc("search_knowledge_base", {
-        query_embedding: embedding,
-        match_company_id: companyId,
-        match_limit: data.limit,
-      });
-
-      if (!error && chunks?.length) {
-        return {
-          results: chunks.map((c: any) => ({
-            content: c.content,
-            document_id: c.document_id,
-            document_title: c.document_title,
-            similarity: c.similarity,
-            chunk_index: c.chunk_index,
-          })),
-          mode: "semantic" as const,
-        };
-      }
-    }
-
-    // Fallback: text search using pg_trgm similarity
-    const { data: textChunks, error: textError } = await supabaseAdmin.rpc(
+    // Try text search first (more reliable)
+    const { data: textChunks, error: textError } = await (supabaseAdmin as any).rpc(
       "search_knowledge_base_text",
       {
         search_query: data.query,
@@ -233,23 +252,23 @@ export const searchKnowledgeBase = createServerFn({ method: "POST" })
       },
     );
 
-    if (textError || !textChunks?.length) {
-      return { results: [], mode: "none" as const };
+    if (!textError && textChunks?.length) {
+      return {
+        results: textChunks.map((c: any) => ({
+          content: c.content,
+          document_id: c.document_id,
+          document_title: c.document_title,
+          similarity: c.similarity ?? 0,
+          chunk_index: c.chunk_index,
+        })),
+        mode: "text" as const,
+      };
     }
 
-    return {
-      results: textChunks.map((c: any) => ({
-        content: c.content,
-        document_id: c.document_id,
-        document_title: c.document_title,
-        similarity: c.similarity ?? 0,
-        chunk_index: c.chunk_index,
-      })),
-      mode: "text" as const,
-    };
+    return { results: [], mode: "none" as const };
   });
 
-// ── Get RAG context for AI features ──────────────────────────────────────────────
+// ── Get RAG context ──────────────────────────────────────────────────────────────
 
 export const getRagContext = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -268,16 +287,8 @@ export const getRagContext = createServerFn({ method: "POST" })
       }
     }
 
-    let embedding: number[] | null = null;
-    try {
-      const embRes = await aiGenerateEmbedding(data.query);
-      embedding = embRes.embedding;
-    } catch {
-      return { context: "" };
-    }
-
-    const { data: chunks } = await supabaseAdmin.rpc("search_knowledge_base", {
-      query_embedding: embedding,
+    const { data: chunks } = await (supabaseAdmin as any).rpc("search_knowledge_base_text", {
+      search_query: data.query,
       match_company_id: companyId,
       match_limit: 5,
     });
