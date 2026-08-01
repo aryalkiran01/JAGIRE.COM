@@ -1,0 +1,87 @@
+/*
+# Database Performance Optimization — Add Missing Indexes
+
+## Purpose
+Creates covering indexes for all unindexed foreign keys identified by Supabase's
+performance linter. This improves JOIN performance, query plans, and overall
+database throughput.
+
+## Indexes Created (35 total)
+One index per unindexed foreign key across 30 tables:
+- activity_logs(user_id)
+- api_keys(created_by)
+- applications(resume_id)
+- assessments(created_by)
+- audit_logs(user_id)
+- badges(user_id)
+- blog_comments(author_id)
+- blogs(author_id)
+- bookmarks(job_id)
+- career_coach_sessions(user_id)
+- chat_participants(user_id)
+- departments(head_id)
+- interview_events(employer_id)
+- interview_slots(application_id)
+- interview_slots(booked_by)
+- interviews(job_id)
+- knowledge_documents(uploaded_by)
+- learning_items(course_id)
+- learning_progress(course_id)
+- learning_progress(item_id)
+- meetings(candidate_id)
+- meetings(scheduled_by)
+- messages(job_id)
+- payments(job_id)
+- post_comments(parent_id)
+- post_reports(reporter_id)
+- referrals(referred_user_id)
+- referrals(referrer_id)
+- reports(reporter_id)
+- review_replies(author_id)
+- review_replies(review_id)
+- review_replies(user_id)
+- reviews(company_id)
+- reviews(reviewer_id)
+- saved_jobs(job_id)
+
+## Notes
+1. All indexes use IF NOT EXISTS for idempotency.
+2. These are single-column B-tree indexes matching the FK column.
+3. No data is modified — this is a read-only schema change.
+*/
+
+CREATE INDEX IF NOT EXISTS idx_activity_logs_user_id ON activity_logs(user_id);
+CREATE INDEX IF NOT EXISTS idx_api_keys_created_by ON api_keys(created_by);
+CREATE INDEX IF NOT EXISTS idx_applications_resume_id ON applications(resume_id);
+CREATE INDEX IF NOT EXISTS idx_assessments_created_by ON assessments(created_by);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_user_id ON audit_logs(user_id);
+CREATE INDEX IF NOT EXISTS idx_badges_user_id ON badges(user_id);
+CREATE INDEX IF NOT EXISTS idx_blog_comments_author_id ON blog_comments(author_id);
+CREATE INDEX IF NOT EXISTS idx_blogs_author_id ON blogs(author_id);
+CREATE INDEX IF NOT EXISTS idx_bookmarks_job_id ON bookmarks(job_id);
+CREATE INDEX IF NOT EXISTS idx_career_coach_sessions_user_id ON career_coach_sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_chat_participants_user_id ON chat_participants(user_id);
+CREATE INDEX IF NOT EXISTS idx_departments_head_id ON departments(head_id);
+CREATE INDEX IF NOT EXISTS idx_interview_events_employer_id ON interview_events(employer_id);
+CREATE INDEX IF NOT EXISTS idx_interview_slots_application_id ON interview_slots(application_id);
+CREATE INDEX IF NOT EXISTS idx_interview_slots_booked_by ON interview_slots(booked_by);
+CREATE INDEX IF NOT EXISTS idx_interviews_job_id ON interviews(job_id);
+CREATE INDEX IF NOT EXISTS idx_knowledge_documents_uploaded_by ON knowledge_documents(uploaded_by);
+CREATE INDEX IF NOT EXISTS idx_learning_items_course_id ON learning_items(course_id);
+CREATE INDEX IF NOT EXISTS idx_learning_progress_course_id ON learning_progress(course_id);
+CREATE INDEX IF NOT EXISTS idx_learning_progress_item_id ON learning_progress(item_id);
+CREATE INDEX IF NOT EXISTS idx_meetings_candidate_id ON meetings(candidate_id);
+CREATE INDEX IF NOT EXISTS idx_meetings_scheduled_by ON meetings(scheduled_by);
+CREATE INDEX IF NOT EXISTS idx_messages_job_id ON messages(job_id);
+CREATE INDEX IF NOT EXISTS idx_payments_job_id ON payments(job_id);
+CREATE INDEX IF NOT EXISTS idx_post_comments_parent_id ON post_comments(parent_id);
+CREATE INDEX IF NOT EXISTS idx_post_reports_reporter_id ON post_reports(reporter_id);
+CREATE INDEX IF NOT EXISTS idx_referrals_referred_user_id ON referrals(referred_user_id);
+CREATE INDEX IF NOT EXISTS idx_referrals_referrer_id ON referrals(referrer_id);
+CREATE INDEX IF NOT EXISTS idx_reports_reporter_id ON reports(reporter_id);
+CREATE INDEX IF NOT EXISTS idx_review_replies_author_id ON review_replies(author_id);
+CREATE INDEX IF NOT EXISTS idx_review_replies_review_id ON review_replies(review_id);
+CREATE INDEX IF NOT EXISTS idx_review_replies_user_id ON review_replies(user_id);
+CREATE INDEX IF NOT EXISTS idx_reviews_company_id ON reviews(company_id);
+CREATE INDEX IF NOT EXISTS idx_reviews_reviewer_id ON reviews(reviewer_id);
+CREATE INDEX IF NOT EXISTS idx_saved_jobs_job_id ON saved_jobs(job_id);

@@ -29,6 +29,7 @@ import { Route as AuthenticatedCareerRouteImport } from './routes/_authenticated
 import { Route as AuthenticatedCareerCoachRouteImport } from './routes/_authenticated/career-coach'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedEmployerRouteImport } from './routes/_authenticated/employer'
+import { Route as AuthenticatedEnterpriseRouteImport } from './routes/_authenticated/enterprise'
 import { Route as AuthenticatedFeedRouteImport } from './routes/_authenticated/feed'
 import { Route as AuthenticatedInterviewsRouteImport } from './routes/_authenticated/interviews'
 import { Route as AuthenticatedLearnRouteImport } from './routes/_authenticated/learn'
@@ -51,6 +52,7 @@ import { Route as AuthenticatedAiFeatureSlugRouteImport } from './routes/_authen
 import { Route as AuthenticatedEmployerIndexRouteImport } from './routes/_authenticated/employer/index'
 import { Route as AuthenticatedEmployerCompanyRouteImport } from './routes/_authenticated/employer/company'
 import { Route as AuthenticatedEmployerInterviewsRouteImport } from './routes/_authenticated/employer/interviews'
+import { Route as AuthenticatedEmployerKnowledgeBaseRouteImport } from './routes/_authenticated/employer/knowledge-base'
 import { Route as AuthenticatedEmployerAiFeatureSlugRouteImport } from './routes/_authenticated/employer/ai/$featureSlug'
 import { Route as AuthenticatedEmployerJobsJobIdRouteImport } from './routes/_authenticated/employer/jobs/$jobId'
 import { Route as AuthenticatedEmployerJobsNewRouteImport } from './routes/_authenticated/employer/jobs/new'
@@ -156,6 +158,11 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
 const AuthenticatedEmployerRoute = AuthenticatedEmployerRouteImport.update({
   id: '/employer',
   path: '/employer',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedEnterpriseRoute = AuthenticatedEnterpriseRouteImport.update({
+  id: '/enterprise',
+  path: '/enterprise',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedFeedRoute = AuthenticatedFeedRouteImport.update({
@@ -275,6 +282,12 @@ const AuthenticatedEmployerInterviewsRoute =
     path: '/interviews',
     getParentRoute: () => AuthenticatedEmployerRoute,
   } as any)
+const AuthenticatedEmployerKnowledgeBaseRoute =
+  AuthenticatedEmployerKnowledgeBaseRouteImport.update({
+    id: '/knowledge-base',
+    path: '/knowledge-base',
+    getParentRoute: () => AuthenticatedEmployerRoute,
+  } as any)
 const AuthenticatedEmployerAiFeatureSlugRoute =
   AuthenticatedEmployerAiFeatureSlugRouteImport.update({
     id: '/ai/$featureSlug',
@@ -314,6 +327,7 @@ export interface FileRoutesByFullPath {
   '/career-coach': typeof AuthenticatedCareerCoachRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/employer': typeof AuthenticatedEmployerRouteWithChildren
+  '/enterprise': typeof AuthenticatedEnterpriseRoute
   '/feed': typeof AuthenticatedFeedRoute
   '/interviews': typeof AuthenticatedInterviewsRoute
   '/learn': typeof AuthenticatedLearnRoute
@@ -335,6 +349,7 @@ export interface FileRoutesByFullPath {
   '/ai/$featureSlug': typeof AuthenticatedAiFeatureSlugRoute
   '/employer/company': typeof AuthenticatedEmployerCompanyRoute
   '/employer/interviews': typeof AuthenticatedEmployerInterviewsRoute
+  '/employer/knowledge-base': typeof AuthenticatedEmployerKnowledgeBaseRoute
   '/employer/': typeof AuthenticatedEmployerIndexRoute
   '/employer/ai/$featureSlug': typeof AuthenticatedEmployerAiFeatureSlugRoute
   '/employer/jobs/$jobId': typeof AuthenticatedEmployerJobsJobIdRoute
@@ -359,6 +374,7 @@ export interface FileRoutesByTo {
   '/career': typeof AuthenticatedCareerRoute
   '/career-coach': typeof AuthenticatedCareerCoachRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/enterprise': typeof AuthenticatedEnterpriseRoute
   '/feed': typeof AuthenticatedFeedRoute
   '/interviews': typeof AuthenticatedInterviewsRoute
   '/learn': typeof AuthenticatedLearnRoute
@@ -380,6 +396,7 @@ export interface FileRoutesByTo {
   '/ai/$featureSlug': typeof AuthenticatedAiFeatureSlugRoute
   '/employer/company': typeof AuthenticatedEmployerCompanyRoute
   '/employer/interviews': typeof AuthenticatedEmployerInterviewsRoute
+  '/employer/knowledge-base': typeof AuthenticatedEmployerKnowledgeBaseRoute
   '/employer': typeof AuthenticatedEmployerIndexRoute
   '/employer/ai/$featureSlug': typeof AuthenticatedEmployerAiFeatureSlugRoute
   '/employer/jobs/$jobId': typeof AuthenticatedEmployerJobsJobIdRoute
@@ -407,6 +424,7 @@ export interface FileRoutesById {
   '/_authenticated/career-coach': typeof AuthenticatedCareerCoachRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/employer': typeof AuthenticatedEmployerRouteWithChildren
+  '/_authenticated/enterprise': typeof AuthenticatedEnterpriseRoute
   '/_authenticated/feed': typeof AuthenticatedFeedRoute
   '/_authenticated/interviews': typeof AuthenticatedInterviewsRoute
   '/_authenticated/learn': typeof AuthenticatedLearnRoute
@@ -428,6 +446,7 @@ export interface FileRoutesById {
   '/_authenticated/ai/$featureSlug': typeof AuthenticatedAiFeatureSlugRoute
   '/_authenticated/employer/company': typeof AuthenticatedEmployerCompanyRoute
   '/_authenticated/employer/interviews': typeof AuthenticatedEmployerInterviewsRoute
+  '/_authenticated/employer/knowledge-base': typeof AuthenticatedEmployerKnowledgeBaseRoute
   '/_authenticated/employer/': typeof AuthenticatedEmployerIndexRoute
   '/_authenticated/employer/ai/$featureSlug': typeof AuthenticatedEmployerAiFeatureSlugRoute
   '/_authenticated/employer/jobs/$jobId': typeof AuthenticatedEmployerJobsJobIdRoute
@@ -455,6 +474,7 @@ export interface FileRouteTypes {
     | '/career-coach'
     | '/dashboard'
     | '/employer'
+    | '/enterprise'
     | '/feed'
     | '/interviews'
     | '/learn'
@@ -476,6 +496,7 @@ export interface FileRouteTypes {
     | '/ai/$featureSlug'
     | '/employer/company'
     | '/employer/interviews'
+    | '/employer/knowledge-base'
     | '/employer/'
     | '/employer/ai/$featureSlug'
     | '/employer/jobs/$jobId'
@@ -500,6 +521,7 @@ export interface FileRouteTypes {
     | '/career'
     | '/career-coach'
     | '/dashboard'
+    | '/enterprise'
     | '/feed'
     | '/interviews'
     | '/learn'
@@ -521,6 +543,7 @@ export interface FileRouteTypes {
     | '/ai/$featureSlug'
     | '/employer/company'
     | '/employer/interviews'
+    | '/employer/knowledge-base'
     | '/employer'
     | '/employer/ai/$featureSlug'
     | '/employer/jobs/$jobId'
@@ -547,6 +570,7 @@ export interface FileRouteTypes {
     | '/_authenticated/career-coach'
     | '/_authenticated/dashboard'
     | '/_authenticated/employer'
+    | '/_authenticated/enterprise'
     | '/_authenticated/feed'
     | '/_authenticated/interviews'
     | '/_authenticated/learn'
@@ -568,6 +592,7 @@ export interface FileRouteTypes {
     | '/_authenticated/ai/$featureSlug'
     | '/_authenticated/employer/company'
     | '/_authenticated/employer/interviews'
+    | '/_authenticated/employer/knowledge-base'
     | '/_authenticated/employer/'
     | '/_authenticated/employer/ai/$featureSlug'
     | '/_authenticated/employer/jobs/$jobId'
@@ -738,6 +763,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedEmployerRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/enterprise': {
+      id: '/_authenticated/enterprise'
+      path: '/enterprise'
+      fullPath: '/enterprise'
+      preLoaderRoute: typeof AuthenticatedEnterpriseRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/feed': {
       id: '/_authenticated/feed'
       path: '/feed'
@@ -892,6 +924,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedEmployerInterviewsRouteImport
       parentRoute: typeof AuthenticatedEmployerRoute
     }
+    '/_authenticated/employer/knowledge-base': {
+      id: '/_authenticated/employer/knowledge-base'
+      path: '/knowledge-base'
+      fullPath: '/employer/knowledge-base'
+      preLoaderRoute: typeof AuthenticatedEmployerKnowledgeBaseRouteImport
+      parentRoute: typeof AuthenticatedEmployerRoute
+    }
     '/_authenticated/employer/ai/$featureSlug': {
       id: '/_authenticated/employer/ai/$featureSlug'
       path: '/ai/$featureSlug'
@@ -919,6 +958,7 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedEmployerRouteChildren {
   AuthenticatedEmployerCompanyRoute: typeof AuthenticatedEmployerCompanyRoute
   AuthenticatedEmployerInterviewsRoute: typeof AuthenticatedEmployerInterviewsRoute
+  AuthenticatedEmployerKnowledgeBaseRoute: typeof AuthenticatedEmployerKnowledgeBaseRoute
   AuthenticatedEmployerIndexRoute: typeof AuthenticatedEmployerIndexRoute
   AuthenticatedEmployerAiFeatureSlugRoute: typeof AuthenticatedEmployerAiFeatureSlugRoute
   AuthenticatedEmployerJobsJobIdRoute: typeof AuthenticatedEmployerJobsJobIdRoute
@@ -928,6 +968,8 @@ interface AuthenticatedEmployerRouteChildren {
 const AuthenticatedEmployerRouteChildren: AuthenticatedEmployerRouteChildren = {
   AuthenticatedEmployerCompanyRoute: AuthenticatedEmployerCompanyRoute,
   AuthenticatedEmployerInterviewsRoute: AuthenticatedEmployerInterviewsRoute,
+  AuthenticatedEmployerKnowledgeBaseRoute:
+    AuthenticatedEmployerKnowledgeBaseRoute,
   AuthenticatedEmployerIndexRoute: AuthenticatedEmployerIndexRoute,
   AuthenticatedEmployerAiFeatureSlugRoute:
     AuthenticatedEmployerAiFeatureSlugRoute,
@@ -950,6 +992,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedCareerCoachRoute: typeof AuthenticatedCareerCoachRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedEmployerRoute: typeof AuthenticatedEmployerRouteWithChildren
+  AuthenticatedEnterpriseRoute: typeof AuthenticatedEnterpriseRoute
   AuthenticatedFeedRoute: typeof AuthenticatedFeedRoute
   AuthenticatedInterviewsRoute: typeof AuthenticatedInterviewsRoute
   AuthenticatedLearnRoute: typeof AuthenticatedLearnRoute
@@ -973,6 +1016,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedCareerCoachRoute: AuthenticatedCareerCoachRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedEmployerRoute: AuthenticatedEmployerRouteWithChildren,
+  AuthenticatedEnterpriseRoute: AuthenticatedEnterpriseRoute,
   AuthenticatedFeedRoute: AuthenticatedFeedRoute,
   AuthenticatedInterviewsRoute: AuthenticatedInterviewsRoute,
   AuthenticatedLearnRoute: AuthenticatedLearnRoute,

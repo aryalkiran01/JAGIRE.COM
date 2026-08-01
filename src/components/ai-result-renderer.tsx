@@ -2,7 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
-import { CircleCheck as CheckCircle2, TriangleAlert as AlertTriangle, Circle as XCircle, TrendingUp, Target, Lightbulb, Clock, Mail, Calendar, FileText, Users, Brain, Sparkles } from "lucide-react";
+import { CircleCheck as CheckCircle2, TriangleAlert as AlertTriangle, Circle as XCircle, TrendingUp, Target, Lightbulb, Clock, Mail, Calendar, FileText, Users, Brain, Sparkles, Briefcase, Code as Code2, GraduationCap, Award } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 type FieldRenderer = (value: unknown) => React.ReactNode;
@@ -166,9 +166,125 @@ const renderers: Record<string, FieldRenderer> = {
   tone: (v) => (typeof v === "string" && v ? <Badge variant="outline">{v}</Badge> : null),
   coverage: (v) => (typeof v === "string" ? <StatusBadge status={v} /> : null),
 
+  // Job seeker AI fields
+  cover_letter: (v) =>
+    typeof v === "string" ? (
+      <p className="whitespace-pre-wrap text-sm leading-relaxed">{v}</p>
+    ) : null,
+  brand_statement: (v) =>
+    typeof v === "string" ? <p className="text-sm leading-relaxed">{v}</p> : null,
+  elevator_pitch: (v) =>
+    typeof v === "string" ? <p className="text-sm italic text-muted-foreground">"{v}"</p> : null,
+  short_bio: (v) => (typeof v === "string" ? <p className="text-sm">{v}</p> : null),
+  medium_bio: (v) => (typeof v === "string" ? <p className="text-sm">{v}</p> : null),
+  long_bio: (v) =>
+    typeof v === "string" ? <p className="text-sm whitespace-pre-wrap">{v}</p> : null,
+  negotiation_script: (v) =>
+    typeof v === "string" ? <p className="text-sm whitespace-pre-wrap">{v}</p> : null,
+  overall_recommendation: (v) => (typeof v === "string" ? <p className="text-sm">{v}</p> : null),
+  transition_feasibility: (v) => (typeof v === "string" ? <p className="text-sm">{v}</p> : null),
+  current_assessment: (v) => (typeof v === "string" ? <p className="text-sm">{v}</p> : null),
+  portfolio_assessment: (v) => (typeof v === "string" ? <p className="text-sm">{v}</p> : null),
+  job_market_outlook: (v) =>
+    typeof v === "string" ? <p className="text-sm text-muted-foreground">{v}</p> : null,
+  salary_adjustment: (v) => (typeof v === "string" ? <p className="text-sm">{v}</p> : null),
+
+  // Job seeker score fields
+  ats_optimization_score: (v) =>
+    typeof v === "number" ? <ScoreBar label="ATS Optimization" value={v} /> : null,
+  profile_completeness_score: (v) =>
+    typeof v === "number" ? <ScoreBar label="Profile Completeness" value={v} /> : null,
+  overall_score: (v) =>
+    typeof v === "number" ? <ScoreBar label="Overall Score" value={v} /> : null,
+  your_market_value: (v) =>
+    typeof v === "number" ? (
+      <p className="text-sm font-medium">Estimated market value: {v.toLocaleString()}</p>
+    ) : null,
+
+  // Job seeker string arrays
+  key_strengths_highlighted: (v) =>
+    isStringArray(v) ? <StringList items={v} icon={CheckCircle2} /> : null,
+  key_differentiators: (v) => (isStringArray(v) ? <StringList items={v} icon={Sparkles} /> : null),
+  online_presence_tips: (v) =>
+    isStringArray(v) ? <StringList items={v} icon={Lightbulb} /> : null,
+  content_strategy: (v) => (isStringArray(v) ? <StringList items={v} icon={Lightbulb} /> : null),
+  keywords: (v) => (isStringArray(v) ? <StringList items={v} icon={Target} /> : null),
+  target_roles: (v) => (isStringArray(v) ? <StringList items={v} icon={Briefcase} /> : null),
+  boolean_search_strings: (v) =>
+    isStringArray(v) ? <StringList items={v} icon={FileText} /> : null,
+  networking_tips: (v) => (isStringArray(v) ? <StringList items={v} icon={Users} /> : null),
+  weekly_action_plan: (v) => (isStringArray(v) ? <StringList items={v} icon={Calendar} /> : null),
+  negotiation_leverage: (v) =>
+    isStringArray(v) ? <StringList items={v} icon={TrendingUp} /> : null,
+  pros: (v) => (isStringArray(v) ? <StringList items={v} icon={CheckCircle2} /> : null),
+  cons: (v) => (isStringArray(v) ? <StringList items={v} icon={AlertTriangle} /> : null),
+  negotiation_points: (v) => (isStringArray(v) ? <StringList items={v} icon={Lightbulb} /> : null),
+  lifestyle_factors: (v) => (isStringArray(v) ? <StringList items={v} icon={Sparkles} /> : null),
+  preparation_checklist: (v) =>
+    isStringArray(v) ? <StringList items={v} icon={CheckCircle2} /> : null,
+  key_talking_points: (v) => (isStringArray(v) ? <StringList items={v} icon={Target} /> : null),
+  red_flags_to_avoid: (v) =>
+    isStringArray(v) ? <StringList items={v} icon={AlertTriangle} /> : null,
+  strengths: (v) => (isStringArray(v) ? <StringList items={v} icon={CheckCircle2} /> : null),
+  areas_for_improvement: (v) =>
+    isStringArray(v) ? <StringList items={v} icon={AlertTriangle} /> : null,
+  next_steps: (v) => (isStringArray(v) ? <StringList items={v} icon={Lightbulb} /> : null),
+  tips: (v) => (isStringArray(v) ? <StringList items={v} icon={Lightbulb} /> : null),
+  topics_to_review: (v) => (isStringArray(v) ? <StringList items={v} icon={Brain} /> : null),
+  key_concepts: (v) => (isStringArray(v) ? <StringList items={v} icon={Brain} /> : null),
+  transferable_skills: (v) =>
+    isStringArray(v) ? <StringList items={v} icon={CheckCircle2} /> : null,
+  skills_to_acquire: (v) => (isStringArray(v) ? <StringList items={v} icon={Target} /> : null),
+  mentor_criteria: (v) => (isStringArray(v) ? <StringList items={v} icon={Users} /> : null),
+  networking_strategy: (v) => (isStringArray(v) ? <StringList items={v} icon={Users} /> : null),
+  quarterly_priorities: (v) => (isStringArray(v) ? <StringList items={v} icon={Calendar} /> : null),
+  accountability_tips: (v) => (isStringArray(v) ? <StringList items={v} icon={Lightbulb} /> : null),
+  priority_order: (v) => (isStringArray(v) ? <StringList items={v} icon={Target} /> : null),
+  projects_to_add: (v) => (isStringArray(v) ? <StringList items={v} icon={Code2} /> : null),
+  presentation_tips: (v) => (isStringArray(v) ? <StringList items={v} icon={Lightbulb} /> : null),
+  headline_suggestions: (v) => (isStringArray(v) ? <StringList items={v} icon={Sparkles} /> : null),
+  skills_to_add: (v) => (isStringArray(v) ? <StringList items={v} icon={Target} /> : null),
+  missing_skills: (v) => (isStringArray(v) ? <StringList items={v} icon={AlertTriangle} /> : null),
+  matching_skills: (v) => (isStringArray(v) ? <StringList items={v} icon={CheckCircle2} /> : null),
+
+  // Job seeker ratings
+  salary_rating: (v) =>
+    typeof v === "string" ? <Badge variant="outline">Salary: {v}</Badge> : null,
+  benefits_rating: (v) =>
+    typeof v === "string" ? <Badge variant="outline">Benefits: {v}</Badge> : null,
+  growth_rating: (v) =>
+    typeof v === "string" ? <Badge variant="outline">Growth: {v}</Badge> : null,
+  work_life_balance_rating: (v) =>
+    typeof v === "string" ? <Badge variant="outline">WLB: {v}</Badge> : null,
+
   // Numbers
   unique_count: (v) =>
     typeof v === "number" ? <p className="text-muted-foreground">{v} unique candidates</p> : null,
+  word_count: (v) =>
+    typeof v === "number" ? <p className="text-xs text-muted-foreground">{v} words</p> : null,
+  match_score: (v) => (typeof v === "number" ? <ScoreBar label="Match Score" value={v} /> : null),
+  similarity: (v) =>
+    typeof v === "number" ? (
+      <p className="text-xs text-muted-foreground">{Math.round(v * 100)}% similar</p>
+    ) : null,
+
+  // Job seeker objects
+  market_range: (v) => {
+    if (typeof v !== "object" || v === null || Array.isArray(v)) return null;
+    const r = v as Record<string, unknown>;
+    const low = typeof r.low === "number" ? r.low.toLocaleString() : "?";
+    const mid = typeof r.mid === "number" ? r.mid.toLocaleString() : "?";
+    const high = typeof r.high === "number" ? r.high.toLocaleString() : "?";
+    const currency = typeof r.currency === "string" ? r.currency : "";
+    return (
+      <div className="rounded-lg border p-3 bg-muted/30">
+        <div className="text-sm font-semibold mb-1">Market Salary Range</div>
+        <div className="text-sm text-muted-foreground">
+          {currency} {low} – {mid} – {high}
+        </div>
+      </div>
+    );
+  },
 };
 
 export function AiResultRenderer({ data }: { data: Record<string, unknown> }) {
@@ -209,7 +325,31 @@ export function AiResultRenderer({ data }: { data: Record<string, unknown> }) {
 }
 
 const ARRAY_CARD_CONFIG: Record<string, { title: string; icon: LucideIcon }> = {
-  matches: { title: "Candidate Matches", icon: Users },
+  // Job seeker AI array fields
+  star_stories: { title: "STAR Stories", icon: Brain },
+  likely_questions: { title: "Likely Questions", icon: Brain },
+  specific_feedback: { title: "Detailed Feedback", icon: FileText },
+  target_skills: { title: "Target Skills", icon: Target },
+  milestones: { title: "Milestones", icon: Calendar },
+  transition_timeline: { title: "Transition Timeline", icon: Calendar },
+  recommended_roles: { title: "Recommended Roles", icon: Briefcase },
+  suggested_mentor_types: { title: "Mentor Types", icon: Users },
+  outreach_templates: { title: "Outreach Templates", icon: Mail },
+  goals: { title: "Goals", icon: Target },
+  courses: { title: "Recommended Courses", icon: GraduationCap },
+  recommended_certifications: { title: "Certifications", icon: Award },
+  projects: { title: "Project Ideas", icon: Code2 },
+  improvements: { title: "Improvements", icon: Lightbulb },
+  optimized_sections: { title: "Optimized Sections", icon: FileText },
+  about_suggestions: { title: "About Section", icon: Sparkles },
+  experience_improvements: { title: "Experience", icon: Briefcase },
+  practice_problems: { title: "Practice Problems", icon: Brain },
+  resources: { title: "Resources", icon: FileText },
+  benchmark_comparisons: { title: "Salary Benchmarks", icon: TrendingUp },
+  cost_of_living_comparison: { title: "Cost of Living", icon: Target },
+  sourcing_channels: { title: "Sourcing Channels", icon: Users },
+  // Employer AI array fields
+  matches: { title: "Matches", icon: Target },
   results: { title: "Screening Results", icon: FileText },
   ranking: { title: "Ranking", icon: TrendingUp },
   shortlisted: { title: "Shortlisted", icon: CheckCircle2 },

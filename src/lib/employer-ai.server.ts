@@ -3,7 +3,9 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth.middleware";
 import { aiGenerateJsonValidated } from "@/integrations/ai/ai-service";
+import { aiGenerateEmbedding } from "@/integrations/ai/ai-service";
 import { requirePremium } from "@/lib/premium.server";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { getAiFeature } from "@/lib/employer-ai-features";
 import { z } from "zod";
 import {
@@ -266,10 +268,39 @@ export const runEmployerAiFeature = createServerFn({ method: "POST" })
     if (!config) throw new Error("AI feature not configured");
 
     const employerContext = await buildEmployerContext(context.supabase, context.userId);
-    const prompt = [
+
+    let ragContext = "";
+    try {
+      const { data: company } = await context.supabase
+        .from("companies")
+        .select("id")
+        .eq("owner_id", context.userId)
+        .maybeSingle();
+      if (company?.id) {
+        const embRes = await aiGenerateEmbedding(data.message);
+        const { data: chunks } = await supabaseAdmin.rpc("search_knowledge_base", {
+          query_embedding: embRes.embedding,
+          match_company_id: company.id,
+          match_limit: 5,
+        });
+        if (chunks?.length) {
+          ragContext = chunks
+            .map((c: any, i: number) => `[${i + 1}] From "${c.document_title}":\n${c.content}`)
+            .join("\n\n---\n\n");
+        }
+      }
+    } catch {
+      // RAG is optional — continue without it
+    }
+
+    const promptParts = [
       `## Employer Context\n${employerContext || "No company profile set up yet."}`,
-      `## Request\n${data.message}`,
-    ].join("\n\n");
+    ];
+    if (ragContext) {
+      promptParts.push(`## Knowledge Base Context\n${ragContext}`);
+    }
+    promptParts.push(`## Request\n${data.message}`);
+    const prompt = promptParts.join("\n\n");
 
     const result = await aiGenerateJsonValidated(
       prompt,
