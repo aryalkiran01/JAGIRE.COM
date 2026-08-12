@@ -34,23 +34,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import {
-  Shield,
-  Users,
-  Briefcase,
-  Building2,
-  MessageSquare,
-  Trash2,
-  UserCog,
-  Eye,
-  FileText,
-  Star,
-  CreditCard,
-  Crown,
-  CalendarClock,
-  CheckCircle2,
-  XCircle,
-} from "lucide-react";
+import { Shield, Users, Briefcase, Building2, MessageSquare, Trash2, UserCog, Eye, FileText, Star, CreditCard, Crown, CalendarClock, CircleCheck as CheckCircle2, Circle as XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -228,6 +212,21 @@ function Admin() {
     toast.success("Updated");
     qc.invalidateQueries({ queryKey: ["admin-jobs"] });
   };
+
+  const deleteJob = useMutation({
+    mutationFn: async (jobId: string) => {
+      await supabase.from("interviews").delete().eq("job_id", jobId);
+      await supabase.from("applications").delete().eq("job_id", jobId);
+      await supabase.from("saved_jobs").delete().eq("job_id", jobId);
+      const { error } = await supabase.from("jobs").delete().eq("id", jobId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Job deleted");
+      qc.invalidateQueries({ queryKey: ["admin-jobs", "admin-stats"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
 
   const replyTicket = async (
     id: string,
@@ -524,6 +523,11 @@ function Admin() {
                     >
                       {j.status === "active" ? "Close" : "Activate"}
                     </Button>
+                    <ConfirmDelete
+                      label="Delete job"
+                      description={`Permanently delete "${j.title}"? All applications and interviews for this job will also be removed.`}
+                      onConfirm={() => deleteJob.mutate(j.id)}
+                    />
                   </div>
                 ))}
                 {!jobs?.length && (

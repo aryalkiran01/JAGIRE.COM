@@ -188,6 +188,10 @@ function EmployerInterviews() {
   }
 
   const interviewList = Array.isArray(interviews) ? interviews : [];
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
+
   const upcoming = interviewList.filter(
     (i) =>
       i.status === "scheduled" ||
@@ -195,6 +199,16 @@ function EmployerInterviews() {
       i.status === "ongoing" ||
       i.status === "reschedule_requested",
   );
+  const today = upcoming.filter((i) => {
+    if (!i.scheduled_at) return false;
+    const d = new Date(i.scheduled_at);
+    return d >= todayStart && d < todayEnd;
+  });
+  const laterUpcoming = upcoming.filter((i) => {
+    if (!i.scheduled_at) return true;
+    const d = new Date(i.scheduled_at);
+    return d >= todayEnd;
+  });
   const past = interviewList.filter(
     (i) =>
       i.status === "completed" ||
@@ -221,10 +235,110 @@ function EmployerInterviews() {
         </Card>
       )}
 
-      {upcoming.length > 0 && (
+      {today.length > 0 && (
         <div className="space-y-3">
-          <h2 className="text-xl font-semibold">Upcoming ({upcoming.length})</h2>
-          {upcoming.map((iv: Interview) => (
+          <h2 className="text-xl font-semibold text-primary">Today ({today.length})</h2>
+          {today.map((iv: Interview) => (
+            <Card key={iv.id} className="border-primary/30">
+              <CardContent className="p-4 space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="font-semibold text-lg">{iv.title ?? "Interview"}</div>
+                    <div className="text-sm text-muted-foreground">
+                      {iv.application?.profile?.full_name ?? iv.candidate_email ?? "Candidate"}
+                      {iv.application?.job && ` · ${iv.application.job.title}`}
+                    </div>
+                  </div>
+                  <Badge
+                    className={`${STATUS_COLORS[iv.status ?? "scheduled"] ?? "bg-gray-500"} text-white`}
+                  >
+                    {iv.status === "reschedule_requested" ? "Reschedule requested" : iv.status}
+                  </Badge>
+                </div>
+                <div className="flex flex-wrap gap-4 text-sm">
+                  <div className="flex items-center gap-1.5">
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                    {iv.scheduled_at ? new Date(iv.scheduled_at).toLocaleString() : "TBD"}
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Clock className="h-4 w-4 text-muted-foreground" />
+                    {iv.duration_minutes ?? 60} min
+                  </div>
+                  {(iv.meeting_link || iv.meet_link) && (
+                    <div className="flex items-center gap-1.5">
+                      <Video className="h-4 w-4 text-muted-foreground" />
+                      <a
+                        href={iv.meeting_link ?? iv.meet_link ?? "#"}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline"
+                      >
+                        Meeting link
+                      </a>
+                    </div>
+                  )}
+                </div>
+                {iv.status === "reschedule_requested" && iv.notes && (
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950 p-3 text-sm">
+                    <div className="text-xs font-medium text-amber-700 dark:text-amber-400 mb-1">
+                      Reschedule request
+                    </div>
+                    {iv.notes}
+                  </div>
+                )}
+                {iv.notes && iv.status !== "reschedule_requested" && (
+                  <div className="bg-muted rounded-lg p-3 text-sm">
+                    <div className="text-xs font-medium text-muted-foreground mb-1">Notes</div>
+                    {iv.notes}
+                  </div>
+                )}
+                <div className="flex flex-wrap gap-2 pt-1">
+                  <Select
+                    value={iv.status ?? "scheduled"}
+                    onValueChange={(v) => updateStatus(iv.id, v)}
+                  >
+                    <SelectTrigger className="w-44">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {STATUSES.map((s) => (
+                        <SelectItem key={s} value={s}>
+                          {s}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button variant="outline" size="sm" onClick={() => openEdit(iv)}>
+                    <Pencil className="h-4 w-4 mr-1" /> Edit
+                  </Button>
+                  {iv.status !== "completed" && iv.status !== "cancelled" && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => updateStatus(iv.id, "completed")}
+                    >
+                      <CheckCircle2 className="h-4 w-4 mr-1" /> Complete
+                    </Button>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-destructive"
+                    onClick={() => cancelInterview(iv.id)}
+                  >
+                    <X className="h-4 w-4 mr-1" /> Cancel
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {laterUpcoming.length > 0 && (
+        <div className="space-y-3">
+          <h2 className="text-xl font-semibold">Upcoming ({laterUpcoming.length})</h2>
+          {laterUpcoming.map((iv: Interview) => (
             <Card key={iv.id}>
               <CardContent className="p-4 space-y-3">
                 <div className="flex items-start justify-between gap-3">

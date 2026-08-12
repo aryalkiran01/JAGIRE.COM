@@ -88,7 +88,19 @@ function EmployerDashboard() {
     );
   }
 
-  const totalApps = jobs?.reduce((sum, j) => sum + (j.applications_count ?? 0), 0) ?? 0;
+  const jobIds = (jobs ?? []).map((j) => j.id);
+  const { data: appCounts } = useQuery({
+    queryKey: ["employer-app-counts", jobIds.join(",")],
+    enabled: jobIds.length > 0,
+    queryFn: async () => {
+      const { count } = await supabase
+        .from("applications")
+    .select("*", { count: "exact", head: true })
+        .in("job_id", jobIds);
+      return count ?? 0;
+    },
+  });
+  const totalApps = appCounts ?? 0;
   const totalViews = jobs?.reduce((sum, j) => sum + (j.views_count ?? 0), 0) ?? 0;
 
   return (
@@ -146,7 +158,7 @@ function EmployerDashboard() {
                     <div>
                       <div className="font-medium">{j.title}</div>
                       <div className="text-xs text-muted-foreground">
-                        {j.applications_count} applicants · {j.status}
+                        {j.applications_count ?? 0} applicants · {j.status}
                       </div>
                     </div>
                     <div className="text-xs text-muted-foreground">

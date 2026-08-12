@@ -197,6 +197,28 @@ async function createGoogleCalendarEvent(
 }
 
 // ------------------- Notification helper -------------------
+async function notifyUser(
+  supabaseAdmin: any,
+  userId: string | null,
+  title: string,
+  body: string,
+  type: "interview" | "application" | "message" | "system" = "interview",
+  link = "/interviews",
+  metadata: Record<string, unknown> = {},
+) {
+  if (!userId) return;
+  const { error } = await supabaseAdmin.from("notifications").insert({
+    user_id: userId,
+    type,
+    title,
+    body,
+    metadata,
+    link,
+    read: false,
+  });
+  if (error) console.error("[notifyUser] insert failed:", error.message);
+}
+
 async function notifyCandidate(
   supabaseAdmin: any,
   candidateId: string | null,
@@ -204,19 +226,18 @@ async function notifyCandidate(
   interviewId: string,
   applicationId: string,
   title: string,
-  type: string,
+  _type: string,
   message: string,
 ) {
-  if (!candidateId) return;
-  await supabaseAdmin.from("notifications").insert({
-    user_id: candidateId,
-    type,
+  await notifyUser(
+    supabaseAdmin,
+    candidateId,
     title,
     message,
-    data: { interview_id: interviewId, application_id: applicationId, employer_id: employerId },
-    link: "/interviews",
-    is_read: false,
-  });
+    "interview",
+    "/interviews",
+    { interview_id: interviewId, application_id: applicationId, employer_id: employerId },
+  );
 }
 
 async function sendInterviewEmail(
@@ -344,6 +365,12 @@ export const scheduleInterview = createServerFn({ method: "POST" })
     if (Number.isNaN(start.getTime())) {
       throw new Error("Invalid interview date.");
     }
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startDate = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+    if (startDate.getTime() < today.getTime()) {
+      throw new Error("Interview cannot be scheduled in the past. Please pick today or a future date.");
+    }
     const end = new Date(start.getTime() + data.durationMinutes * 60_000);
 
     let googleEventId: string | null = null;
@@ -416,15 +443,23 @@ export const scheduleInterview = createServerFn({ method: "POST" })
       meet_link: meetLink,
     });
 
-    await notifyCandidate(
+    await notifyUser(
       supabaseAdmin,
       candidateId,
-      context.userId,
-      interview.id,
-      data.applicationId,
       "Interview Scheduled",
-      "interview_scheduled",
       `Your interview "${data.title}" has been scheduled for ${start.toLocaleString()}.`,
+      "interview",
+      "/interviews",
+      { interview_id: interview.id, application_id: data.applicationId, employer_id: context.userId },
+    );
+    await notifyUser(
+      supabaseAdmin,
+      context.userId,
+      "Interview Scheduled",
+      `You scheduled an interview "${data.title}" for ${start.toLocaleString()}.`,
+      "interview",
+      "/interviews",
+      { interview_id: interview.id, application_id: data.applicationId, candidate_id: candidateId },
     );
 
     await sendInterviewEmail(
@@ -484,28 +519,35 @@ export const updateInterviewStatus = createServerFn({ method: "POST" })
     if (error) throw error;
 
     const otherId = isEmployer ? interview.candidate_id : interview.employer_id;
-    if (otherId) {
-      const msg =
-        data.status === "confirmed"
-          ? `Candidate confirmed the interview "${interview.title}".`
-          : data.status === "cancelled"
-            ? `Interview "${interview.title}" was cancelled.`
-            : data.status === "reschedule_requested"
-              ? `Candidate requested rescheduling for "${interview.title}".`
-              : data.status === "completed"
-                ? `Interview "${interview.title}" marked as completed.`
-                : `Interview "${interview.title}" status updated to ${data.status}.`;
-      await notifyCandidate(
-        supabaseAdmin,
-        otherId,
-        context.userId,
-        interview.id,
-        interview.application_id,
-        "Interview Update",
-        `interview_${data.status}`,
-        msg,
-      );
-    }
+    const actorId = context.userId;
+    const msg =
+      data.status === "confirmed"
+        ? `Interview "${interview.title}" was confirmed.`
+        : data.status === "cancelled"
+          ? `Interview "${interview.title}" was cancelled.`
+          : data.status === "reschedule_requested"
+            ? `Reschedule requested for "${interview.title}".`
+            : data.status === "completed"
+              ? `Interview "${interview.title}" marked as completed.`
+              : `Interview "${interview.title}" status updated to ${data.status}.`;
+    await notifyUser(
+      supabaseAdmin,
+      otherId,
+      "Interview Update",
+      msg,
+      "interview",
+      "/interviews",
+      { interview_id: interview.id, application_id: interview.application_id, actor_id: actorId },
+    );
+    await notifyUser(
+      supabaseAdmin,
+      actorId,
+      "Interview Update",
+      msg,
+      "interview",
+      "/interviews",
+      { interview_id: interview.id, application_id: interview.application_id, actor_id: actorId },
+    );
 
     return { ok: true };
   });
@@ -534,6 +576,15 @@ export const rescheduleInterview = createServerFn({ method: "POST" })
       throw new Error("Not authorized");
     }
 
+    const proposed = new Date(data.proposedTimeISO);
+    if (Number.isNaN(proposed.getTime())) throw new Error("Invalid proposed time.");
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const proposedDate = new Date(proposed.getFullYear(), proposed.getMonth(), proposed.getDate());
+    if (proposedDate.getTime() < today.getTime()) {
+      throw new Error("Cannot reschedule to a past date. Please pick today or a future date.");
+    }
+
     const { error } = await supabaseAdmin
       .from("interviews")
       .update({
@@ -546,18 +597,25 @@ export const rescheduleInterview = createServerFn({ method: "POST" })
 
     const otherId =
       interview.candidate_id === context.userId ? interview.employer_id : interview.candidate_id;
-    if (otherId) {
-      await notifyCandidate(
-        supabaseAdmin,
-        otherId,
-        context.userId,
-        interview.id,
-        interview.application_id,
-        "Reschedule Request",
-        "interview_reschedule",
-        `Reschedule requested for "${interview.title}" to ${new Date(data.proposedTimeISO).toLocaleString()}.`,
-      );
-    }
+    const rescheduleMsg = `Reschedule requested for "${interview.title}" to ${proposed.toLocaleString()}.`;
+    await notifyUser(
+      supabaseAdmin,
+      otherId,
+      "Reschedule Request",
+      rescheduleMsg,
+      "interview",
+      "/interviews",
+      { interview_id: interview.id, application_id: interview.application_id, actor_id: context.userId },
+    );
+    await notifyUser(
+      supabaseAdmin,
+      context.userId,
+      "Reschedule Request",
+      rescheduleMsg,
+      "interview",
+      "/interviews",
+      { interview_id: interview.id, application_id: interview.application_id, actor_id: context.userId },
+    );
 
     return { ok: true };
   });
