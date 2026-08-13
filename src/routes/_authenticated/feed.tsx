@@ -36,6 +36,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
+import { adminDeletePost, adminDeleteComment } from "@/lib/admin.server";
 
 export const Route = createFileRoute("/_authenticated/feed")({ component: FeedPage });
 
@@ -70,7 +71,8 @@ type PostRow = {
 };
 
 function FeedPage() {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
+  const isAdmin = role === "admin";
   const qc = useQueryClient();
   const [content, setContent] = useState("");
   const [imageUrl, setImageUrl] = useState("");
@@ -301,26 +303,33 @@ function FeedPage() {
 
   async function deletePost(postId: string) {
     const post = posts?.find((p) => p.id === postId);
-    if (post?.image_url) {
-      try {
-        const url = new URL(post.image_url);
-        const pathStart = url.pathname.indexOf("/posts/");
-        if (pathStart !== -1) {
-          const storagePath = url.pathname.slice(pathStart + 7);
-          await supabase.storage.from("posts").remove([storagePath]);
+    const isAuthor = user?.id === post?.author_id;
+    try {
+      if (isAuthor) {
+        if (post?.image_url) {
+          try {
+            const url = new URL(post.image_url);
+            const pathStart = url.pathname.indexOf("/posts/");
+            if (pathStart !== -1) {
+              const storagePath = url.pathname.slice(pathStart + 7);
+              await supabase.storage.from("posts").remove([storagePath]);
+            }
+          } catch (error) {
+            console.error("Failed to delete post image from storage:", error);
+          }
         }
-      } catch (error) {
-        console.error("Failed to delete post image from storage:", error);
+        const { error } = await supabase.from("posts").delete().eq("id", postId);
+        if (error) throw error;
+      } else {
+        const res = await adminDeletePost({ data: { postId } });
+        if (!res.success) throw new Error(res.message);
       }
+      toast.success("Post deleted");
+      setDeletePostId(null);
+      qc.invalidateQueries({ queryKey: ["feed"] });
+    } catch (e) {
+      toast.error((e as Error).message);
     }
-    const { error } = await supabase.from("posts").delete().eq("id", postId);
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
-    toast.success("Post deleted");
-    setDeletePostId(null);
-    qc.invalidateQueries({ queryKey: ["feed"] });
   }
 
   async function editComment(commentId: string, currentText: string) {
@@ -340,13 +349,26 @@ function FeedPage() {
 
   async function deleteComment(commentId: string) {
     if (!window.confirm("Delete this comment?")) return;
-    const { error } = await supabase.from("post_comments").delete().eq("id", commentId);
-    if (error) {
-      toast.error(error.message);
-      return;
+    try {
+      const { error } = await supabase.from("post_comments").delete().eq("id", commentId);
+      if (error) throw error;
+      toast.success("Comment deleted");
+      qc.invalidateQueries({ queryKey: ["feed"] });
+    } catch (e) {
+      toast.error((e as Error).message);
     }
-    toast.success("Comment deleted");
-    qc.invalidateQueries({ queryKey: ["feed"] });
+  }
+
+  async function adminDeleteCommentFn(commentId: string) {
+    if (!window.confirm("Delete this comment as admin?")) return;
+    try {
+      const res = await adminDeleteComment({ data: { commentId } });
+      if (!res.success) throw new Error(res.message);
+      toast.success("Comment deleted by admin");
+      qc.invalidateQueries({ queryKey: ["feed"] });
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
   }
 
   function toggleComments(postId: string) {
@@ -502,19 +524,21 @@ function FeedPage() {
                         {p.updated_at && p.updated_at !== p.created_at && " · edited"}
                       </div>
                     </div>
-                    {isAuthor && editingPost !== p.id && (
+                    {(isAuthor || isAdmin) && editingPost !== p.id && (
                       <div className="flex gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                          onClick={() => {
-                            setEditingPost(p.id);
-                            setEditContent(p.content ?? p.body ?? "");
-                          }}
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
+                        {isAuthor && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                            onClick={() => {
+                              setEditingPost(p.id);
+                              setEditContent(p.content ?? p.body ?? "");
+                            }}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="icon"
@@ -676,6 +700,16 @@ function FeedPage() {
                                     Delete
                                   </Button>
                                 </>
+                              )}
+                              {isAdmin && !isCommentAuthor && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 px-2 text-xs text-destructive"
+                                  onClick={() => adminDeleteCommentFn(c.id)}
+                                >
+                                  Delete (Admin)
+                                </Button>
                               )}
                               <span className="text-xs text-muted-foreground">
                                 {c.created_at && formatDistanceToNow(new Date(c.created_at))} ago

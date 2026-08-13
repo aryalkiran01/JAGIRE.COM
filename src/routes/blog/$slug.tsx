@@ -13,6 +13,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ArrowLeft, Eye, Clock, Heart, Send, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
+import { adminDeleteBlogComment } from "@/lib/admin.server";
 
 export const Route = createFileRoute("/blog/$slug")({
   head: () => ({
@@ -43,7 +44,8 @@ type RelatedBlog = {
 
 function BlogPost() {
   const { slug } = Route.useParams();
-  const { user } = useAuth();
+  const { user, role } = useAuth();
+  const isAdmin = role === "admin";
   const qc = useQueryClient();
   const [comment, setComment] = useState("");
 
@@ -117,6 +119,18 @@ function BlogPost() {
     if (error) return toast.error(error.message);
     toast.success("Comment deleted");
     qc.invalidateQueries({ queryKey: ["blog-comments", slug] });
+  }
+
+  async function adminDeleteComment(id: string) {
+    if (!confirm("Delete this comment as admin?")) return;
+    try {
+      const res = await adminDeleteBlogComment({ data: { commentId: id } });
+      if (!res.success) throw new Error(res.message);
+      toast.success("Comment deleted by admin");
+      qc.invalidateQueries({ queryKey: ["blog-comments", slug] });
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
   }
 
   return (
@@ -219,6 +233,16 @@ function BlogPost() {
                             onClick={() => deleteComment(c.id)}
                           >
                             <Trash2 className="h-3 w-3 mr-1" /> Delete
+                          </Button>
+                        )}
+                        {isAdmin && user?.id !== c.author_id && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 px-2 text-xs text-destructive"
+                            onClick={() => adminDeleteComment(c.id)}
+                          >
+                            <Trash2 className="h-3 w-3 mr-1" /> Delete (Admin)
                           </Button>
                         )}
                       </div>
