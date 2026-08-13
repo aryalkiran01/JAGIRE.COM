@@ -239,6 +239,7 @@ async function notifyCandidate(
 async function sendInterviewEmail(
   supabaseAdmin: any,
   candidateEmail: string,
+  employerEmail: string | null,
   title: string,
   start: Date,
   end: Date,
@@ -278,6 +279,9 @@ async function sendInterviewEmail(
       <p style="color: #666; font-size: 13px; margin-top: 24px;">This is an automated message from Jagire.</p>
     </div>`;
 
+  const recipients = [candidateEmail];
+  if (employerEmail && employerEmail !== candidateEmail) recipients.push(employerEmail);
+
   try {
     const res = await fetch(`${SUPABASE_URL}/functions/v1/send-email`, {
       method: "POST",
@@ -287,7 +291,7 @@ async function sendInterviewEmail(
         apikey: SUPABASE_SERVICE_ROLE_KEY,
       },
       body: JSON.stringify({
-        to: candidateEmail,
+        to: recipients,
         subject: `Interview Scheduled: ${title}`,
         html,
       }),
@@ -296,7 +300,7 @@ async function sendInterviewEmail(
       const errText = await res.text();
       console.error("[sendInterviewEmail] Edge function returned error:", res.status, errText);
     } else {
-      console.log("[sendInterviewEmail] Email sent to", candidateEmail);
+      console.log("[sendInterviewEmail] Email sent to", recipients.join(", "));
     }
   } catch (e) {
     console.error("[sendInterviewEmail] Failed to send email:", e);
@@ -464,9 +468,17 @@ export const scheduleInterview = createServerFn({ method: "POST" })
       { interview_id: interview.id, application_id: data.applicationId, candidate_id: candidateId },
     );
 
+    const { data: employerProfile } = await supabaseAdmin
+      .from("profiles")
+      .select("email")
+      .eq("id", context.userId)
+      .maybeSingle();
+    const employerEmail = employerProfile?.email ?? null;
+
     await sendInterviewEmail(
       supabaseAdmin,
       data.candidateEmail,
+      employerEmail,
       data.title,
       start,
       end,

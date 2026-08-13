@@ -141,6 +141,7 @@ export function ScheduleInterviewDialog({
       setLocation("");
       setNotes("");
       qc.invalidateQueries({ queryKey: ["employer-interviews"] });
+      qc.invalidateQueries({ queryKey: ["my-interviews"] });
       qc.invalidateQueries({ queryKey: ["job-apps"] });
     },
     onError: (e: any) => toast.error(e.message),

@@ -23,7 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Loader2, Upload, CheckCircle2 } from "lucide-react";
+import { Loader as Loader2, Upload, CircleCheck as CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { Link } from "@tanstack/react-router";
 
@@ -40,7 +40,7 @@ export function ApplyJobDialog({
   deadlinePassed?: boolean;
   jobClosed?: boolean;
 }) {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [resumeId, setResumeId] = useState<string>("");
@@ -138,11 +138,23 @@ export function ApplyJobDialog({
 
   const blockedLabel = applied
     ? "Already applied"
-    : jobClosed
-      ? "Job closed"
-      : deadlinePassed
-        ? "Deadline passed"
-        : null;
+    : role === "employer"
+      ? "Employers cannot apply"
+      : jobClosed
+        ? "Job closed"
+        : deadlinePassed
+          ? "Deadline passed"
+          : null;
+
+  if (role === "employer") {
+    return (
+      <div className="rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950 p-3 text-center">
+        <p className="text-sm text-amber-700 dark:text-amber-400">
+          Employer accounts cannot apply for jobs.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>

@@ -212,20 +212,26 @@ function InterviewsPage() {
 
   const interviewList = Array.isArray(interviews) ? interviews : [];
   const isEmployerView = interviewList.some((i) => i.employer_id === user?.id);
-  const upcoming = interviewList.filter(
-    (i) =>
+  const now = new Date();
+
+  const upcoming = interviewList.filter((i) => {
+    const isActiveStatus =
       i.status === "scheduled" ||
       i.status === "confirmed" ||
       i.status === "ongoing" ||
-      i.status === "reschedule_requested",
-  );
-  const past = interviewList.filter(
-    (i) =>
-      i.status === "completed" ||
-      i.status === "cancelled" ||
-      i.status === "missed" ||
-      i.status === "expired",
-  );
+      i.status === "reschedule_requested";
+    if (!isActiveStatus) return false;
+    // If scheduled_at is in the past but status is still active,
+    // it should be treated as past (missed), not upcoming.
+    if (i.scheduled_at) {
+      const scheduled = new Date(i.scheduled_at);
+      // Allow a 2-hour grace window for ongoing interviews
+      const graceEnd = new Date(scheduled.getTime() + (i.duration_minutes ?? 60) * 60_000 + 2 * 3600_000);
+      if (scheduled < now && graceEnd < now) return false;
+    }
+    return true;
+  });
+  const past = interviewList.filter((i) => !upcoming.includes(i));
 
   if (isLoading) {
     return (

@@ -125,7 +125,7 @@ function EmployerInterviews() {
           table: "interviews",
           filter: `employer_id=eq.${user.id}`,
         },
-        () => qc.invalidateQueries({ queryKey: ["employer-interviews"] }),
+        () => { qc.invalidateQueries({ queryKey: ["employer-interviews"] }); qc.invalidateQueries({ queryKey: ["my-interviews"] }); },
       )
       .subscribe();
     return () => {
@@ -138,6 +138,7 @@ function EmployerInterviews() {
       await updateStatusFn({ data: { interviewId: id, status } });
       toast.success("Status updated");
       qc.invalidateQueries({ queryKey: ["employer-interviews"] });
+      qc.invalidateQueries({ queryKey: ["my-interviews"] });
     } catch (e: any) {
       toast.error(e.message);
     }
@@ -192,13 +193,20 @@ function EmployerInterviews() {
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
 
-  const upcoming = interviewList.filter(
-    (i) =>
+  const upcoming = interviewList.filter((i) => {
+    const isActiveStatus =
       i.status === "scheduled" ||
       i.status === "confirmed" ||
       i.status === "ongoing" ||
-      i.status === "reschedule_requested",
-  );
+      i.status === "reschedule_requested";
+    if (!isActiveStatus) return false;
+    if (i.scheduled_at) {
+      const scheduled = new Date(i.scheduled_at);
+      const graceEnd = new Date(scheduled.getTime() + (i.duration_minutes ?? 60) * 60_000 + 2 * 3600_000);
+      if (scheduled < now && graceEnd < now) return false;
+    }
+    return true;
+  });
   const today = upcoming.filter((i) => {
     if (!i.scheduled_at) return false;
     const d = new Date(i.scheduled_at);
@@ -209,13 +217,7 @@ function EmployerInterviews() {
     const d = new Date(i.scheduled_at);
     return d >= todayEnd;
   });
-  const past = interviewList.filter(
-    (i) =>
-      i.status === "completed" ||
-      i.status === "cancelled" ||
-      i.status === "missed" ||
-      i.status === "expired",
-  );
+  const past = interviewList.filter((i) => !upcoming.includes(i));
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl space-y-6">
