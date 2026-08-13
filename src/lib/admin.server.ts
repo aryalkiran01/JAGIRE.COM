@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { getSupabaseServerClient } from "@/integrations/supabase/client.server";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 const deleteJobSchema = z.object({
   jobId: z.string().uuid("Invalid job ID"),
@@ -32,7 +32,6 @@ async function notifyUser(
 export const adminDeleteJob = createServerFn({ method: "POST" })
   .validator(deleteJobSchema)
   .handler(async ({ data, context }) => {
-    const supabaseAdmin = getSupabaseServerClient();
     const userId = (context as any)?.userId;
     if (!userId) throw new Error("Not authenticated");
 

@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -38,6 +38,7 @@ import {
   Target,
   ChevronDown,
   Sparkles,
+  Briefcase,
   type LucideIcon,
 } from "lucide-react";
 
@@ -49,18 +50,8 @@ type FeatureLink = {
 };
 
 const FEATURE_LINKS: FeatureLink[] = [
-  {
-    to: "/resume-scanner",
-    label: "Resume Scanner",
-    icon: ScanText,
-    desc: "AI-powered ATS scoring",
-  },
-  {
-    to: "/resume-builder",
-    label: "Resume Builder",
-    icon: FileText,
-    desc: "Build polished resumes",
-  },
+  { to: "/resume-scanner", label: "Resume Scanner", icon: ScanText, desc: "AI-powered ATS scoring" },
+  { to: "/resume-builder", label: "Resume Builder", icon: FileText, desc: "Build polished resumes" },
   { to: "/interviews", label: "Interview Prep", icon: Video, desc: "Practice & schedule" },
   { to: "/applications", label: "Job Tracker", icon: Target, desc: "Track applications" },
   { to: "/saved", label: "Saved Jobs", icon: Bookmark, desc: "Your bookmarked roles" },
@@ -71,12 +62,30 @@ const FEATURE_LINKS: FeatureLink[] = [
   { to: "/referrals", label: "Refer & Earn", icon: Gift, desc: "Invite friends" },
 ];
 
+const NAV_LINKS = [
+  { to: "/jobs", label: "Browse Jobs" },
+  { to: "/companies", label: "Companies" },
+  { to: "/feed", label: "Feed", authOnly: true },
+  { to: "/about", label: "About" },
+  { to: "/pricing", label: "Pricing" },
+];
+
 export function SiteHeader() {
   const { user, role, signOut } = useAuth();
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { theme, toggle } = useTheme();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const routerState = useRouterState();
+  const currentPath = routerState.location.pathname;
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   const { data: unread } = useQuery({
     queryKey: ["notif-unread", user?.id],
@@ -93,39 +102,25 @@ export function SiteHeader() {
 
   useEffect(() => {
     if (!user?.id) return;
-
     const topic = `notif:${user.id}`;
-
-    // Remove any existing channel with the same topic
     supabase
       .getChannels()
       .filter((c) => c.topic === `realtime:${topic}`)
-      .forEach((c) => {
-        void supabase.removeChannel(c);
-      });
+      .forEach((c) => void supabase.removeChannel(c));
 
     const channel = supabase
       .channel(topic)
       .on(
         "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "notifications",
-          filter: `user_id=eq.${user.id}`,
-        },
+        { event: "*", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` },
         () => {
           qc.invalidateQueries({ queryKey: ["notif-unread"] });
           qc.invalidateQueries({ queryKey: ["notif"] });
         },
       )
-      .subscribe((status) => {
-        console.log("Notification channel:", status);
-      });
+      .subscribe();
 
-    return () => {
-      void supabase.removeChannel(channel);
-    };
+    return () => { void supabase.removeChannel(channel); };
   }, [user?.id, qc]);
 
   const dashPath = role === "admin" ? "/admin" : role === "employer" ? "/employer" : "/dashboard";
@@ -135,22 +130,33 @@ export function SiteHeader() {
     navigate({ to: "/" });
   };
 
+  const isActive = (to: string) =>
+    currentPath === to || (to !== "/" && currentPath.startsWith(to));
+
   return (
-    <header className="sticky top-0 z-50 w-full glass border-b border-border/40">
+    <header
+      className={`sticky top-0 z-50 w-full transition-all duration-300 ${
+        scrolled
+          ? "glass shadow-card-soft border-b border-border/60"
+          : "bg-background/80 backdrop-blur-md border-b border-border/30"
+      }`}
+    >
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         {/* Logo */}
-        <Link to="/" className="flex items-center gap-2 shrink-0">
-          <img src="/Jagire-logo.png" alt="Jagire" className="h-10 w-auto" />
-          <span className="text-xl font-bold gradient-text">Jagire</span>
+        <Link to="/" className="flex items-center gap-2 shrink-0 group">
+          <div className="relative">
+            <img src="/Jagire-logo.png" alt="Jagire" className="h-9 w-auto transition-transform group-hover:scale-105" />
+          </div>
+          <span className="text-xl font-bold gradient-text tracking-tight">Jagire</span>
         </Link>
 
         {/* Desktop nav */}
-        <nav className="hidden items-center gap-1 lg:flex">
-          <NavLink to="/jobs">Browse Jobs</NavLink>
-          <NavLink to="/companies">Companies</NavLink>
-          {user && <NavLink to="/feed">Feed</NavLink>}
-          <NavLink to="/about">About</NavLink>
-          <NavLink to="/pricing">Pricing</NavLink>
+        <nav className="hidden items-center gap-0.5 lg:flex">
+          {NAV_LINKS.filter((l) => !l.authOnly || user).map((link) => (
+            <NavLink key={link.to} to={link.to} active={isActive(link.to)}>
+              {link.label}
+            </NavLink>
+          ))}
 
           {/* Features dropdown */}
           <DropdownMenu>
@@ -160,13 +166,13 @@ export function SiteHeader() {
                 <ChevronDown className="h-3.5 w-3.5" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="center" className="w-105 p-2">
+            <DropdownMenuContent align="center" className="w-[28rem] p-2">
               <div className="grid grid-cols-2 gap-1">
                 {FEATURE_LINKS.map((f) => (
                   <DropdownMenuItem key={f.to} asChild className="p-3 rounded-lg">
                     <Link to={f.to}>
                       <div className="flex items-start gap-3">
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg gradient-brand/10 bg-primary/10">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
                           <f.icon className="h-4 w-4 text-primary" />
                         </div>
                         <div>
@@ -184,7 +190,6 @@ export function SiteHeader() {
 
         {/* Right side */}
         <div className="flex items-center gap-1.5">
-          {/* Theme toggle */}
           <Button variant="ghost" size="icon" onClick={toggle} className="h-9 w-9">
             {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </Button>
@@ -227,81 +232,44 @@ export function SiteHeader() {
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
-                    <Link to={dashPath}>
-                      <LayoutDashboard className="mr-2 h-4 w-4" />
-                      Dashboard
-                    </Link>
+                    <Link to={dashPath}><LayoutDashboard className="mr-2 h-4 w-4" />Dashboard</Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link to="/profile">
-                      <User className="mr-2 h-4 w-4" />
-                      Profile
-                    </Link>
+                    <Link to="/profile"><User className="mr-2 h-4 w-4" />Profile</Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link to="/resume-scanner">
-                      <ScanText className="mr-2 h-4 w-4" />
-                      Resume Scanner
-                    </Link>
+                    <Link to="/resume-scanner"><ScanText className="mr-2 h-4 w-4" />Resume Scanner</Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link to="/resume-builder">
-                      <FileText className="mr-2 h-4 w-4" />
-                      Resume Builder
-                    </Link>
+                    <Link to="/resume-builder"><FileText className="mr-2 h-4 w-4" />Resume Builder</Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link to="/interviews">
-                      <Video className="mr-2 h-4 w-4" />
-                      Interviews
-                    </Link>
+                    <Link to="/interviews"><Video className="mr-2 h-4 w-4" />Interviews</Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link to="/saved">
-                      <Bookmark className="mr-2 h-4 w-4" />
-                      Saved Jobs
-                    </Link>
+                    <Link to="/saved"><Bookmark className="mr-2 h-4 w-4" />Saved Jobs</Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link to="/messages">
-                      <MessageSquare className="mr-2 h-4 w-4" />
-                      Messages
-                    </Link>
+                    <Link to="/messages"><MessageSquare className="mr-2 h-4 w-4" />Messages</Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link to="/assessments">
-                      <GraduationCap className="mr-2 h-4 w-4" />
-                      Assessments
-                    </Link>
+                    <Link to="/assessments"><GraduationCap className="mr-2 h-4 w-4" />Assessments</Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link to="/learn">
-                      <BookOpen className="mr-2 h-4 w-4" />
-                      Learning Center
-                    </Link>
+                    <Link to="/learn"><BookOpen className="mr-2 h-4 w-4" />Learning Center</Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link to="/feed">
-                      <Rss className="mr-2 h-4 w-4" />
-                      Feed
-                    </Link>
+                    <Link to="/feed"><Rss className="mr-2 h-4 w-4" />Feed</Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link to="/referrals">
-                      <Gift className="mr-2 h-4 w-4" />
-                      Refer & Earn
-                    </Link>
+                    <Link to="/referrals"><Gift className="mr-2 h-4 w-4" />Refer & Earn</Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link to="/blog-editor">
-                      <Pencil className="mr-2 h-4 w-4" />
-                      Write Blog
-                    </Link>
+                    <Link to="/blog-editor"><Pencil className="mr-2 h-4 w-4" />Write Blog</Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleSignOut}>
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Sign out
+                    <LogOut className="mr-2 h-4 w-4" />Sign out
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -311,10 +279,8 @@ export function SiteHeader() {
               <Button variant="ghost" asChild>
                 <Link to="/auth">Sign in</Link>
               </Button>
-              <Button asChild className="gradient-brand text-primary-foreground hover:opacity-90">
-                <Link to="/auth" search={{ mode: "signup" }}>
-                  Get started
-                </Link>
+              <Button asChild className="gradient-brand text-primary-foreground hover:opacity-90 shadow-sm">
+                <Link to="/auth" search={{ mode: "signup" }}>Get started</Link>
               </Button>
             </div>
           )}
@@ -326,68 +292,44 @@ export function SiteHeader() {
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-[320px] overflow-y-auto">
+            <SheetContent side="right" className="w-[340px] overflow-y-auto">
               <SheetHeader>
-                <SheetTitle>
-                  <img src="/Jagire-logo.png" alt="Jagire" className="h-10 w-auto" />
+                <SheetTitle className="flex items-center gap-2">
+                  <img src="/Jagire-logo.png" alt="Jagire" className="h-8 w-auto" />
+                  <span className="gradient-text font-bold">Jagire</span>
                 </SheetTitle>
               </SheetHeader>
-              <div className="mt-4 space-y-1">
-                <MobileLink
-                  to="/jobs"
-                  image="/Jagire-logo.png"
-                  label="Browse Jobs"
-                  onClick={() => setMobileOpen(false)}
-                />
-                <MobileLink
-                  to="/companies"
-                  icon={Building2}
-                  label="Companies"
-                  onClick={() => setMobileOpen(false)}
-                />
-                {user && (
+              <div className="mt-6 space-y-1">
+                {NAV_LINKS.filter((l) => !l.authOnly || user).map((link) => (
                   <MobileLink
-                    to="/feed"
-                    icon={Rss}
-                    label="Community Feed"
+                    key={link.to}
+                    to={link.to}
+                    label={link.label}
+                    active={isActive(link.to)}
                     onClick={() => setMobileOpen(false)}
                   />
-                )}
-                <MobileLink
-                  to="/about"
-                  icon={Sparkles}
-                  label="About"
-                  onClick={() => setMobileOpen(false)}
-                />
-                <MobileLink
-                  to="/pricing"
-                  icon={Target}
-                  label="Pricing"
-                  onClick={() => setMobileOpen(false)}
-                />
-                <div className="my-2 border-t" />
+                ))}
+                <div className="my-3 border-t" />
+                <p className="px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                  Features
+                </p>
                 {FEATURE_LINKS.map((f) => (
                   <MobileLink
                     key={f.to}
                     to={f.to}
                     icon={f.icon}
                     label={f.label}
+                    active={isActive(f.to)}
                     onClick={() => setMobileOpen(false)}
                   />
                 ))}
                 {!user && (
                   <div className="pt-4 space-y-2">
                     <Button variant="outline" className="w-full" asChild>
-                      <Link to="/auth" onClick={() => setMobileOpen(false)}>
-                        Sign in
-                      </Link>
+                      <Link to="/auth" onClick={() => setMobileOpen(false)}>Sign in</Link>
                     </Button>
                     <Button className="w-full gradient-brand text-primary-foreground" asChild>
-                      <Link
-                        to="/auth"
-                        search={{ mode: "signup" }}
-                        onClick={() => setMobileOpen(false)}
-                      >
+                      <Link to="/auth" search={{ mode: "signup" }} onClick={() => setMobileOpen(false)}>
                         Get started
                       </Link>
                     </Button>
@@ -402,13 +344,18 @@ export function SiteHeader() {
   );
 }
 
-function NavLink({ to, children }: { to: string; children: React.ReactNode }) {
+function NavLink({ to, children, active }: { to: string; children: React.ReactNode; active: boolean }) {
   return (
     <Link
       to={to}
-      className="rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-muted/50"
+      className={`relative rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:text-foreground hover:bg-muted/50 ${
+        active ? "text-foreground" : "text-muted-foreground"
+      }`}
     >
       {children}
+      {active && (
+        <span className="absolute inset-x-3 -bottom-px h-0.5 rounded-full gradient-brand" />
+      )}
     </Link>
   );
 }
@@ -416,22 +363,25 @@ function NavLink({ to, children }: { to: string; children: React.ReactNode }) {
 function MobileLink({
   to,
   icon: Icon,
-  image,
   label,
+  active,
   onClick,
 }: {
   to: string;
   icon?: LucideIcon;
-  image?: string;
-
   label: string;
+  active?: boolean;
   onClick: () => void;
 }) {
   return (
     <Link
       to={to}
       onClick={onClick}
-      className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-muted/50"
+      className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+        active
+          ? "bg-primary/10 text-primary"
+          : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+      }`}
     >
       {Icon ? <Icon className="h-4 w-4" /> : null}
       {label}

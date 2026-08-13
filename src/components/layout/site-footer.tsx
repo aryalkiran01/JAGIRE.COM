@@ -1,113 +1,127 @@
 import { Link } from "@tanstack/react-router";
-import { Twitter, Linkedin, Github, Mail } from "lucide-react";
+import { Twitter, Linkedin, Github, Mail, ArrowRight, MapPin } from "lucide-react";
+import { Button } from "@/components/ui/button";
+
+const FOOTER_SECTIONS = [
+  {
+    title: "For Job Seekers",
+    links: [
+      { label: "Browse Jobs", to: "/jobs" },
+      { label: "Companies", to: "/companies" },
+      { label: "AI Resume Scanner", to: "/resume-scanner" },
+      { label: "Resume Builder", to: "/resume-builder" },
+      { label: "Career Advice", to: "/career" },
+      { label: "Interview Prep", to: "/interviews" },
+    ],
+  },
+  {
+    title: "For Employers",
+    links: [
+      { label: "Post a Job", to: "/employer" },
+      { label: "Employer Dashboard", to: "/employer" },
+      { label: "Pricing", to: "/pricing" },
+      { label: "Enterprise", to: "/enterprise" },
+      { label: "Knowledge Base", to: "/employer/knowledge-base" },
+    ],
+  },
+  {
+    title: "Resources",
+    links: [
+      { label: "Blog", to: "/blog" },
+      { label: "Learning Center", to: "/learn" },
+      { label: "Community Feed", to: "/feed" },
+      { label: "Assessments", to: "/assessments" },
+      { label: "Refer & Earn", to: "/referrals" },
+    ],
+  },
+  {
+    title: "Company",
+    links: [
+      { label: "About Us", to: "/about" },
+      { label: "Contact", to: "/contact" },
+      { label: "Help Center", to: "/support" },
+      { label: "Pricing", to: "/pricing" },
+    ],
+  },
+];
+
+const SOCIAL_LINKS = [
+  { icon: Twitter, href: "#", label: "Twitter" },
+  { icon: Linkedin, href: "#", label: "LinkedIn" },
+  { icon: Github, href: "#", label: "GitHub" },
+  { icon: Mail, href: "/contact", label: "Email" },
+];
 
 export function SiteFooter() {
   return (
-    <footer className="border-t bg-card/50 backdrop-blur-sm mt-24">
-      <div className="container mx-auto px-4 py-12">
-        <div className="grid gap-8 md:grid-cols-4">
-          <div>
-            <img
-              src="/Jagire-logo.png"
-              alt="Jagire Logo"
-              className="max-h-20 w-auto object-contain"
-            />
-            <p className="text-sm text-muted-foreground mb-4">
-              AI-powered job portal connecting talent with opportunity.
+    <footer className="relative mt-24 border-t border-border/60 bg-gradient-to-b from-card/30 to-muted/30">
+      {/* Top accent line */}
+      <div className="h-1 gradient-brand" />
+
+      <div className="container mx-auto px-4 py-14">
+        <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-6">
+          {/* Brand column */}
+          <div className="lg:col-span-2 space-y-4">
+            <Link to="/" className="flex items-center gap-2 group">
+              <img src="/Jagire-logo.png" alt="Jagire" className="h-10 w-auto transition-transform group-hover:scale-105" />
+              <span className="text-xl font-bold gradient-text tracking-tight">Jagire</span>
+            </Link>
+            <p className="text-sm text-muted-foreground max-w-xs leading-relaxed">
+              AI-powered job portal connecting talent with opportunity. Find your next role, build your resume, and ace your interviews — all in one place.
             </p>
-            <div className="flex gap-2">
-              <SocialIcon icon={Twitter} href="#" />
-              <SocialIcon icon={Linkedin} href="#" />
-              <SocialIcon icon={Github} href="#" />
-              <SocialIcon icon={Mail} href="/contact" />
+            <div className="flex gap-2 pt-1">
+              {SOCIAL_LINKS.map((s) => (
+                <a
+                  key={s.label}
+                  href={s.href}
+                  aria-label={s.label}
+                  className="h-9 w-9 rounded-lg border border-border/60 flex items-center justify-center text-muted-foreground hover:text-primary-foreground hover:gradient-brand hover:border-transparent transition-all duration-200"
+                >
+                  <s.icon className="h-4 w-4" />
+                </a>
+              ))}
+            </div>
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground pt-1">
+              <MapPin className="h-3.5 w-3.5" />
+              <span>Kathmandu, Nepal</span>
             </div>
           </div>
-          <div>
-            <h4 className="font-semibold mb-3 text-sm">For Job Seekers</h4>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li>
-                <Link to="/jobs" className="hover:text-foreground transition-colors">
-                  Browse Jobs
-                </Link>
-              </li>
-              <li>
-                <Link to="/companies" className="hover:text-foreground transition-colors">
-                  Companies
-                </Link>
-              </li>
-              <li>
-                <Link to="/resume-scanner" className="hover:text-foreground transition-colors">
-                  AI Resume Scanner
-                </Link>
-              </li>
-              <li>
-                <Link to="/resume-builder" className="hover:text-foreground transition-colors">
-                  Resume Builder
-                </Link>
-              </li>
-              <li>
-                <Link to="/career" className="hover:text-foreground transition-colors">
-                  Career Advice
-                </Link>
-              </li>
-            </ul>
-          </div>
-          <div>
-            <h4 className="font-semibold mb-3 text-sm">For Employers</h4>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li>
-                <Link to="/employer" className="hover:text-foreground transition-colors">
-                  Post a Job
-                </Link>
-              </li>
-              <li>
-                <Link to="/pricing" className="hover:text-foreground transition-colors">
-                  Pricing
-                </Link>
-              </li>
-              <li>
-                <Link to="/about" className="hover:text-foreground transition-colors">
-                  About Us
-                </Link>
-              </li>
-            </ul>
-          </div>
-          <div>
-            <h4 className="font-semibold mb-3 text-sm">Support</h4>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li>
-                <Link to="/contact" className="hover:text-foreground transition-colors">
-                  Contact
-                </Link>
-              </li>
-              <li>
-                <Link to="/support" className="hover:text-foreground transition-colors">
-                  Help Center
-                </Link>
-              </li>
-              <li>
-                <Link to="/blog" className="hover:text-foreground transition-colors">
-                  Blog
-                </Link>
-              </li>
-            </ul>
-          </div>
+
+          {/* Link columns */}
+          {FOOTER_SECTIONS.map((section) => (
+            <div key={section.title}>
+              <h4 className="font-semibold text-sm mb-3 text-foreground">{section.title}</h4>
+              <ul className="space-y-2.5">
+                {section.links.map((link) => (
+                  <li key={link.label}>
+                    <Link
+                      to={link.to}
+                      className="text-sm text-muted-foreground hover:text-foreground transition-colors inline-flex items-center group"
+                    >
+                      <span className="opacity-0 group-hover:opacity-100 group-hover:mr-1 transition-all duration-200">
+                        <ArrowRight className="h-3 w-3" />
+                      </span>
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </div>
-        <div className="mt-8 pt-8 border-t text-sm text-muted-foreground text-center">
-          © {new Date().getFullYear()} Jagire. All rights reserved.
+
+        {/* Bottom bar */}
+        <div className="mt-12 pt-6 border-t border-border/60 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <p className="text-sm text-muted-foreground">
+            &copy; {new Date().getFullYear()} Jagire. All rights reserved.
+          </p>
+          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+            <Link to="/support" className="hover:text-foreground transition-colors">Privacy</Link>
+            <Link to="/support" className="hover:text-foreground transition-colors">Terms</Link>
+            <Link to="/support" className="hover:text-foreground transition-colors">Cookies</Link>
+          </div>
         </div>
       </div>
     </footer>
-  );
-}
-
-function SocialIcon({ icon: Icon, href }: { icon: any; href: string }) {
-  return (
-    <a
-      href={href}
-      className="h-8 w-8 rounded-lg border flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary transition-all"
-    >
-      <Icon className="h-4 w-4" />
-    </a>
   );
 }

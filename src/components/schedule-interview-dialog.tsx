@@ -101,9 +101,15 @@ export function ScheduleInterviewDialog({
     onError: (e: any) => toast.error(e.message),
   });
 
+  const now = new Date();
+  const minDateTime = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}T${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+
   const schedule = useMutation({
     mutationFn: async () => {
       if (!start) throw new Error("Pick a start time");
+      const startDate = new Date(start);
+      if (isNaN(startDate.getTime())) throw new Error("Invalid date/time");
+      if (startDate.getTime() < Date.now()) throw new Error("Start time must be in the future");
       if (meetingType === "custom" && !customLink) {
         throw new Error("Enter a meeting link or switch to Google Meet");
       }
@@ -269,6 +275,7 @@ export function ScheduleInterviewDialog({
               <Input
                 type="datetime-local"
                 value={start}
+                min={minDateTime}
                 onChange={(e) => setStart(e.target.value)}
               />
             </div>

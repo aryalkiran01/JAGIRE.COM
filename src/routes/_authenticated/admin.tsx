@@ -217,11 +217,9 @@ function Admin() {
 
   const deleteJob = useMutation({
     mutationFn: async (jobId: string) => {
-      await supabase.from("interviews").delete().eq("job_id", jobId);
-      await supabase.from("applications").delete().eq("job_id", jobId);
-      await supabase.from("saved_jobs").delete().eq("job_id", jobId);
-      const { error } = await supabase.from("jobs").delete().eq("id", jobId);
-      if (error) throw error;
+      const res = await adminDeleteJob({ data: { jobId } });
+      if (!res.success) throw new Error(res.message);
+      return res;
     },
     onSuccess: () => {
       toast.success("Job deleted");
