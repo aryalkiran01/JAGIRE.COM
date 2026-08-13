@@ -99,7 +99,14 @@ export const getGoogleCalendarStatus = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { getConnectionKeyForUser } = await import("@/lib/connection-key-crypto.server");
     const key = await getConnectionKeyForUser(context.userId, "google_calendar");
-    return { connected: Boolean(key), configured: hasGoogleCreds() };
+    const configured = hasGoogleCreds();
+    if (!key) return { connected: false, expired: false, configured };
+    // Probe the refresh token to detect expired/revoked grants
+    const probe = await getValidAccessToken(context.userId);
+    if (probe && probe.expired) {
+      return { connected: false, expired: true, configured };
+    }
+    return { connected: true, expired: false, configured };
   });
 
 export const disconnectGoogleCalendar = createServerFn({ method: "POST" })
@@ -111,15 +118,15 @@ export const disconnectGoogleCalendar = createServerFn({ method: "POST" })
   });
 
 // ------------------- Token & Calendar helpers -------------------
-async function getValidAccessToken(userId: string): Promise<string | null> {
-  const { getConnectionKeyForUser } = await import("@/lib/connection-key-crypto.server");
+export async function getValidAccessToken(
+  userId: string,
+): Promise<{ token: string; expired: false } | { token: null; expired: true } | null> {
+  const { getConnectionKeyForUser, deleteConnectionKeyForUser } = await import(
+    "@/lib/connection-key-crypto.server"
+  );
 
   const refreshToken = await getConnectionKeyForUser(userId, "google_calendar");
-  console.log(`🔍 Retrieved token for user ${userId}:`, refreshToken ? "exists" : "null");
-  if (!refreshToken) {
-    console.log("No refresh token found");
-    return null;
-  }
+  if (!refreshToken) return null;
 
   const { clientId, clientSecret } = clientCreds();
   if (!clientId || !clientSecret) return null;
@@ -138,12 +145,25 @@ async function getValidAccessToken(userId: string): Promise<string | null> {
   });
   const responseText = await res.text();
   if (!res.ok) {
-    console.error("Google refresh failed:", res.status, responseText);
+    let parsed: any = null;
+    try {
+      parsed = JSON.parse(responseText);
+    } catch {
+      /* not JSON */
+    }
+    const isInvalidGrant = res.status === 400 && parsed?.error === "invalid_grant";
+    if (isInvalidGrant) {
+      await deleteConnectionKeyForUser(userId, "google_calendar");
+      console.warn(
+        "Google Calendar refresh token expired or revoked. Connection removed; user must reconnect.",
+      );
+      return { token: null, expired: true };
+    }
+    console.error("Google refresh failed:", res.status, parsed?.error ?? responseText);
     return null;
   }
   const tokens = JSON.parse(responseText);
-  console.log("Access token obtained:", !!tokens.access_token);
-  return tokens.access_token;
+  return { token: tokens.access_token, expired: false };
 }
 
 async function createGoogleCalendarEvent(
@@ -344,6 +364,7 @@ export const scheduleInterview = createServerFn({ method: "POST" })
       location?: string;
       notes?: string;
       useGoogleCalendar?: boolean;
+      interviewType?: "google_meet" | "custom" | "in_person";
     }) =>
       z
         .object({
@@ -357,6 +378,7 @@ export const scheduleInterview = createServerFn({ method: "POST" })
           location: z.string().optional(),
           notes: z.string().optional(),
           useGoogleCalendar: z.boolean().optional(),
+          interviewType: z.enum(["google_meet", "custom", "in_person"]).optional(),
         })
         .parse(input),
   )
@@ -378,37 +400,42 @@ export const scheduleInterview = createServerFn({ method: "POST" })
     let googleEventId: string | null = null;
     let meetLink: string | null = data.meetingLink || null;
 
-    if (data.useGoogleCalendar) {
-      const accessToken = await getValidAccessToken(context.userId);
-      console.log("Access Token:", accessToken ? "obtained" : "null");
-      if (accessToken) {
-        try {
-          const result = await createGoogleCalendarEvent(
-            accessToken,
-            data.title,
-            `Interview scheduled via Jagire${data.candidateName ? ` with ${data.candidateName}` : ""}.`,
-            start,
-            end,
-            data.candidateEmail,
-            data.applicationId,
-          );
-          googleEventId = result.eventId;
-          if (result.meetLink) meetLink = result.meetLink;
-        } catch (e) {
-          console.error("Google Calendar event creation failed:", e);
-          // Continue scheduling without Meet link if desired – rethrow to fail the whole request.
-          throw e;
-        }
-      } else {
-        console.warn("No valid access token – scheduling without Google Calendar.");
+    const interviewType = data.interviewType ?? (data.useGoogleCalendar ? "google_meet" : "custom");
+
+    if (interviewType === "google_meet") {
+      const tokenResult = await getValidAccessToken(context.userId);
+      if (tokenResult && tokenResult.expired) {
+        throw new Error(
+          "GOOGLE_CALENDAR_RECONNECT_REQUIRED: Your Google Calendar connection has expired. Please reconnect Google Calendar.",
+        );
+      }
+      if (!tokenResult || !tokenResult.token) {
+        throw new Error(
+          "GOOGLE_CALENDAR_RECONNECT_REQUIRED: Your Google Calendar connection has expired. Please reconnect Google Calendar.",
+        );
+      }
+      try {
+        const result = await createGoogleCalendarEvent(
+          tokenResult.token,
+          data.title,
+          `Interview scheduled via Jagire${data.candidateName ? ` with ${data.candidateName}` : ""}.`,
+          start,
+          end,
+          data.candidateEmail,
+          data.applicationId,
+        );
+        googleEventId = result.eventId;
+        if (result.meetLink) meetLink = result.meetLink;
+      } catch (e) {
+        console.error("Google Calendar event creation failed:", e);
+        throw e;
+      }
+    } else if (interviewType === "custom") {
+      if (!meetLink) {
+        throw new Error("Enter a meeting link or switch to Google Meet / In-person.");
       }
     }
-
-    if (!meetLink) {
-      throw new Error(
-        "No meeting link available. Connect Google Calendar or switch to a custom link.",
-      );
-    }
+    // in_person: meeting link is not required; location is saved below
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const application = await getApplicationDetails(supabaseAdmin, data.applicationId);
@@ -424,8 +451,8 @@ export const scheduleInterview = createServerFn({ method: "POST" })
         title: data.title,
         scheduled_at: start.toISOString(),
         duration_minutes: data.durationMinutes,
-        meeting_link: meetLink,
-        meet_link: meetLink,
+        meeting_link: interviewType === "in_person" ? null : meetLink,
+        meet_link: interviewType === "in_person" ? null : meetLink,
         google_event_id: googleEventId,
         status: "scheduled",
         location: data.location || null,
