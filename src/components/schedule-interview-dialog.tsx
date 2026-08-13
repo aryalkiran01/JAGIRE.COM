@@ -113,6 +113,11 @@ export function ScheduleInterviewDialog({
       if (meetingType === "custom" && !customLink) {
         throw new Error("Enter a meeting link or switch to Google Meet");
       }
+      if (meetingType === "google_meet" && !gcalConnected) {
+        throw new Error(
+          "Google Calendar isn't connected. Connect it to generate a Meet link, or switch to a custom link.",
+        );
+      }
       return scheduleFn({
         data: {
           applicationId,

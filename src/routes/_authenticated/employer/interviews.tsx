@@ -33,6 +33,8 @@ import {
   Pencil,
   X,
   CircleCheck as CheckCircle2,
+  ExternalLink,
+  Link2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { updateInterviewStatus } from "@/lib/google-calendar.service";
@@ -95,6 +97,9 @@ function EmployerInterviews() {
   const [editNotes, setEditNotes] = useState("");
   const [editLink, setEditLink] = useState("");
   const [saving, setSaving] = useState(false);
+  const [linkDialog, setLinkDialog] = useState<Interview | null>(null);
+  const [quickLink, setQuickLink] = useState("");
+  const [savingLink, setSavingLink] = useState(false);
 
   const { data: interviews, isLoading } = useQuery<Interview[]>({
     queryKey: ["employer-interviews", user?.id],
@@ -178,6 +183,22 @@ function EmployerInterviews() {
   async function cancelInterview(id: string) {
     if (!confirm("Cancel this interview? The candidate will be notified.")) return;
     await updateStatus(id, "cancelled");
+  }
+
+  async function saveQuickLink() {
+    if (!linkDialog || !quickLink) return;
+    setSavingLink(true);
+    const { error } = await supabase
+      .from("interviews")
+      .update({ meeting_link: quickLink, meet_link: quickLink, updated_at: new Date().toISOString() })
+      .eq("id", linkDialog.id);
+    setSavingLink(false);
+    if (error) return toast.error(error.message);
+    toast.success("Meeting link added — candidate can now join");
+    setLinkDialog(null);
+    setQuickLink("");
+    qc.invalidateQueries({ queryKey: ["employer-interviews"] });
+    qc.invalidateQueries({ queryKey: ["my-interviews"] });
   }
 
   if (isLoading) {
@@ -310,6 +331,22 @@ function EmployerInterviews() {
                       ))}
                     </SelectContent>
                   </Select>
+                  {(iv.meeting_link || iv.meet_link) && iv.status !== "completed" && iv.status !== "cancelled" && (
+                    <Button variant="default" size="sm" asChild>
+                      <a href={iv.meeting_link ?? iv.meet_link ?? "#"} target="_blank" rel="noopener noreferrer">
+                        <Video className="h-4 w-4 mr-1" /> Join
+                      </a>
+                    </Button>
+                  )}
+                  {!(iv.meeting_link || iv.meet_link) && iv.status !== "completed" && iv.status !== "cancelled" && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => { setLinkDialog(iv); setQuickLink(""); }}
+                    >
+                      <Link2 className="h-4 w-4 mr-1" /> Add link
+                    </Button>
+                  )}
                   <Button variant="outline" size="sm" onClick={() => openEdit(iv)}>
                     <Pencil className="h-4 w-4 mr-1" /> Edit
                   </Button>
@@ -466,6 +503,32 @@ function EmployerInterviews() {
           ))}
         </div>
       )}
+
+      {/* Quick add link dialog */}
+      <Dialog open={!!linkDialog} onOpenChange={(o) => !o && setLinkDialog(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add meeting link</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Paste a Google Meet, Zoom, or any video call link. The candidate will be able to join the interview from their dashboard.
+            </p>
+            <Input
+              placeholder="https://meet.google.com/…"
+              value={quickLink}
+              onChange={(e) => setQuickLink(e.target.value)}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setLinkDialog(null)}>Cancel</Button>
+            <Button onClick={saveQuickLink} disabled={savingLink || !quickLink}>
+              {savingLink ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Link2 className="h-4 w-4 mr-1" />}
+              Save link
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Edit dialog */}
       <Dialog open={!!editInterview} onOpenChange={(o) => !o && setEditInterview(null)}>

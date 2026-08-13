@@ -404,6 +404,12 @@ export const scheduleInterview = createServerFn({ method: "POST" })
       }
     }
 
+    if (!meetLink) {
+      throw new Error(
+        "No meeting link available. Connect Google Calendar or switch to a custom link.",
+      );
+    }
+
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const application = await getApplicationDetails(supabaseAdmin, data.applicationId);
     const candidateId = application.applicant_id;
