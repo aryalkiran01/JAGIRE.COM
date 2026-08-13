@@ -34,10 +34,12 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Shield, Users, Briefcase, Building2, MessageSquare, Trash2, UserCog, Eye, FileText, Star, CreditCard, Crown, CalendarClock, CircleCheck as CheckCircle2, Circle as XCircle } from "lucide-react";
+import { Shield, Users, Briefcase, Building2, MessageSquare, Trash2, UserCog, Eye, FileText, Star, CreditCard, Crown, CalendarClock, CircleCheck as CheckCircle2, Circle as XCircle, Loader as Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useServerFn } from "@tanstack/react-start";
+import { adminDeleteJob } from "@/lib/admin.server";
 
 export const Route = createFileRoute("/_authenticated/admin")({ component: Admin });
 

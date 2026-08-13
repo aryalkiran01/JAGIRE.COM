@@ -86,10 +86,10 @@ export const updateApplicationStatus = createServerFn({ method: "POST" })
         user_id: app.applicant_id,
         type: "application",
         title: notifTitle,
-        body: notifBody,
+        message: notifBody,
         metadata: { application_id: data.applicationId, job_id: app.job_id, status: data.status },
         link: "/applications",
-        read: false,
+        is_read: false,
       });
       if (notifError) console.error("[updateApplicationStatus] notification failed:", notifError.message);
     }

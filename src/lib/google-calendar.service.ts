@@ -211,10 +211,10 @@ async function notifyUser(
     user_id: userId,
     type,
     title,
-    body,
+    message: body,
     metadata,
     link,
-    read: false,
+    is_read: false,
   });
   if (error) console.error("[notifyUser] insert failed:", error.message);
 }
