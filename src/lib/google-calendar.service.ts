@@ -229,15 +229,11 @@ async function notifyCandidate(
   _type: string,
   message: string,
 ) {
-  await notifyUser(
-    supabaseAdmin,
-    candidateId,
-    title,
-    message,
-    "interview",
-    "/interviews",
-    { interview_id: interviewId, application_id: applicationId, employer_id: employerId },
-  );
+  await notifyUser(supabaseAdmin, candidateId, title, message, "interview", "/interviews", {
+    interview_id: interviewId,
+    application_id: applicationId,
+    employer_id: employerId,
+  });
 }
 
 async function sendInterviewEmail(
@@ -369,7 +365,9 @@ export const scheduleInterview = createServerFn({ method: "POST" })
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const startDate = new Date(start.getFullYear(), start.getMonth(), start.getDate());
     if (startDate.getTime() < today.getTime()) {
-      throw new Error("Interview cannot be scheduled in the past. Please pick today or a future date.");
+      throw new Error(
+        "Interview cannot be scheduled in the past. Please pick today or a future date.",
+      );
     }
     const end = new Date(start.getTime() + data.durationMinutes * 60_000);
 
@@ -450,7 +448,11 @@ export const scheduleInterview = createServerFn({ method: "POST" })
       `Your interview "${data.title}" has been scheduled for ${start.toLocaleString()}.`,
       "interview",
       "/interviews",
-      { interview_id: interview.id, application_id: data.applicationId, employer_id: context.userId },
+      {
+        interview_id: interview.id,
+        application_id: data.applicationId,
+        employer_id: context.userId,
+      },
     );
     await notifyUser(
       supabaseAdmin,
@@ -530,24 +532,16 @@ export const updateInterviewStatus = createServerFn({ method: "POST" })
             : data.status === "completed"
               ? `Interview "${interview.title}" marked as completed.`
               : `Interview "${interview.title}" status updated to ${data.status}.`;
-    await notifyUser(
-      supabaseAdmin,
-      otherId,
-      "Interview Update",
-      msg,
-      "interview",
-      "/interviews",
-      { interview_id: interview.id, application_id: interview.application_id, actor_id: actorId },
-    );
-    await notifyUser(
-      supabaseAdmin,
-      actorId,
-      "Interview Update",
-      msg,
-      "interview",
-      "/interviews",
-      { interview_id: interview.id, application_id: interview.application_id, actor_id: actorId },
-    );
+    await notifyUser(supabaseAdmin, otherId, "Interview Update", msg, "interview", "/interviews", {
+      interview_id: interview.id,
+      application_id: interview.application_id,
+      actor_id: actorId,
+    });
+    await notifyUser(supabaseAdmin, actorId, "Interview Update", msg, "interview", "/interviews", {
+      interview_id: interview.id,
+      application_id: interview.application_id,
+      actor_id: actorId,
+    });
 
     return { ok: true };
   });
@@ -605,7 +599,11 @@ export const rescheduleInterview = createServerFn({ method: "POST" })
       rescheduleMsg,
       "interview",
       "/interviews",
-      { interview_id: interview.id, application_id: interview.application_id, actor_id: context.userId },
+      {
+        interview_id: interview.id,
+        application_id: interview.application_id,
+        actor_id: context.userId,
+      },
     );
     await notifyUser(
       supabaseAdmin,
@@ -614,7 +612,11 @@ export const rescheduleInterview = createServerFn({ method: "POST" })
       rescheduleMsg,
       "interview",
       "/interviews",
-      { interview_id: interview.id, application_id: interview.application_id, actor_id: context.userId },
+      {
+        interview_id: interview.id,
+        application_id: interview.application_id,
+        actor_id: context.userId,
+      },
     );
 
     return { ok: true };

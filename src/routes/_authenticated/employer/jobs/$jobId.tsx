@@ -109,7 +109,11 @@ function JobDetail() {
 
   const isLoading = jobLoading || appsLoading;
 
-  async function doAction(app: Application, status: "shortlisted" | "selected" | "offer", label: string) {
+  async function doAction(
+    app: Application,
+    status: "shortlisted" | "selected" | "offer",
+    label: string,
+  ) {
     try {
       setSubmitting(true);
       await updateStatusFn({ data: { applicationId: app.id, status } });
@@ -199,7 +203,9 @@ function JobDetail() {
                       {app.profile?.email ?? "No email"} · Applied{" "}
                       {new Date(app.created_at).toLocaleDateString()}
                     </div>
-                    <Badge className={`mt-1 ${STATUS_BADGE[app.status] ?? "bg-gray-100 text-gray-700"}`}>
+                    <Badge
+                      className={`mt-1 ${STATUS_BADGE[app.status] ?? "bg-gray-100 text-gray-700"}`}
+                    >
                       {app.status}
                     </Badge>
                     {app.rejection_remark && (
@@ -269,8 +275,8 @@ function JobDetail() {
           </DialogHeader>
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              Provide feedback for {rejectTarget?.profile?.full_name ?? "this applicant"}. This will be
-              visible to them in their application status.
+              Provide feedback for {rejectTarget?.profile?.full_name ?? "this applicant"}. This will
+              be visible to them in their application status.
             </p>
             <Textarea
               rows={4}

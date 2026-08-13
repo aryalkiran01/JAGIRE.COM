@@ -63,11 +63,16 @@ export function SiteFooter() {
           {/* Brand column */}
           <div className="lg:col-span-2 space-y-4">
             <Link to="/" className="flex items-center gap-2 group">
-              <img src="/Jagire-logo.png" alt="Jagire" className="h-10 w-auto transition-transform group-hover:scale-105" />
+              <img
+                src="/Jagire-logo.png"
+                alt="Jagire"
+                className="h-10 w-auto transition-transform group-hover:scale-105"
+              />
               <span className="text-xl font-bold gradient-text tracking-tight">Jagire</span>
             </Link>
             <p className="text-sm text-muted-foreground max-w-xs leading-relaxed">
-              AI-powered job portal connecting talent with opportunity. Find your next role, build your resume, and ace your interviews — all in one place.
+              AI-powered job portal connecting talent with opportunity. Find your next role, build
+              your resume, and ace your interviews — all in one place.
             </p>
             <div className="flex gap-2 pt-1">
               {SOCIAL_LINKS.map((s) => (
@@ -116,9 +121,15 @@ export function SiteFooter() {
             &copy; {new Date().getFullYear()} Jagire. All rights reserved.
           </p>
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
-            <Link to="/support" className="hover:text-foreground transition-colors">Privacy</Link>
-            <Link to="/support" className="hover:text-foreground transition-colors">Terms</Link>
-            <Link to="/support" className="hover:text-foreground transition-colors">Cookies</Link>
+            <Link to="/support" className="hover:text-foreground transition-colors">
+              Privacy
+            </Link>
+            <Link to="/support" className="hover:text-foreground transition-colors">
+              Terms
+            </Link>
+            <Link to="/support" className="hover:text-foreground transition-colors">
+              Cookies
+            </Link>
           </div>
         </div>
       </div>

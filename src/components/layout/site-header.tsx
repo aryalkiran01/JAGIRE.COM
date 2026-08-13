@@ -50,8 +50,18 @@ type FeatureLink = {
 };
 
 const FEATURE_LINKS: FeatureLink[] = [
-  { to: "/resume-scanner", label: "Resume Scanner", icon: ScanText, desc: "AI-powered ATS scoring" },
-  { to: "/resume-builder", label: "Resume Builder", icon: FileText, desc: "Build polished resumes" },
+  {
+    to: "/resume-scanner",
+    label: "Resume Scanner",
+    icon: ScanText,
+    desc: "AI-powered ATS scoring",
+  },
+  {
+    to: "/resume-builder",
+    label: "Resume Builder",
+    icon: FileText,
+    desc: "Build polished resumes",
+  },
   { to: "/interviews", label: "Interview Prep", icon: Video, desc: "Practice & schedule" },
   { to: "/applications", label: "Job Tracker", icon: Target, desc: "Track applications" },
   { to: "/saved", label: "Saved Jobs", icon: Bookmark, desc: "Your bookmarked roles" },
@@ -120,7 +130,9 @@ export function SiteHeader() {
       )
       .subscribe();
 
-    return () => { void supabase.removeChannel(channel); };
+    return () => {
+      void supabase.removeChannel(channel);
+    };
   }, [user?.id, qc]);
 
   const dashPath = role === "admin" ? "/admin" : role === "employer" ? "/employer" : "/dashboard";
@@ -130,8 +142,7 @@ export function SiteHeader() {
     navigate({ to: "/" });
   };
 
-  const isActive = (to: string) =>
-    currentPath === to || (to !== "/" && currentPath.startsWith(to));
+  const isActive = (to: string) => currentPath === to || (to !== "/" && currentPath.startsWith(to));
 
   return (
     <header
@@ -145,7 +156,11 @@ export function SiteHeader() {
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2 shrink-0 group">
           <div className="relative">
-            <img src="/Jagire-logo.png" alt="Jagire" className="h-9 w-auto transition-transform group-hover:scale-105" />
+            <img
+              src="/Jagire-logo.png"
+              alt="Jagire"
+              className="h-9 w-auto transition-transform group-hover:scale-105"
+            />
           </div>
           <span className="text-xl font-bold gradient-text tracking-tight">Jagire</span>
         </Link>
@@ -232,44 +247,81 @@ export function SiteHeader() {
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
-                    <Link to={dashPath}><LayoutDashboard className="mr-2 h-4 w-4" />Dashboard</Link>
+                    <Link to={dashPath}>
+                      <LayoutDashboard className="mr-2 h-4 w-4" />
+                      Dashboard
+                    </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link to="/profile"><User className="mr-2 h-4 w-4" />Profile</Link>
+                    <Link to="/profile">
+                      <User className="mr-2 h-4 w-4" />
+                      Profile
+                    </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link to="/resume-scanner"><ScanText className="mr-2 h-4 w-4" />Resume Scanner</Link>
+                    <Link to="/resume-scanner">
+                      <ScanText className="mr-2 h-4 w-4" />
+                      Resume Scanner
+                    </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link to="/resume-builder"><FileText className="mr-2 h-4 w-4" />Resume Builder</Link>
+                    <Link to="/resume-builder">
+                      <FileText className="mr-2 h-4 w-4" />
+                      Resume Builder
+                    </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link to="/interviews"><Video className="mr-2 h-4 w-4" />Interviews</Link>
+                    <Link to="/interviews">
+                      <Video className="mr-2 h-4 w-4" />
+                      Interviews
+                    </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link to="/saved"><Bookmark className="mr-2 h-4 w-4" />Saved Jobs</Link>
+                    <Link to="/saved">
+                      <Bookmark className="mr-2 h-4 w-4" />
+                      Saved Jobs
+                    </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link to="/messages"><MessageSquare className="mr-2 h-4 w-4" />Messages</Link>
+                    <Link to="/messages">
+                      <MessageSquare className="mr-2 h-4 w-4" />
+                      Messages
+                    </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link to="/assessments"><GraduationCap className="mr-2 h-4 w-4" />Assessments</Link>
+                    <Link to="/assessments">
+                      <GraduationCap className="mr-2 h-4 w-4" />
+                      Assessments
+                    </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link to="/learn"><BookOpen className="mr-2 h-4 w-4" />Learning Center</Link>
+                    <Link to="/learn">
+                      <BookOpen className="mr-2 h-4 w-4" />
+                      Learning Center
+                    </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link to="/feed"><Rss className="mr-2 h-4 w-4" />Feed</Link>
+                    <Link to="/feed">
+                      <Rss className="mr-2 h-4 w-4" />
+                      Feed
+                    </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link to="/referrals"><Gift className="mr-2 h-4 w-4" />Refer & Earn</Link>
+                    <Link to="/referrals">
+                      <Gift className="mr-2 h-4 w-4" />
+                      Refer & Earn
+                    </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link to="/blog-editor"><Pencil className="mr-2 h-4 w-4" />Write Blog</Link>
+                    <Link to="/blog-editor">
+                      <Pencil className="mr-2 h-4 w-4" />
+                      Write Blog
+                    </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleSignOut}>
-                    <LogOut className="mr-2 h-4 w-4" />Sign out
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Sign out
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -279,8 +331,13 @@ export function SiteHeader() {
               <Button variant="ghost" asChild>
                 <Link to="/auth">Sign in</Link>
               </Button>
-              <Button asChild className="gradient-brand text-primary-foreground hover:opacity-90 shadow-sm">
-                <Link to="/auth" search={{ mode: "signup" }}>Get started</Link>
+              <Button
+                asChild
+                className="gradient-brand text-primary-foreground hover:opacity-90 shadow-sm"
+              >
+                <Link to="/auth" search={{ mode: "signup" }}>
+                  Get started
+                </Link>
               </Button>
             </div>
           )}
@@ -326,10 +383,16 @@ export function SiteHeader() {
                 {!user && (
                   <div className="pt-4 space-y-2">
                     <Button variant="outline" className="w-full" asChild>
-                      <Link to="/auth" onClick={() => setMobileOpen(false)}>Sign in</Link>
+                      <Link to="/auth" onClick={() => setMobileOpen(false)}>
+                        Sign in
+                      </Link>
                     </Button>
                     <Button className="w-full gradient-brand text-primary-foreground" asChild>
-                      <Link to="/auth" search={{ mode: "signup" }} onClick={() => setMobileOpen(false)}>
+                      <Link
+                        to="/auth"
+                        search={{ mode: "signup" }}
+                        onClick={() => setMobileOpen(false)}
+                      >
                         Get started
                       </Link>
                     </Button>
@@ -344,7 +407,15 @@ export function SiteHeader() {
   );
 }
 
-function NavLink({ to, children, active }: { to: string; children: React.ReactNode; active: boolean }) {
+function NavLink({
+  to,
+  children,
+  active,
+}: {
+  to: string;
+  children: React.ReactNode;
+  active: boolean;
+}) {
   return (
     <Link
       to={to}

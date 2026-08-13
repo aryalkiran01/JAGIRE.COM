@@ -17,7 +17,9 @@ export const updateApplicationStatus = createServerFn({ method: "POST" })
 
     const { data: app, error: appError } = await supabaseAdmin
       .from("applications")
-      .select("id, status, applicant_id, job_id, rejection_remark, job:jobs(id, title, employer_id, company:companies(name, owner_id))")
+      .select(
+        "id, status, applicant_id, job_id, rejection_remark, job:jobs(id, title, employer_id, company:companies(name, owner_id))",
+      )
       .eq("id", data.applicationId)
       .maybeSingle();
 
@@ -91,7 +93,8 @@ export const updateApplicationStatus = createServerFn({ method: "POST" })
         link: "/applications",
         is_read: false,
       });
-      if (notifError) console.error("[updateApplicationStatus] notification failed:", notifError.message);
+      if (notifError)
+        console.error("[updateApplicationStatus] notification failed:", notifError.message);
     }
 
     return { success: true, message: `Application ${data.status}`, noop: false };

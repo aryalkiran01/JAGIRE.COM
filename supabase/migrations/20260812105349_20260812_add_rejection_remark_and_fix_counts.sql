@@ -3,9 +3,7 @@ ALTER TABLE applications
   ADD COLUMN IF NOT EXISTS rejection_remark text;
 
 -- Dedup index on notifications (same user, type, metadata while unread)
-CREATE UNIQUE INDEX IF NOT EXISTS notifications_dedup_idx
-  ON notifications (user_id, type, md5(coalesce(metadata::text, '')))
-  WHERE read = false;
+
 
 -- Fix applications_count: recompute function + triggers
 CREATE OR REPLACE FUNCTION recompute_job_applications_count(job_uuid uuid)

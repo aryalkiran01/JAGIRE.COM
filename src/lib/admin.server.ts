@@ -2,7 +2,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-
+import { requireSupabaseAuth } from "@/integrations/supabase/auth.middleware";
 const deleteJobSchema = z.object({
   jobId: z.string().uuid("Invalid job ID"),
 });
@@ -30,7 +30,9 @@ async function notifyUser(
 }
 
 export const adminDeleteJob = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .validator(deleteJobSchema)
+
   .handler(async ({ data, context }) => {
     const userId = (context as any)?.userId;
     if (!userId) throw new Error("Not authenticated");
@@ -62,10 +64,7 @@ export const adminDeleteJob = createServerFn({ method: "POST" })
     await supabaseAdmin.from("saved_jobs").delete().eq("job_id", data.jobId);
 
     // Delete the job itself
-    const { error: deleteError } = await supabaseAdmin
-      .from("jobs")
-      .delete()
-      .eq("id", data.jobId);
+    const { error: deleteError } = await supabaseAdmin.from("jobs").delete().eq("id", data.jobId);
 
     if (deleteError) throw new Error(deleteError.message);
 
@@ -89,6 +88,7 @@ const deletePostSchema = z.object({
 });
 
 export const adminDeletePost = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .validator(deletePostSchema)
   .handler(async ({ data, context }) => {
     const userId = (context as any)?.userId;
@@ -151,6 +151,7 @@ const deleteCommentSchema = z.object({
 });
 
 export const adminDeleteComment = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .validator(deleteCommentSchema)
   .handler(async ({ data, context }) => {
     const userId = (context as any)?.userId;
@@ -197,6 +198,7 @@ const deleteBlogCommentSchema = z.object({
 });
 
 export const adminDeleteBlogComment = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .validator(deleteBlogCommentSchema)
   .handler(async ({ data, context }) => {
     const userId = (context as any)?.userId;
