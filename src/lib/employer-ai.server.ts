@@ -278,7 +278,7 @@ export const runEmployerAiFeature = createServerFn({ method: "POST" })
         .maybeSingle();
       if (company?.id) {
         const embRes = await aiGenerateEmbedding(data.message);
-        const { data: chunks } = await supabaseAdmin.rpc("search_knowledge_base", {
+        const { data: chunks } = await (supabaseAdmin as any).rpc("search_knowledge_base", {
           query_embedding: embRes.embedding,
           match_company_id: company.id,
           match_limit: 5,
@@ -309,9 +309,11 @@ export const runEmployerAiFeature = createServerFn({ method: "POST" })
       "general",
     );
 
+    const serializableResult = JSON.parse(JSON.stringify(result)) as Record<string, any>;
+
     return {
-      response: result as Record<string, unknown>,
-      structured: result as Record<string, unknown>,
+      response: serializableResult,
+      structured: serializableResult,
       featureTitle: feature.title,
     };
   });

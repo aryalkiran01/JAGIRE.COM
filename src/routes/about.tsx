@@ -77,17 +77,6 @@ function AboutPage() {
           </div>
         </div>
       </section>
-
-      {/* Stats */}
-      <section className="container mx-auto px-4 py-12">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-          <StatBox icon={Briefcase} value="5,000+" label="Active jobs" />
-          <StatBox icon={Building2} value="500+" label="Companies" />
-          <StatBox icon={Users} value="10,000+" label="Candidates" />
-          <StatBox icon={Award} value="98%" label="Match accuracy" />
-        </div>
-      </section>
-
       {/* Mission & Vision */}
       <section className="container mx-auto px-4 py-20">
         <div className="grid md:grid-cols-2 gap-8">
@@ -301,7 +290,7 @@ function AboutPage() {
       </section>
 
       {/* Testimonials */}
-      <section className="container mx-auto px-4 py-20">
+      {/* <section className="container mx-auto px-4 py-20">
         <div className="text-center mb-14">
           <h2 className="text-4xl font-bold mb-3">What people say about Jagire</h2>
         </div>
@@ -337,7 +326,7 @@ function AboutPage() {
             </Card>
           ))}
         </div>
-      </section>
+      </section> */}
 
       {/* CTA */}
       <section className="container mx-auto px-4 py-20">

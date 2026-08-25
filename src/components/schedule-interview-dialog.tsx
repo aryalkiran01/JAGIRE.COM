@@ -176,7 +176,9 @@ export function ScheduleInterviewDialog({
     onError: (e: any) => {
       const msg = e.message ?? "";
       if (msg.includes("GOOGLE_CALENDAR_RECONNECT_REQUIRED")) {
-        toast.error("Your Google Calendar connection has expired. Please reconnect Google Calendar.");
+        toast.error(
+          "Your Google Calendar connection has expired. Please reconnect Google Calendar.",
+        );
         qc.invalidateQueries({ queryKey: ["gcal-status"] });
       } else {
         toast.error(msg);
@@ -287,11 +289,7 @@ export function ScheduleInterviewDialog({
                 Your Google Calendar connection has expired. Please reconnect to continue using
                 automatic Google Meet links.
               </p>
-              <Button
-                size="sm"
-                onClick={() => connect.mutate()}
-                disabled={connect.isPending}
-              >
+              <Button size="sm" onClick={() => connect.mutate()} disabled={connect.isPending}>
                 {connect.isPending ? (
                   <Loader2 className="h-4 w-4 mr-1 animate-spin" />
                 ) : (
@@ -440,10 +438,7 @@ export function ScheduleInterviewDialog({
             </Button>
             <Button
               onClick={() => schedule.mutate()}
-              disabled={
-                schedule.isPending ||
-                (meetingType === "google_meet" && !gcalConnected)
-              }
+              disabled={schedule.isPending || (meetingType === "google_meet" && !gcalConnected)}
             >
               {schedule.isPending ? (
                 <Loader2 className="h-4 w-4 mr-1 animate-spin" />
