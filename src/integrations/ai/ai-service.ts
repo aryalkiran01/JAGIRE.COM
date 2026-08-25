@@ -2,7 +2,7 @@
 import { z } from "zod";
 import { AIProvider, AIRequest, AIEmbeddingRequest, AIEmbeddingResponse, AITask } from "./types";
 import { GeminiProvider } from "./gemini-provider";
-import { OpenRouterProvider } from "./openrouter-provider";
+// import { OpenRouterProvider } from "./openrouter-provider";
 import { OllamaProvider } from "./ollama-provider";
 import { isTransient, isFatal } from "./errors";
 import { AITransientError } from "./types";
@@ -39,18 +39,18 @@ function getConfiguredProviderOrder(): AIProvider[] {
     case "gemini":
     default:
       if (process.env.GEMINI_API_KEY) list.push(new GeminiProvider());
-      if (process.env.OPENROUTER_API_KEY) list.push(new OpenRouterProvider());
+      // if (process.env.OPENROUTER_API_KEY) list.push(new OpenRouterProvider());
       if (process.env.OLLAMA_HOST) list.push(new OllamaProvider());
       break;
     case "openrouter":
-      if (process.env.OPENROUTER_API_KEY) list.push(new OpenRouterProvider());
+      // if (process.env.OPENROUTER_API_KEY) list.push(new OpenRouterProvider());
       if (process.env.GEMINI_API_KEY) list.push(new GeminiProvider());
       if (process.env.OLLAMA_HOST) list.push(new OllamaProvider());
       break;
     case "ollama":
       list.push(new OllamaProvider());
       if (process.env.GEMINI_API_KEY) list.push(new GeminiProvider());
-      if (process.env.OPENROUTER_API_KEY) list.push(new OpenRouterProvider());
+      // if (process.env.OPENROUTER_API_KEY) list.push(new OpenRouterProvider());
       break;
   }
   return list;

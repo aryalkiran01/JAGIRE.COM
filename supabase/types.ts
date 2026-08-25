@@ -1537,9 +1537,9 @@ export type Database = {
           responsibilities: Json | null;
           salary_currency: string | null;
           salary_max: number | null;
-          salary_max_usd: number | null;
+          salary_max_npr: number | null;
           salary_min: number | null;
-          salary_min_usd: number | null;
+          salary_min_npr: number | null;
           skills: string[];
           skills_required: Json | null;
           slug: string | null;
@@ -1577,9 +1577,9 @@ export type Database = {
           responsibilities?: Json | null;
           salary_currency?: string | null;
           salary_max?: number | null;
-          salary_max_usd?: number | null;
+          salary_max_npr?: number | null;
           salary_min?: number | null;
-          salary_min_usd?: number | null;
+          salary_min_npr?: number | null;
           skills?: string[];
           skills_required?: Json | null;
           slug?: string | null;
@@ -1617,9 +1617,9 @@ export type Database = {
           responsibilities?: Json | null;
           salary_currency?: string | null;
           salary_max?: number | null;
-          salary_max_usd?: number | null;
+          salary_max_npr?: number | null;
           salary_min?: number | null;
-          salary_min_usd?: number | null;
+          salary_min_npr?: number | null;
           skills?: string[];
           skills_required?: Json | null;
           slug?: string | null;
@@ -2435,7 +2435,7 @@ export type Database = {
           email: string | null;
           employment_type_preference: string | null;
           expected_salary: number | null;
-          expected_salary_usd: number | null;
+          expected_salary_npr: number | null;
           experience: Json | null;
           experience_years: number | null;
           followers_count: number | null;
@@ -2496,7 +2496,7 @@ export type Database = {
           email?: string | null;
           employment_type_preference?: string | null;
           expected_salary?: number | null;
-          expected_salary_usd?: number | null;
+          expected_salary_npr?: number | null;
           experience?: Json | null;
           experience_years?: number | null;
           followers_count?: number | null;
@@ -2557,7 +2557,7 @@ export type Database = {
           email?: string | null;
           employment_type_preference?: string | null;
           expected_salary?: number | null;
-          expected_salary_usd?: number | null;
+          expected_salary_npr?: number | null;
           experience?: Json | null;
           experience_years?: number | null;
           followers_count?: number | null;
@@ -3048,7 +3048,7 @@ export type Database = {
           email: string | null;
           employment_type_preference: string | null;
           expected_salary: number | null;
-          expected_salary_usd: number | null;
+          expected_salary_npr: number | null;
           experience: Json | null;
           experience_years: number | null;
           followers_count: number | null;

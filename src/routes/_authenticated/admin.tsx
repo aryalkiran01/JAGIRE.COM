@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
 import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -57,7 +58,6 @@ import { deleteJobAsAdmin } from "@/lib/application.service";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useServerFn } from "@tanstack/react-start";
 import { adminDeleteJob } from "@/lib/admin.server";
 
 export const Route = createFileRoute("/_authenticated/admin")({ component: Admin });
@@ -66,6 +66,12 @@ function roleColor(role: string) {
   if (role === "admin") return "destructive";
   if (role === "employer") return "default";
   return "secondary";
+}
+
+type UserRole = NonNullable<Database["public"]["Tables"]["user_roles"]["Update"]["role"]>;
+
+function isUserRole(value: string): value is UserRole {
+  return ["seeker", "employer", "admin", "job_seeker"].includes(value);
 }
 
 function Admin() {
@@ -170,7 +176,7 @@ function Admin() {
   });
 
   const changeRole = useMutation({
-    mutationFn: async ({ userId, newRole }: { userId: string; newRole: string }) => {
+    mutationFn: async ({ userId, newRole }: { userId: string; newRole: UserRole }) => {
       const { error } = await supabase
         .from("user_roles")
         .update({ role: newRole })
@@ -224,28 +230,10 @@ function Admin() {
       toast.success("Company deleted");
       qc.invalidateQueries({ queryKey: ["admin-companies", "admin-stats"] });
     },
-  const deleteJobFn = useServerFn(deleteJobAsAdmin);
-  const deleteJob = async (id: string) => {
-    try {
-      await deleteJobFn({ data: { jobId: id } });
-      toast.success("Job post removed");
-      await qc.invalidateQueries({ queryKey: ["admin-jobs"] });
-      await qc.invalidateQueries({ queryKey: ["admin-stats"] });
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Unable to remove job post");
-    }
-  };
-
     onError: (e: any) => toast.error(e.message),
   });
 
-  const setJobStatus = async (id: string, status: "active" | "closed" | "draft") => {
-    const { error } = await supabase.from("jobs").update({ status }).eq("id", id);
-    if (error) return toast.error(error.message);
-    toast.success("Updated");
-    qc.invalidateQueries({ queryKey: ["admin-jobs"] });
-  };
-
+  // Remove the duplicate deleteJob function and just keep the mutation version
   const deleteJob = useMutation({
     mutationFn: async (jobId: string) => {
       const res = await adminDeleteJob({ data: { jobId } });
@@ -259,6 +247,12 @@ function Admin() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const setJobStatus = async (id: string, status: "active" | "closed" | "draft") => {
+    const { error } = await supabase.from("jobs").update({ status }).eq("id", id);
+    if (error) return toast.error(error.message);
+    toast.success("Updated");
+    qc.invalidateQueries({ queryKey: ["admin-jobs"] });
+  };
   const replyTicket = async (
     id: string,
     reply: string,
@@ -381,7 +375,9 @@ function Admin() {
                         <Select
                           value={u.role}
                           onValueChange={(newRole) => {
-                            if (newRole !== u.role) changeRole.mutate({ userId: u.id, newRole });
+                            if (newRole !== u.role && isUserRole(newRole)) {
+                              changeRole.mutate({ userId: u.id, newRole });
+                            }
                           }}
                         >
                           <SelectTrigger className="w-32 h-8 text-xs">
@@ -546,10 +542,20 @@ function Admin() {
                     </div>
                     <Badge>{j.status}</Badge>
                     <div className="flex items-center gap-2">
-                      <Button size="sm" variant="outline" onClick={() => setJobStatus(j.id, j.status === "active" ? "closed" : "active")}>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                          setJobStatus(j.id, j.status === "active" ? "closed" : "active")
+                        }
+                      >
                         {j.status === "active" ? "Close" : "Activate"}
                       </Button>
-                      <ConfirmDelete label="Delete job" description={`Permanently remove “${j.title}” and its applications?`} onConfirm={() => void deleteJob(j.id)} />
+                      <ConfirmDelete
+                        label="Delete job"
+                        description={`Permanently remove “${j.title}” and its applications?`}
+                        onConfirm={() => deleteJob.mutate(j.id)}
+                      />
                     </div>
                     <ConfirmDelete
                       label="Delete job"
@@ -825,7 +831,6 @@ function AdminTicket({
   );
 }
 
-// ============================================================
 // Admin Subscriptions management
 // ============================================================
 const SUB_PLANS = [
@@ -886,7 +891,10 @@ function AdminSubscriptions() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: async (payload: { id: string; updates: Record<string, unknown> }) => {
+    mutationFn: async (payload: {
+      id: string;
+      updates: Database["public"]["Tables"]["subscriptions"]["Update"];
+    }) => {
       const { error } = await supabase
         .from("subscriptions")
         .update(payload.updates)

@@ -37,7 +37,13 @@ const FULL_SCAN_SYSTEM =
   "- suggested_projects: array of 4 objects {title, description}\n" +
   "- recommended_jobs: array of 5 objects {title, why}\n" +
   "- companies_hiring: array of 5 objects {name, sector}\n" +
-  "- salary_prediction: object {low, mid, high, currency} or null\n" +
+  "- salary_prediction: {\n" +
+  "    low: number (monthly NPR),\n" +
+  "    mid: number (monthly NPR),\n" +
+  "    high: number (monthly NPR),\n" +
+  "    currency: 'NPR'\n" +
+  "  } or null\n" +
+  "Always display salary in NPR / Rs. (e.g. Rs. 50,000/month). Never use dollars.\n" +
   "- resume_improvements: array of 8 strings\n" +
   "- interview_prep_plan: object {thirty_days[], sixty_days[], ninety_days[], one_eighty_days[]} or null\n\n" +
   "Return ONLY the JSON. No markdown, no explanations.";
