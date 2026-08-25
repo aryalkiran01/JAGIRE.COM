@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -52,6 +53,7 @@ import {
   Circle as XCircle,
   Loader as Loader2,
 } from "lucide-react";
+import { deleteJobAsAdmin } from "@/lib/application.service";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -222,6 +224,18 @@ function Admin() {
       toast.success("Company deleted");
       qc.invalidateQueries({ queryKey: ["admin-companies", "admin-stats"] });
     },
+  const deleteJobFn = useServerFn(deleteJobAsAdmin);
+  const deleteJob = async (id: string) => {
+    try {
+      await deleteJobFn({ data: { jobId: id } });
+      toast.success("Job post removed");
+      await qc.invalidateQueries({ queryKey: ["admin-jobs"] });
+      await qc.invalidateQueries({ queryKey: ["admin-stats"] });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to remove job post");
+    }
+  };
+
     onError: (e: any) => toast.error(e.message),
   });
 
@@ -531,15 +545,12 @@ function Admin() {
                       </div>
                     </div>
                     <Badge>{j.status}</Badge>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() =>
-                        setJobStatus(j.id, j.status === "active" ? "closed" : "active")
-                      }
-                    >
-                      {j.status === "active" ? "Close" : "Activate"}
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Button size="sm" variant="outline" onClick={() => setJobStatus(j.id, j.status === "active" ? "closed" : "active")}>
+                        {j.status === "active" ? "Close" : "Activate"}
+                      </Button>
+                      <ConfirmDelete label="Delete job" description={`Permanently remove “${j.title}” and its applications?`} onConfirm={() => void deleteJob(j.id)} />
+                    </div>
                     <ConfirmDelete
                       label="Delete job"
                       description={`Permanently delete "${j.title}"? All applications and interviews for this job will also be removed.`}

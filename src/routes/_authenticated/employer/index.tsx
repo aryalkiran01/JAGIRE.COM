@@ -54,10 +54,10 @@ function EmployerDashboard() {
       (
         await supabase
           .from("jobs")
-          .select("*")
+          .select("*, applications(id)")
           .eq("company_id", company!.id)
           .order("created_at", { ascending: false })
-      ).data ?? [],
+      ).data?.map((job: any) => ({ ...job, applications_count: Array.isArray(job.applications) ? job.applications.length : 0 })) ?? [],
   });
 
   const jobIds = (jobs ?? []).map((j) => j.id);
