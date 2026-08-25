@@ -197,21 +197,40 @@ const FEATURE_CONFIGS: Record<string, FeatureConfig> = {
 async function buildJobSeekerContext(supabase: any, userId: string): Promise<string> {
   const ctx: string[] = [];
 
-  const [{ data: profile }, { data: resume }] = await Promise.all([
-    supabase
-      .from("profiles")
-      .select(
-        "full_name,headline,bio,location,experience_years,current_position,skills,education,experience",
-      )
-      .eq("id", userId)
-      .maybeSingle(),
-    supabase
-      .from("resumes")
-      .select("overall_score,ats_score,parsed_data,career_roadmap")
-      .eq("user_id", userId)
-      .eq("is_default", true)
-      .maybeSingle(),
-  ]);
+  const [{ data: profile }, { data: resume }, { data: applications }, { data: savedJobs }, { data: activeJobs }] =
+    await Promise.all([
+      supabase
+        .from("profiles")
+        .select(
+          "full_name,headline,bio,location,experience_years,current_position,skills,education,experience",
+        )
+        .eq("id", userId)
+        .maybeSingle(),
+      supabase
+        .from("resumes")
+        .select("overall_score,ats_score,parsed_data,career_roadmap")
+        .eq("user_id", userId)
+        .eq("is_default", true)
+        .maybeSingle(),
+      supabase
+        .from("applications")
+        .select("status, job:jobs(title)")
+        .eq("applicant_id", userId)
+        .limit(10),
+      supabase
+        .from("saved_jobs")
+        .select("job:jobs(id,title)")
+        .eq("user_id", userId)
+        .limit(5),
+      supabase
+        .from("jobs")
+        .select(
+          "id,title,required_skills,salary_min,salary_max,location,job_type, company:companies(name)",
+        )
+        .eq("status", "active")
+        .order("created_at", { ascending: false })
+        .limit(20),
+    ]);
 
   if (profile) {
     ctx.push(`## User Profile\n${JSON.stringify(profile)}`);
@@ -232,11 +251,6 @@ async function buildJobSeekerContext(supabase: any, userId: string): Promise<str
     );
   }
 
-  const { data: applications } = await supabase
-    .from("applications")
-    .select("status, job:jobs(title)")
-    .eq("seeker_id", userId)
-    .limit(10);
   if (applications?.length) {
     ctx.push(
       `## Recent Applications\n${applications
@@ -245,23 +259,10 @@ async function buildJobSeekerContext(supabase: any, userId: string): Promise<str
     );
   }
 
-  const { data: savedJobs } = await supabase
-    .from("saved_jobs")
-    .select("job:jobs(id,title)")
-    .eq("user_id", userId)
-    .limit(5);
   if (savedJobs?.length) {
     ctx.push(`## Saved Jobs\n${savedJobs.map((s: any) => `- ${s.job?.title}`).join("\n")}`);
   }
 
-  const { data: activeJobs } = await supabase
-    .from("jobs")
-    .select(
-      "id,title,required_skills,salary_min,salary_max,location,job_type, company:companies(name)",
-    )
-    .eq("status", "active")
-    .order("created_at", { ascending: false })
-    .limit(20);
   if (activeJobs?.length) {
     ctx.push(
       `## Active Jobs (sample)\n${activeJobs

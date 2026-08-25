@@ -5,10 +5,14 @@ import { GeminiProvider } from "./gemini-provider";
 import { OpenRouterProvider } from "./openrouter-provider";
 import { OllamaProvider } from "./ollama-provider";
 import { isTransient, isFatal } from "./errors";
+import { AITransientError } from "./types";
 
-const MAX_RETRIES = 3;
-const BACKOFF_BASE_MS = 1000;
+const MAX_RETRIES = 2;
+const BACKOFF_BASE_MS = 500;
 const VALIDATION_RETRY_LIMIT = 1;
+const CACHE_TTL_MS = 5 * 60 * 1000;
+const MAX_CACHE_ENTRIES = 200;
+const OLLAMA_FAST_FAIL_TIMEOUT_MS = 3_000;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -29,10 +33,11 @@ function log(
 }
 
 function getConfiguredProviderOrder(): AIProvider[] {
-  const declared = process.env.AI_PROVIDER?.toLowerCase() ?? "ollama";
+  const declared = process.env.AI_PROVIDER?.toLowerCase() ?? "gemini";
   const list: AIProvider[] = [];
   switch (declared) {
     case "gemini":
+    default:
       if (process.env.GEMINI_API_KEY) list.push(new GeminiProvider());
       if (process.env.OPENROUTER_API_KEY) list.push(new OpenRouterProvider());
       if (process.env.OLLAMA_HOST) list.push(new OllamaProvider());
@@ -43,7 +48,6 @@ function getConfiguredProviderOrder(): AIProvider[] {
       if (process.env.OLLAMA_HOST) list.push(new OllamaProvider());
       break;
     case "ollama":
-    default:
       list.push(new OllamaProvider());
       if (process.env.GEMINI_API_KEY) list.push(new GeminiProvider());
       if (process.env.OPENROUTER_API_KEY) list.push(new OpenRouterProvider());
@@ -108,6 +112,34 @@ async function retryWithBackoff<T>(
   throw lastError;
 }
 
+interface CacheEntry {
+  value: unknown;
+  expires: number;
+}
+const responseCache = new Map<string, CacheEntry>();
+
+function cacheKey(req: AIRequest): string {
+  return `${req.task ?? "general"}:${req.model ?? "default"}:${req.prompt}`;
+}
+
+function getCached(key: string): unknown | undefined {
+  const entry = responseCache.get(key);
+  if (!entry) return undefined;
+  if (Date.now() > entry.expires) {
+    responseCache.delete(key);
+    return undefined;
+  }
+  return entry.value;
+}
+
+function setCached(key: string, value: unknown): void {
+  if (responseCache.size >= MAX_CACHE_ENTRIES) {
+    const oldestKey = responseCache.keys().next().value;
+    if (oldestKey) responseCache.delete(oldestKey);
+  }
+  responseCache.set(key, { value, expires: Date.now() + CACHE_TTL_MS });
+}
+
 class AIServiceImpl {
   private providers: AIProvider[];
   private providerIndex = 0;
@@ -121,11 +153,25 @@ class AIServiceImpl {
   }
 
   async generateText(req: AIRequest): Promise<string> {
-    return this.executeWithFallback((p) => p.generateText(req), "generateText", req);
+    const key = cacheKey(req);
+    const cached = getCached(key);
+    if (cached !== undefined) return cached as string;
+    const result = await this.executeWithFallback((p) => p.generateText(req), "generateText", req);
+    setCached(key, result);
+    return result;
   }
 
   async generateJson<T>(req: AIRequest): Promise<T> {
-    return this.executeWithFallback((p) => p.generateJson<T>(req), "generateJson", req);
+    const key = cacheKey(req);
+    const cached = getCached(key);
+    if (cached !== undefined) return cached as T;
+    const result = await this.executeWithFallback(
+      (p) => p.generateJson<T>(req),
+      "generateJson",
+      req,
+    );
+    setCached(key, result);
+    return result;
   }
 
   async generateJsonValidated<T>(req: AIRequest, schema: z.ZodType<T>): Promise<T> {
@@ -269,7 +315,7 @@ class AIServiceImpl {
 
               // If provider is known, create a more specific search
               let url = item.url || "";
-              if (!url || url.includes("google.com/search?q=") === false) {
+              if (!url || !url.includes("google.com/search?q=")) {
                 if (item.provider?.toLowerCase().includes("udemy")) {
                   url = `https://www.udemy.com/courses/search/?q=${encodeURIComponent(item.title || item.skills?.[0] || "")}`;
                 } else if (item.provider?.toLowerCase().includes("youtube")) {
@@ -370,14 +416,29 @@ class AIServiceImpl {
     for (let i = 0; i < this.providers.length; i++) {
       const idx = (this.providerIndex + i) % this.providers.length;
       const provider = this.providers[idx];
+
+      // Fast-fail: if Ollama is not the primary and a cloud provider is available,
+      // don't wait for Ollama's long timeout — give it a short window.
+      const isOllamaFallback =
+        provider.name === "ollama" && idx !== this.providerIndex && this.providers.length > 1;
+
       try {
-        log("info", `Trying provider ${provider.name} for ${label}`, {
-          provider: provider.name,
-          label,
-          task: req.task ?? "general",
-          promptLength: req.prompt.length,
-        });
-        const result = await retryWithBackoff(provider, fn, `${label}:${provider.name}`);
+        const result = await retryWithBackoff(
+          provider,
+          isOllamaFallback
+            ? (p) =>
+                Promise.race([
+                  fn(p),
+                  new Promise<never>((_, reject) =>
+                    setTimeout(
+                      () => reject(new AITransientError("Ollama fast-fail timeout", 408)),
+                      OLLAMA_FAST_FAIL_TIMEOUT_MS,
+                    ),
+                  ),
+                ])
+            : fn,
+          `${label}:${provider.name}`,
+        );
         this.providerIndex = idx;
         return result;
       } catch (err) {
@@ -386,7 +447,7 @@ class AIServiceImpl {
           throw err;
         }
         if (i < this.providers.length - 1) {
-          log("warn", `Provider ${provider.name} failed — falling back to next provider`, {
+          log("warn", `Provider ${provider.name} failed — falling back`, {
             provider: provider.name,
             nextProvider: this.providers[(idx + 1) % this.providers.length].name,
             error: (err as Error).message,

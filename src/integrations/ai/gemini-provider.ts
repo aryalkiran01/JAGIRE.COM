@@ -3,6 +3,7 @@ import { classifyError, safeJsonParse } from "./errors";
 
 const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models";
 const DEFAULT_MODEL = "gemini-2.0-flash";
+const GEMINI_TIMEOUT_MS = 25_000;
 
 function apiKey(): string {
   const key = process.env.GEMINI_API_KEY;
@@ -25,12 +26,19 @@ export class GeminiProvider implements AIProvider {
 
     let res: Response;
     try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
       res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
+        signal: controller.signal,
       });
+      clearTimeout(timer);
     } catch (e) {
+      if ((e as Error).name === "AbortError") {
+        throw classifyError(408, "Gemini request timed out", e);
+      }
       throw classifyError(undefined, (e as Error).message, e);
     }
 
@@ -58,12 +66,19 @@ export class GeminiProvider implements AIProvider {
 
     let res: Response;
     try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
       res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
+        signal: controller.signal,
       });
+      clearTimeout(timer);
     } catch (e) {
+      if ((e as Error).name === "AbortError") {
+        throw classifyError(408, "Gemini request timed out", e);
+      }
       throw classifyError(undefined, (e as Error).message, e);
     }
 

@@ -2,7 +2,8 @@ import { AIProvider, AIRequest } from "./types";
 import { classifyError, safeJsonParse } from "./errors";
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
-const DEFAULT_MODEL = "google/gemma-4-31b-it:free";
+const DEFAULT_MODEL = "google/gemini-2.0-flash-exp:free";
+const OPENROUTER_TIMEOUT_MS = 30_000;
 
 function apiKey(): string {
   const key = process.env.OPENROUTER_API_KEY;
@@ -23,6 +24,8 @@ export class OpenRouterProvider implements AIProvider {
 
     let res: Response;
     try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), OPENROUTER_TIMEOUT_MS);
       res = await fetch(OPENROUTER_URL, {
         method: "POST",
         headers: {
@@ -35,8 +38,13 @@ export class OpenRouterProvider implements AIProvider {
           stream: false,
           reasoning: { enabled: true },
         }),
+        signal: controller.signal,
       });
+      clearTimeout(timer);
     } catch (e) {
+      if ((e as Error).name === "AbortError") {
+        throw classifyError(408, "OpenRouter request timed out", e);
+      }
       throw classifyError(undefined, (e as Error).message, e);
     }
 
@@ -62,6 +70,8 @@ export class OpenRouterProvider implements AIProvider {
 
     let res: Response;
     try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), OPENROUTER_TIMEOUT_MS);
       res = await fetch(OPENROUTER_URL, {
         method: "POST",
         headers: {
@@ -75,8 +85,13 @@ export class OpenRouterProvider implements AIProvider {
           response_format: { type: "json_object" },
           reasoning: { enabled: true },
         }),
+        signal: controller.signal,
       });
+      clearTimeout(timer);
     } catch (e) {
+      if ((e as Error).name === "AbortError") {
+        throw classifyError(408, "OpenRouter request timed out", e);
+      }
       throw classifyError(undefined, (e as Error).message, e);
     }
 

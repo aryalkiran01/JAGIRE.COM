@@ -218,7 +218,10 @@ const FEATURE_CONFIGS: Record<string, FeatureConfig> = {
   },
 };
 
-async function buildEmployerContext(supabase: any, userId: string): Promise<string> {
+async function buildEmployerContext(
+  supabase: any,
+  userId: string,
+): Promise<{ context: string; companyId: string | null }> {
   const ctx: string[] = [];
   const { data: company } = await supabase
     .from("companies")
@@ -227,28 +230,30 @@ async function buildEmployerContext(supabase: any, userId: string): Promise<stri
     .maybeSingle();
   if (company) {
     ctx.push(`## Company\n${JSON.stringify(company)}`);
-    const { data: jobs } = await supabase
-      .from("jobs")
-      .select(
-        "id,title,status,required_skills,salary_min,salary_max,location,job_type,applications_count",
-      )
-      .eq("company_id", company.id)
-      .order("created_at", { ascending: false })
-      .limit(10);
+    const [{ data: jobs }, { data: apps }] = await Promise.all([
+      supabase
+        .from("jobs")
+        .select(
+          "id,title,status,required_skills,salary_min,salary_max,location,job_type,applications_count",
+        )
+        .eq("company_id", company.id)
+        .order("created_at", { ascending: false })
+        .limit(10),
+      supabase
+        .from("applications")
+        .select("id,status,created_at,applicant:profiles(full_name,headline,skills),job:jobs(title)")
+        .eq("job.company_id", company.id)
+        .order("created_at", { ascending: false })
+        .limit(15),
+    ]);
     if (jobs?.length) {
       ctx.push(`## Posted Jobs\n${JSON.stringify(jobs)}`);
     }
-    const { data: apps } = await supabase
-      .from("applications")
-      .select("id,status,created_at,applicant:profiles(full_name,headline,skills),job:jobs(title)")
-      .eq("job.company_id", company.id)
-      .order("created_at", { ascending: false })
-      .limit(15);
     if (apps?.length) {
       ctx.push(`## Recent Applications\n${JSON.stringify(apps)}`);
     }
   }
-  return ctx.join("\n\n");
+  return { context: ctx.join("\n\n"), companyId: company?.id ?? null };
 }
 
 export const runEmployerAiFeature = createServerFn({ method: "POST" })
@@ -267,20 +272,18 @@ export const runEmployerAiFeature = createServerFn({ method: "POST" })
     const config = FEATURE_CONFIGS[data.featureSlug];
     if (!config) throw new Error("AI feature not configured");
 
-    const employerContext = await buildEmployerContext(context.supabase, context.userId);
+    const { context: employerContext, companyId } = await buildEmployerContext(
+      context.supabase,
+      context.userId,
+    );
 
     let ragContext = "";
     try {
-      const { data: company } = await context.supabase
-        .from("companies")
-        .select("id")
-        .eq("owner_id", context.userId)
-        .maybeSingle();
-      if (company?.id) {
+      if (companyId) {
         const embRes = await aiGenerateEmbedding(data.message);
         const { data: chunks } = await supabaseAdmin.rpc("search_knowledge_base", {
           query_embedding: embRes.embedding,
-          match_company_id: company.id,
+          match_company_id: companyId,
           match_limit: 5,
         });
         if (chunks?.length) {

@@ -165,17 +165,8 @@ export const scanResumeFromStorage = createServerFn({ method: "POST" })
     let text = "";
     const parsedData = resume.parsed_data as Record<string, unknown> | null | undefined;
     const storedRawText = typeof parsedData?.raw_text === "string" ? parsedData.raw_text : "";
-    console.log("=== SCANNING RESUME ===");
-    console.log({
-      resumeId: resume.id,
-      title: (resume as any).title,
-      fileName: resume.file_name,
-      rawTextLength: storedRawText.length,
-      hasResumeData: !!resume.resume_data,
-    });
     if (storedRawText) {
       text = storedRawText;
-      console.log(`Using stored parsed_data text: ${text.length} characters`);
     }
     // If no stored text, try resume_data JSON
     else if (resume.resume_data) {
@@ -191,7 +182,6 @@ export const scanResumeFromStorage = createServerFn({ method: "POST" })
       ]
         .filter(Boolean)
         .join("\n");
-      console.log(`Extracted from resume_data JSON: ${text.length} characters`);
     }
     // If no stored text, try file extraction
     else if (resume.file_path) {
@@ -224,9 +214,7 @@ export const scanResumeFromStorage = createServerFn({ method: "POST" })
 
             extractedSuccessfully = text.trim().length >= 50;
 
-            if (extractedSuccessfully) {
-              console.log(`pdf-parse extracted ${text.length} characters successfully`);
-            } else {
+            if (!extractedSuccessfully) {
               console.warn(
                 `pdf-parse extracted only ${text.trim().length} characters, trying unpdf...`,
               );
@@ -244,9 +232,7 @@ export const scanResumeFromStorage = createServerFn({ method: "POST" })
               text = Array.isArray(out.text) ? out.text.join("\n") : (out.text as string);
               extractedSuccessfully = text?.trim().length >= 50;
 
-              if (extractedSuccessfully) {
-                console.log(`unpdf extracted ${text.length} characters successfully`);
-              } else {
+              if (!extractedSuccessfully) {
                 console.warn(`unpdf extracted only ${text?.trim().length || 0} characters`);
               }
             } catch (unpdfError) {
@@ -269,7 +255,7 @@ export const scanResumeFromStorage = createServerFn({ method: "POST" })
               );
             }
 
-            console.log(`Raw text extraction recovered ${text.length} characters`);
+
           }
         } else {
           text = new TextDecoder().decode(buf);
@@ -492,7 +478,7 @@ export const learningRecommendations = createServerFn({ method: "POST" })
         route: "/learn",
       }));
 
-      console.log(`Returning ${result.length} randomized database items`);
+
       return { items: result };
     }
 
@@ -525,7 +511,7 @@ export const learningRecommendations = createServerFn({ method: "POST" })
         })),
       };
     } catch (err) {
-      console.error("AI generation failed:", err);
+      console.warn("AI generation failed for learning recommendations:", (err as Error).message);
 
       // Return random database items
       if (dbItems && dbItems.length > 0) {
@@ -567,110 +553,6 @@ export const learningRecommendations = createServerFn({ method: "POST" })
       };
     }
   });
-
-async function fetchRealResources(topics: string[], supabase: any) {
-  const resources: any[] = [];
-
-  // 1. Get resources from your curated database
-  try {
-    const { data: dbResources } = await supabase
-      .from("learning_resources")
-      .select("*")
-      .contains(
-        "skills",
-        topics.map((t) => t.toLowerCase()),
-      )
-      .limit(8);
-
-    if (dbResources?.length) {
-      resources.push(...dbResources);
-      console.log(`Found ${dbResources.length} resources in database`);
-    }
-  } catch (err) {
-    console.warn("Database query failed:", err);
-  }
-
-  // 2. If not enough resources, search YouTube API
-  if (resources.length < 8) {
-    const youtubeKey = process.env.YOUTUBE_API_KEY;
-    if (youtubeKey) {
-      console.log("Searching YouTube API...");
-      for (const topic of topics) {
-        if (resources.length >= 8) break;
-        try {
-          const response = await fetch(
-            `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(topic + " tutorial")}&type=video&maxResults=2&key=${youtubeKey}`,
-          );
-          const data = await response.json();
-
-          if (data.items) {
-            for (const item of data.items) {
-              resources.push({
-                kind: "video",
-                title: item.snippet.title,
-                provider: "YouTube",
-                url: `https://youtube.com/watch?v=${item.id.videoId}`,
-                skills: [topic],
-                description: item.snippet.description?.substring(0, 200) || "",
-              });
-            }
-          }
-        } catch (err) {
-          console.warn("YouTube API failed for topic:", topic, err);
-        }
-      }
-    } else {
-      console.log("No YouTube API key configured");
-    }
-  }
-
-  // 3. If still not enough, search Udemy API
-  if (resources.length < 8) {
-    const udemyClientId = process.env.UDEMY_CLIENT_ID;
-    const udemyClientSecret = process.env.UDEMY_CLIENT_SECRET;
-
-    if (udemyClientId && udemyClientSecret) {
-      console.log("Searching Udemy API...");
-      const auth = btoa(`${udemyClientId}:${udemyClientSecret}`);
-
-      for (const topic of topics) {
-        if (resources.length >= 8) break;
-        try {
-          const response = await fetch(
-            `https://www.udemy.com/api-2.0/courses/?search=${encodeURIComponent(topic)}&page_size=2`,
-            { headers: { Authorization: `Basic ${auth}` } },
-          );
-          const data = await response.json();
-
-          if (data.results) {
-            for (const course of data.results) {
-              resources.push({
-                kind: "course",
-                title: course.title,
-                provider: "Udemy",
-                url: `https://udemy.com${course.url}`,
-                skills: [topic],
-                description: course.headline || "",
-              });
-            }
-          }
-        } catch (err) {
-          console.warn("Udemy API failed for topic:", topic, err);
-        }
-      }
-    } else {
-      console.log("No Udemy API credentials configured");
-    }
-  }
-
-  // Deduplicate by URL
-  const uniqueResources = resources.filter(
-    (resource, index, self) => index === self.findIndex((r) => r.url === resource.url),
-  );
-
-  console.log(`Total resources found: ${uniqueResources.length}`);
-  return uniqueResources.slice(0, 8);
-}
 
 export const importFromLinkedInText = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -807,7 +689,7 @@ async function buildUserContext(supabase: any, userId: string, role: string | nu
       supabase
         .from("profiles")
         .select(
-          "full_name,headline,bio,location,years_experience,current_position,skills,expected_salary_usd,job_type_preference,preferred_location,education,experience,technologies",
+          "full_name,headline,bio,location,experience_years,current_position,skills,education,experience",
         )
         .eq("id", userId)
         .maybeSingle(),
@@ -820,7 +702,7 @@ async function buildUserContext(supabase: any, userId: string, role: string | nu
       supabase
         .from("applications")
         .select("id,status,created_at, job:jobs(id,title,company:companies(name))")
-        .eq("seeker_id", userId)
+        .eq("applicant_id", userId)
         .order("created_at", { ascending: false })
         .limit(10),
       supabase.from("saved_jobs").select("job:jobs(id,title)").eq("user_id", userId).limit(5),
@@ -833,14 +715,13 @@ async function buildUserContext(supabase: any, userId: string, role: string | nu
         headline: profile.headline,
         bio: profile.bio,
         location: profile.location,
-        years_experience: profile.years_experience,
+        years_experience: profile.experience_years,
         current_position: profile.current_position,
         skills: profile.skills ?? [],
-        technologies: profile.technologies ?? [],
         education: profile.education ?? [],
         experience: profile.experience ?? [],
-        expected_salary_usd: profile.expected_salary_usd,
-        preferred_job_type: profile.job_type_preference,
+        expected_salary: profile.expected_salary,
+        preferred_job_type: profile.preferred_job_type,
         preferred_location: profile.preferred_location,
       })}`,
     );

@@ -53,7 +53,7 @@ async function callChat(req: AIRequest, json: boolean): Promise<string> {
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), OLLAMA_TIMEOUT_MS);
-    response = await ollama.chat(chatRequest);
+    response = await ollama.chat({ ...chatRequest, signal: controller.signal } as ChatRequest);
     clearTimeout(timer);
   } catch (e) {
     const err = e as Error;
