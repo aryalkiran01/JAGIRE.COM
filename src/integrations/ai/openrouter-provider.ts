@@ -2,7 +2,7 @@ import { AIProvider, AIRequest } from "./types";
 import { classifyError, safeJsonParse } from "./errors";
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
-const DEFAULT_MODEL = "google/gemini-3.0-flash-exp:free";
+const DEFAULT_MODEL = "google/gemini-3.6-flash-exp:free";
 const OPENROUTER_TIMEOUT_MS = 30_000;
 
 function apiKey(): string {
