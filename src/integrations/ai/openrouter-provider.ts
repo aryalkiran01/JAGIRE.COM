@@ -2,7 +2,7 @@ import { AIProvider, AIRequest } from "./types";
 import { classifyError, safeJsonParse } from "./errors";
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
-const DEFAULT_MODEL = "google/gemini-3.6-flash-exp:free";
+const DEFAULT_MODEL = "google/gemini-3.6-flash";
 const OPENROUTER_TIMEOUT_MS = 30_000;
 
 function apiKey(): string {
@@ -11,11 +11,15 @@ function apiKey(): string {
   return key;
 }
 
+function resolveModel(req: AIRequest): string {
+  return req.model ?? process.env.OPENROUTER_MODEL ?? DEFAULT_MODEL;
+}
+
 export class OpenRouterProvider implements AIProvider {
   readonly name = "openrouter";
 
   async generateText(req: AIRequest): Promise<string> {
-    const model = req.model ?? DEFAULT_MODEL;
+    const model = resolveModel(req);
     const messages: Array<{ role: string; content: string }> = [];
     if (req.systemInstruction) {
       messages.push({ role: "system", content: req.systemInstruction });
@@ -36,7 +40,8 @@ export class OpenRouterProvider implements AIProvider {
           model,
           messages,
           stream: false,
-          reasoning: { enabled: true },
+          temperature: 0.3,
+          max_tokens: 2048,
         }),
         signal: controller.signal,
       });
@@ -60,7 +65,7 @@ export class OpenRouterProvider implements AIProvider {
   }
 
   async generateJson<T>(req: AIRequest): Promise<T> {
-    const model = req.model ?? DEFAULT_MODEL;
+    const model = resolveModel(req);
     const systemMsg =
       (req.systemInstruction ?? "") + "\n\nReturn ONLY valid JSON, no markdown fences.";
     const messages: Array<{ role: string; content: string }> = [
@@ -82,8 +87,9 @@ export class OpenRouterProvider implements AIProvider {
           model,
           messages,
           stream: false,
+          temperature: 0.3,
+          max_tokens: 4096,
           response_format: { type: "json_object" },
-          reasoning: { enabled: true },
         }),
         signal: controller.signal,
       });

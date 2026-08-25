@@ -11,14 +11,23 @@ function apiKey(): string {
   return key;
 }
 
+function resolveModel(req: AIRequest): string {
+  return req.model ?? process.env.GEMINI_MODEL ?? DEFAULT_MODEL;
+}
+
 export class GeminiProvider implements AIProvider {
   readonly name = "gemini";
 
   async generateText(req: AIRequest): Promise<string> {
-    const model = req.model ?? DEFAULT_MODEL;
+    const model = resolveModel(req);
     const url = `${GEMINI_URL}/${model}:generateContent?key=${apiKey()}`;
     const body: Record<string, unknown> = {
       contents: [{ role: "user", parts: [{ text: req.prompt }] }],
+      generationConfig: {
+        temperature: 0.3,
+        topK: 1,
+        topP: 0.95,
+      },
     };
     if (req.systemInstruction) {
       body.systemInstruction = { parts: [{ text: req.systemInstruction }] };
@@ -54,14 +63,19 @@ export class GeminiProvider implements AIProvider {
   }
 
   async generateJson<T>(req: AIRequest): Promise<T> {
-    const model = req.model ?? DEFAULT_MODEL;
+    const model = resolveModel(req);
     const url = `${GEMINI_URL}/${model}:generateContent?key=${apiKey()}`;
     const body = {
       contents: [{ role: "user", parts: [{ text: req.prompt }] }],
       ...(req.systemInstruction
         ? { systemInstruction: { parts: [{ text: req.systemInstruction }] } }
         : {}),
-      generationConfig: { responseMimeType: "application/json" },
+      generationConfig: {
+        responseMimeType: "application/json",
+        temperature: 0.3,
+        topK: 1,
+        topP: 0.95,
+      },
     };
 
     let res: Response;
