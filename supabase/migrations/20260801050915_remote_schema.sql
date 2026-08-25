@@ -376,8 +376,9 @@ drop function if exists "public"."ensure_referral_code_on_insert"();
 drop function if exists "public"."generate_referral_code"();
 
 drop function if exists "public"."prevent_self_apply"();
-
+drop trigger if exists "on_auth_user_created_referral" on "auth"."users";
 drop function if exists "public"."process_referral_on_signup"();
+
 
 drop function if exists "public"."tg_post_comments_count"();
 
@@ -682,7 +683,17 @@ alter table "public"."jobs" alter column "experience_level" set default 'mid'::p
 alter table "public"."jobs" alter column "job_type" set default 'full_time'::public.job_type;
 
 alter table "public"."jobs" alter column "status" set default 'active'::public.job_status;
-
+-- Drop functions that depend on old enum types
+drop function if exists "public"."has_role"(uuid, app_role__old_version_to_be_dropped);
+drop function if exists "public"."has_role"(app_role__old_version_to_be_dropped);
+drop function if exists "public"."get_user_role"(uuid);
+alter table "public"."application_events" drop column "status";
+-- Now safe to drop old types
+drop type "public"."app_role__old_version_to_be_dropped";
+drop type "public"."application_status__old_version_to_be_dropped";
+drop type "public"."experience_level__old_version_to_be_dropped";
+drop type "public"."job_status__old_version_to_be_dropped";
+drop type "public"."job_type__old_version_to_be_dropped";
 drop type "public"."app_role__old_version_to_be_dropped";
 
 drop type "public"."application_status__old_version_to_be_dropped";
@@ -731,7 +742,7 @@ alter table "public"."application_events" drop column "actor_id";
 
 alter table "public"."application_events" drop column "note";
 
-alter table "public"."application_events" drop column "status";
+
 
 alter table "public"."application_events" add column "event_type" text not null;
 
@@ -6111,7 +6122,6 @@ CREATE TRIGGER resumes_set_updated_at BEFORE UPDATE ON public.resumes FOR EACH R
 
 CREATE TRIGGER resumes_updated_at BEFORE UPDATE ON public.resumes FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
 
-drop trigger if exists "on_auth_user_created_referral" on "auth"."users";
 
 drop policy "Public read avatars" on "storage"."objects";
 

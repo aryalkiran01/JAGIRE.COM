@@ -18,7 +18,7 @@ export const updateApplicationStatus = createServerFn({ method: "POST" })
     const { data: app, error: appError } = await supabaseAdmin
       .from("applications")
       .select(
-        "id, status, applicant_id, job_id, rejection_remark, job:jobs(id, title, employer_id, company:companies(name, owner_id))",
+        "id, status, applicant_id, job_id, job:jobs(id, title, employer_id, company:companies(name, owner_id))",
       )
       .eq("id", data.applicationId)
       .maybeSingle();
@@ -42,13 +42,13 @@ export const updateApplicationStatus = createServerFn({ method: "POST" })
       return { success: true, message: `Application already ${data.status}`, noop: true };
     }
 
-    const updates: Record<string, unknown> = {
+    const updates: any = {
       status: data.status,
       updated_at: new Date().toISOString(),
+      ...(data.status === "rejected" && data.remark
+        ? { rejection_remark: data.remark.trim() }
+        : {}),
     };
-    if (data.status === "rejected" && data.remark) {
-      updates.rejection_remark = data.remark.trim();
-    }
 
     const { error: updateError } = await supabaseAdmin
       .from("applications")

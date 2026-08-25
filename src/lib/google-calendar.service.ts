@@ -121,9 +121,8 @@ export const disconnectGoogleCalendar = createServerFn({ method: "POST" })
 export async function getValidAccessToken(
   userId: string,
 ): Promise<{ token: string; expired: false } | { token: null; expired: true } | null> {
-  const { getConnectionKeyForUser, deleteConnectionKeyForUser } = await import(
-    "@/lib/connection-key-crypto.server"
-  );
+  const { getConnectionKeyForUser, deleteConnectionKeyForUser } =
+    await import("@/lib/connection-key-crypto.server");
 
   const refreshToken = await getConnectionKeyForUser(userId, "google_calendar");
   if (!refreshToken) return null;

@@ -44,6 +44,9 @@ interface FeatureConfig {
   systemPrompt: string;
 }
 
+type SerializableJson =
+  string | number | boolean | null | SerializableJson[] | { [key: string]: SerializableJson };
+
 const FEATURE_CONFIGS: Record<string, FeatureConfig> = {
   "candidate-match": {
     schema: candidateMatchSchema,
@@ -241,7 +244,9 @@ async function buildEmployerContext(
         .limit(10),
       supabase
         .from("applications")
-        .select("id,status,created_at,applicant:profiles(full_name,headline,skills),job:jobs(title)")
+        .select(
+          "id,status,created_at,applicant:profiles(full_name,headline,skills),job:jobs(title)",
+        )
         .eq("job.company_id", company.id)
         .order("created_at", { ascending: false })
         .limit(15),
@@ -281,13 +286,14 @@ export const runEmployerAiFeature = createServerFn({ method: "POST" })
     try {
       if (companyId) {
         const embRes = await aiGenerateEmbedding(data.message);
-        const { data: chunks } = await supabaseAdmin.rpc("search_knowledge_base", {
+        const { data: chunks } = await (supabaseAdmin as any).rpc("search_knowledge_base", {
           query_embedding: embRes.embedding,
           match_company_id: companyId,
           match_limit: 5,
         });
-        if (chunks?.length) {
-          ragContext = chunks
+        const chunkList = Array.isArray(chunks) ? chunks : [];
+        if (chunkList.length) {
+          ragContext = chunkList
             .map((c: any, i: number) => `[${i + 1}] From "${c.document_title}":\n${c.content}`)
             .join("\n\n---\n\n");
         }
@@ -312,9 +318,13 @@ export const runEmployerAiFeature = createServerFn({ method: "POST" })
       "general",
     );
 
+    const serializableResult = JSON.parse(JSON.stringify(result)) as {
+      [key: string]: SerializableJson;
+    };
+
     return {
-      response: result as Record<string, unknown>,
-      structured: result as Record<string, unknown>,
+      response: serializableResult,
+      structured: serializableResult,
       featureTitle: feature.title,
     };
   });

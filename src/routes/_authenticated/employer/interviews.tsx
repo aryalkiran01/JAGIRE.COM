@@ -130,7 +130,10 @@ function EmployerInterviews() {
           table: "interviews",
           filter: `employer_id=eq.${user.id}`,
         },
-        () => { qc.invalidateQueries({ queryKey: ["employer-interviews"] }); qc.invalidateQueries({ queryKey: ["my-interviews"] }); },
+        () => {
+          qc.invalidateQueries({ queryKey: ["employer-interviews"] });
+          qc.invalidateQueries({ queryKey: ["my-interviews"] });
+        },
       )
       .subscribe();
     return () => {
@@ -190,7 +193,11 @@ function EmployerInterviews() {
     setSavingLink(true);
     const { error } = await supabase
       .from("interviews")
-      .update({ meeting_link: quickLink, meet_link: quickLink, updated_at: new Date().toISOString() })
+      .update({
+        meeting_link: quickLink,
+        meet_link: quickLink,
+        updated_at: new Date().toISOString(),
+      })
       .eq("id", linkDialog.id);
     setSavingLink(false);
     if (error) return toast.error(error.message);
@@ -223,7 +230,9 @@ function EmployerInterviews() {
     if (!isActiveStatus) return false;
     if (i.scheduled_at) {
       const scheduled = new Date(i.scheduled_at);
-      const graceEnd = new Date(scheduled.getTime() + (i.duration_minutes ?? 60) * 60_000 + 2 * 3600_000);
+      const graceEnd = new Date(
+        scheduled.getTime() + (i.duration_minutes ?? 60) * 60_000 + 2 * 3600_000,
+      );
       if (scheduled < now && graceEnd < now) return false;
     }
     return true;
@@ -331,22 +340,33 @@ function EmployerInterviews() {
                       ))}
                     </SelectContent>
                   </Select>
-                  {(iv.meeting_link || iv.meet_link) && iv.status !== "completed" && iv.status !== "cancelled" && (
-                    <Button variant="default" size="sm" asChild>
-                      <a href={iv.meeting_link ?? iv.meet_link ?? "#"} target="_blank" rel="noopener noreferrer">
-                        <Video className="h-4 w-4 mr-1" /> Join
-                      </a>
-                    </Button>
-                  )}
-                  {!(iv.meeting_link || iv.meet_link) && iv.status !== "completed" && iv.status !== "cancelled" && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => { setLinkDialog(iv); setQuickLink(""); }}
-                    >
-                      <Link2 className="h-4 w-4 mr-1" /> Add link
-                    </Button>
-                  )}
+                  {(iv.meeting_link || iv.meet_link) &&
+                    iv.status !== "completed" &&
+                    iv.status !== "cancelled" && (
+                      <Button variant="default" size="sm" asChild>
+                        <a
+                          href={iv.meeting_link ?? iv.meet_link ?? "#"}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <Video className="h-4 w-4 mr-1" /> Join
+                        </a>
+                      </Button>
+                    )}
+                  {!(iv.meeting_link || iv.meet_link) &&
+                    iv.status !== "completed" &&
+                    iv.status !== "cancelled" && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setLinkDialog(iv);
+                          setQuickLink("");
+                        }}
+                      >
+                        <Link2 className="h-4 w-4 mr-1" /> Add link
+                      </Button>
+                    )}
                   <Button variant="outline" size="sm" onClick={() => openEdit(iv)}>
                     <Pencil className="h-4 w-4 mr-1" /> Edit
                   </Button>
@@ -512,7 +532,8 @@ function EmployerInterviews() {
           </DialogHeader>
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              Paste a Google Meet, Zoom, or any video call link. The candidate will be able to join the interview from their dashboard.
+              Paste a Google Meet, Zoom, or any video call link. The candidate will be able to join
+              the interview from their dashboard.
             </p>
             <Input
               placeholder="https://meet.google.com/…"
@@ -521,9 +542,15 @@ function EmployerInterviews() {
             />
           </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setLinkDialog(null)}>Cancel</Button>
+            <Button variant="ghost" onClick={() => setLinkDialog(null)}>
+              Cancel
+            </Button>
             <Button onClick={saveQuickLink} disabled={savingLink || !quickLink}>
-              {savingLink ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Link2 className="h-4 w-4 mr-1" />}
+              {savingLink ? (
+                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+              ) : (
+                <Link2 className="h-4 w-4 mr-1" />
+              )}
               Save link
             </Button>
           </DialogFooter>

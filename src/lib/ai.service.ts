@@ -254,8 +254,6 @@ export const scanResumeFromStorage = createServerFn({ method: "POST" })
                   "Try uploading a DOCX version instead.",
               );
             }
-
-
           }
         } else {
           text = new TextDecoder().decode(buf);
@@ -477,7 +475,6 @@ export const learningRecommendations = createServerFn({ method: "POST" })
         url: item.url || generateSearchUrl(item.title, item.provider, item.skills),
         route: "/learn",
       }));
-
 
       return { items: result };
     }

@@ -774,7 +774,7 @@ function CurrentSubscriptionCard({ sub }: { sub: ReturnType<typeof useSubscripti
             </div>
           </div>
           <Button asChild className="gradient-brand text-primary-foreground">
-            <Link to="/checkout/premium">Upgrade now</Link>
+            <a href="/checkout/premium">Upgrade now</a>
           </Button>
         </CardContent>
       </Card>
@@ -823,7 +823,7 @@ function CurrentSubscriptionCard({ sub }: { sub: ReturnType<typeof useSubscripti
           <div className="mt-4 rounded-lg bg-amber-50 dark:bg-amber-950 p-3 text-sm text-amber-800 dark:text-amber-300 flex items-center justify-between gap-2 flex-wrap">
             <span>Your subscription expires soon. Renew to keep your premium benefits.</span>
             <Button asChild size="sm" className="gradient-brand text-primary-foreground">
-              <Link to="/checkout/premium">Renew</Link>
+              <a href="/checkout/premium">Renew</a>
             </Button>
           </div>
         )}

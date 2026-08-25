@@ -175,7 +175,8 @@ function JobDetail() {
               {user && role === "employer" ? (
                 <div className="rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950 p-3 text-center">
                   <p className="text-sm text-amber-700 dark:text-amber-400">
-                    Employer accounts cannot apply for jobs. Switch to a job seeker account to apply.
+                    Employer accounts cannot apply for jobs. Switch to a job seeker account to
+                    apply.
                   </p>
                 </div>
               ) : user ? (
