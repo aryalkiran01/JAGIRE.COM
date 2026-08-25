@@ -685,28 +685,22 @@ const STATS = [
 function StatsSection() {
   return (
     <section className="py-16">
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         {STATS.map((s, i) => (
           <div
             key={s.label}
-            className="glass rounded-2xl p-5 text-center animate-scale-in hover:shadow-glow transition-shadow min-w-0"
+            className="glass rounded-2xl p-6 text-center animate-scale-in hover:shadow-glow transition-shadow"
             style={{ animationDelay: `${i * 0.08}s` }}
           >
-            <div
-              className={`font-bold gradient-text mb-1 ${
-                s.value === "Thousands" ? "text-2xl leading-tight" : "text-3xl"
-              }`}
-            >
-              {s.value}
-            </div>
-
-            <div className="text-xs text-muted-foreground leading-relaxed">{s.label}</div>
+            <div className="text-3xl font-bold gradient-text mb-1">{s.value}</div>
+            <div className="text-xs text-muted-foreground">{s.label}</div>
           </div>
         ))}
       </div>
     </section>
   );
 }
+
 /* ── FAQ ───────────────────────────────────────────────────── */
 
 const SEEKER_FAQ = [
@@ -780,9 +774,7 @@ function CurrentSubscriptionCard({ sub }: { sub: ReturnType<typeof useSubscripti
             </div>
           </div>
           <Button asChild className="gradient-brand text-primary-foreground">
-            <Link to="/checkout/$plan" params={{ plan: "premium" }}>
-              Upgrade now
-            </Link>
+            <Link to="/checkout/premium">Upgrade now</Link>
           </Button>
         </CardContent>
       </Card>
@@ -831,9 +823,7 @@ function CurrentSubscriptionCard({ sub }: { sub: ReturnType<typeof useSubscripti
           <div className="mt-4 rounded-lg bg-amber-50 dark:bg-amber-950 p-3 text-sm text-amber-800 dark:text-amber-300 flex items-center justify-between gap-2 flex-wrap">
             <span>Your subscription expires soon. Renew to keep your premium benefits.</span>
             <Button asChild size="sm" className="gradient-brand text-primary-foreground">
-              <Link to="/checkout/$plan" params={{ plan: "premium" }}>
-                Renew
-              </Link>
+              <Link to="/checkout/premium">Renew</Link>
             </Button>
           </div>
         )}

@@ -226,9 +226,7 @@ function InterviewsPage() {
     if (i.scheduled_at) {
       const scheduled = new Date(i.scheduled_at);
       // Allow a 2-hour grace window for ongoing interviews
-      const graceEnd = new Date(
-        scheduled.getTime() + (i.duration_minutes ?? 60) * 60_000 + 2 * 3600_000,
-      );
+      const graceEnd = new Date(scheduled.getTime() + (i.duration_minutes ?? 60) * 60_000 + 2 * 3600_000);
       if (scheduled < now && graceEnd < now) return false;
     }
     return true;

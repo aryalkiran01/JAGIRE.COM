@@ -48,7 +48,7 @@ const DEMO_JOBS: Array<{
     benefits: "Hybrid, equity, wellness budget",
     job_type: "full_time",
     experience_level: "mid",
-    location: "Thamel, KTM",
+    location: "San Francisco, CA",
     is_remote: false,
     salary_min: 110000,
     salary_max: 150000,
@@ -76,7 +76,7 @@ const DEMO_JOBS: Array<{
     benefits: "Mentorship, stipend, potential conversion",
     job_type: "internship",
     experience_level: "entry",
-    location: "Butwal, Devinagar",
+    location: "New York, NY",
     is_remote: false,
     salary_min: 30000,
     salary_max: 45000,
@@ -122,7 +122,7 @@ export async function seedDemoData(userId: string) {
         description: "Acme Labs is a small, ambitious team shipping tools people love.",
         industry: "Technology",
         size: "51-200",
-        headquarters: "Nepal, KTM",
+        headquarters: "San Francisco, CA",
         website: "https://example.com",
       })
       .select("id")
