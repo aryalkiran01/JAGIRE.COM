@@ -1,6 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { z } from "zod";
-import { AIProvider, AIRequest, AIEmbeddingRequest, AIEmbeddingResponse, AITask, AIResult } from "./types";
+import {
+  AIProvider,
+  AIRequest,
+  AIEmbeddingRequest,
+  AIEmbeddingResponse,
+  AITask,
+  AIResult,
+} from "./types";
 import { GeminiProvider } from "./gemini-provider";
 import { OllamaProvider } from "./ollama-provider";
 import { isTransient, isFatal } from "./errors";
@@ -11,7 +18,6 @@ const BACKOFF_BASE_MS = 500;
 const VALIDATION_RETRY_LIMIT = 1;
 const CACHE_TTL_MS = 5 * 60 * 1000;
 const MAX_CACHE_ENTRIES = 200;
-
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -148,7 +154,11 @@ class AIServiceImpl {
     const key = cacheKey(req);
     const cached = getCached(key);
     if (cached !== undefined) return cached as string;
-    const { result } = await this.executeWithFallback((p) => p.generateText(req), "generateText", req);
+    const { result } = await this.executeWithFallback(
+      (p) => p.generateText(req),
+      "generateText",
+      req,
+    );
     setCached(key, result);
     return result;
   }
@@ -189,14 +199,21 @@ class AIServiceImpl {
   async generateJsonResult<T>(req: AIRequest, schema: z.ZodType<T>): Promise<AIResult<T>> {
     try {
       const data = await this.generateJsonValidated(req, schema);
-      return { success: true, data, provider: this.providers[this.providerIndex]?.name ?? "unknown" };
+      return {
+        success: true,
+        data,
+        provider: this.providers[this.providerIndex]?.name ?? "unknown",
+      };
     } catch (err) {
       const msg = (err as Error).message ?? "AI JSON generation failed";
       log("error", `generateJsonResult failed: ${msg}`);
       return {
         success: false,
         data: null,
-        error: { code: "AI_ANALYSIS_FAILED", message: "Unable to complete the analysis right now." },
+        error: {
+          code: "AI_ANALYSIS_FAILED",
+          message: "Unable to complete the analysis right now.",
+        },
         provider: null,
       };
     }
@@ -446,11 +463,7 @@ class AIServiceImpl {
       const provider = this.providers[idx];
 
       try {
-        const result = await retryWithBackoff(
-          provider,
-          fn,
-          `${label}:${provider.name}`,
-        );
+        const result = await retryWithBackoff(provider, fn, `${label}:${provider.name}`);
         this.providerIndex = idx;
         return { result, providerName: provider.name };
       } catch (err) {

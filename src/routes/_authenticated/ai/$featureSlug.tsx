@@ -153,7 +153,8 @@ function JobSeekerAiFeaturePage() {
           ...prev,
           {
             role: "assistant",
-            content: res.error?.message ?? "AI analysis is temporarily unavailable. Please try again.",
+            content:
+              res.error?.message ?? "AI analysis is temporarily unavailable. Please try again.",
             ts: new Date().toISOString(),
           },
         ]);

@@ -118,7 +118,9 @@ function CareerCoachPage() {
           ...prev,
           {
             role: "assistant",
-            content: response.error?.message ?? "AI analysis is temporarily unavailable. Please try again.",
+            content:
+              response.error?.message ??
+              "AI analysis is temporarily unavailable. Please try again.",
             ts: new Date().toISOString(),
           },
         ]);

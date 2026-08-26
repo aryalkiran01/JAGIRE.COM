@@ -10,7 +10,9 @@ import { careerRecommendations } from "@/lib/ai.service";
 
 export const Route = createFileRoute("/_authenticated/career")({ component: Career });
 
-type Recs = NonNullable<Extract<Awaited<ReturnType<typeof careerRecommendations>>, { success: true }>["data"]>;
+type Recs = NonNullable<
+  Extract<Awaited<ReturnType<typeof careerRecommendations>>, { success: true }>["data"]
+>;
 
 function Career() {
   const run = useServerFn(careerRecommendations);

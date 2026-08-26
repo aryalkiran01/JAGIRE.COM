@@ -358,7 +358,8 @@ function AIAssistantPage() {
           ...prev,
           {
             role: "assistant",
-            content: result.error?.message ?? "AI assistant is temporarily unavailable. Please try again.",
+            content:
+              result.error?.message ?? "AI assistant is temporarily unavailable. Please try again.",
             ts: new Date().toISOString(),
           },
         ]);

@@ -167,7 +167,10 @@ export const careerRecommendations = createServerFn({ method: "POST" })
       );
     } catch (err) {
       console.error("careerRecommendations failed:", (err as Error).message);
-      return aiFailure("AI_ANALYSIS_FAILED", "Unable to generate career recommendations right now.");
+      return aiFailure(
+        "AI_ANALYSIS_FAILED",
+        "Unable to generate career recommendations right now.",
+      );
     }
   });
 
@@ -355,7 +358,9 @@ export const scanResumeFromStorage = createServerFn({ method: "POST" })
             const js = ((j.required_skills ?? []) as string[]).map((s) => s.toLowerCase());
             if (!js.length)
               return { id: j.id, title: j.title, company: j.company?.name ?? null, score: 0 };
-            const hits = js.filter((s) => skills.some((k) => s.includes(k) || k.includes(s))).length;
+            const hits = js.filter((s) =>
+              skills.some((k) => s.includes(k) || k.includes(s)),
+            ).length;
             const score = Math.round((hits / Math.max(js.length, 1)) * 100);
             return { id: j.id, title: j.title, company: j.company?.name ?? null, score };
           })
@@ -714,7 +719,10 @@ export const careerCoach = createServerFn({ method: "POST" })
       return aiSuccess(response, "ai");
     } catch (err) {
       console.error("careerCoach failed:", (err as Error).message);
-      return aiFailure("AI_ANALYSIS_FAILED", "AI career coach is temporarily unavailable. Please try again.");
+      return aiFailure(
+        "AI_ANALYSIS_FAILED",
+        "AI career coach is temporarily unavailable. Please try again.",
+      );
     }
   });
 
@@ -922,18 +930,17 @@ export const aiAssistantChat = createServerFn({ method: "POST" })
     // 5. Generate response
     const fullPrompt = `## Conversation History\n${historyText}\n\n## User Context (use this to personalise your answer)\n${userContext}\n\n## Current Question\n${data.message}`;
 
-    const aiResult = await aiGenerateTextResult(
-      fullPrompt,
-      ASSISTANT_SYSTEM,
-      "career-assistant",
-    );
+    const aiResult = await aiGenerateTextResult(fullPrompt, ASSISTANT_SYSTEM, "career-assistant");
 
     if (!aiResult.success || !aiResult.data) {
       return {
         conversationId,
         response: null as string | null,
         isNewConversation,
-        error: aiResult.error ?? { code: "AI_CHAT_FAILED", message: "AI assistant is temporarily unavailable. Please try again." },
+        error: aiResult.error ?? {
+          code: "AI_CHAT_FAILED",
+          message: "AI assistant is temporarily unavailable. Please try again.",
+        },
       };
     }
 

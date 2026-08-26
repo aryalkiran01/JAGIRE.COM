@@ -408,7 +408,7 @@ function Landing() {
       </section>
 
       {/* Testimonials */}
-      <section className="container mx-auto px-4 py-20">
+      {/* <section className="container mx-auto px-4 py-20">
         <div className="text-center mb-14">
           <Badge variant="outline" className="mb-4">
             <Star className="mr-1 h-3 w-3 fill-accent text-accent" /> Testimonials
@@ -447,7 +447,7 @@ function Landing() {
             </Card>
           ))}
         </div>
-      </section>
+      </section> */}
 
       {/* Trust badges */}
       <section className="container mx-auto px-4 py-12">

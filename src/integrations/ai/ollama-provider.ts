@@ -99,7 +99,10 @@ export class OllamaProvider implements AIProvider {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), OLLAMA_TIMEOUT_MS);
     try {
-      const res = await ollama.embeddings({ model, prompt: req.input }, { signal: controller.signal });
+      const res = await ollama.embeddings(
+        { model, prompt: req.input },
+        { signal: controller.signal },
+      );
       return { embedding: res.embedding, provider: this.name, model };
     } catch (e) {
       const msg = (e as Error).message ?? "Ollama embedding failed";
