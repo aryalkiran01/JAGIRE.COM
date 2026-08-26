@@ -310,16 +310,33 @@ export const runJobSeekerAiFeature = createServerFn({ method: "POST" })
       `## Request\n${data.message}`,
     ].join("\n\n");
 
-    const result = await aiGenerateJsonValidated(
-      prompt,
-      config.systemPrompt,
-      config.schema,
-      "general",
-    );
+    try {
+      const result = await aiGenerateJsonValidated(
+        prompt,
+        config.systemPrompt,
+        config.schema,
+        "general",
+      );
 
-    return {
-      response: result as SerializableJsonObject,
-      structured: result as SerializableJsonObject,
-      featureTitle: feature.title,
-    };
+      return {
+        success: true as const,
+        data: {
+          response: result as SerializableJsonObject,
+          structured: result as SerializableJsonObject,
+          featureTitle: feature.title,
+        },
+        provider: "ai",
+      };
+    } catch (err) {
+      console.error("runJobSeekerAiFeature failed:", (err as Error).message);
+      return {
+        success: false as const,
+        data: null,
+        error: {
+          code: "AI_ANALYSIS_FAILED",
+          message: "AI analysis is temporarily unavailable. Please try again.",
+        },
+        provider: null,
+      };
+    }
   });

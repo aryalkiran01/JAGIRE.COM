@@ -27,7 +27,6 @@ function buildMessages(req: AIRequest): Array<{ role: "system" | "user"; content
 }
 
 function pickModel(req: AIRequest): string {
-  // Ensure we always return a string
   if (req.model) {
     return String(req.model);
   }
@@ -40,33 +39,22 @@ async function callChat(req: AIRequest, json: boolean): Promise<string> {
   const messages = buildMessages(req);
   const ollama = getClient();
 
-  // Build the request with explicit typing to match Ollama's overloads
   const chatRequest = {
     model: String(model),
     messages,
-    stream: false as const, // Use 'as const' to make it literal type 'false'
+    stream: false as const,
     options: { temperature: 0.3 },
     ...(json ? { format: "json" as const } : {}),
-  } satisfies ChatRequest; // Use 'satisfies' for type checking without widening
+  } satisfies ChatRequest;
 
   let response;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), OLLAMA_TIMEOUT_MS);
   try {
-    let timeout: ReturnType<typeof setTimeout>;
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      timeout = setTimeout(() => {
-        const error = new Error("Ollama request timed out");
-        error.name = "AbortError";
-        reject(error);
-      }, OLLAMA_TIMEOUT_MS);
-    });
-    try {
-      response = await Promise.race([ollama.chat(chatRequest), timeoutPromise]);
-    } finally {
-      clearTimeout(timeout!);
-    }
+    response = await ollama.chat(chatRequest, { signal: controller.signal });
   } catch (e) {
     const err = e as Error;
-    if (err.name === "AbortError") {
+    if (err.name === "AbortError" || controller.signal.aborted) {
       throw classifyError(408, "Ollama request timed out", e);
     }
     const msg = err.message ?? "Ollama request failed";
@@ -81,6 +69,8 @@ async function callChat(req: AIRequest, json: boolean): Promise<string> {
       );
     }
     throw classifyError(undefined, msg, e);
+  } finally {
+    clearTimeout(timer);
   }
 
   const out = response?.message?.content;
@@ -106,8 +96,10 @@ export class OllamaProvider implements AIProvider {
   async generateEmbedding(req: AIEmbeddingRequest): Promise<AIEmbeddingResponse> {
     const model = String(req.model ?? resolveOllamaModel("embedding"));
     const ollama = getClient();
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), OLLAMA_TIMEOUT_MS);
     try {
-      const res = await ollama.embeddings({ model, prompt: req.input });
+      const res = await ollama.embeddings({ model, prompt: req.input }, { signal: controller.signal });
       return { embedding: res.embedding, provider: this.name, model };
     } catch (e) {
       const msg = (e as Error).message ?? "Ollama embedding failed";
@@ -119,6 +111,8 @@ export class OllamaProvider implements AIProvider {
         );
       }
       throw classifyError(undefined, msg, e);
+    } finally {
+      clearTimeout(timer);
     }
   }
 }

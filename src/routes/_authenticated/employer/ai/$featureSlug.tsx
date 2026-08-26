@@ -158,18 +158,30 @@ function AiFeaturePage() {
       setInput("");
     },
     onSuccess: (res) => {
-      setTurns((prev) => [
-        ...prev,
-        {
-          role: "assistant",
-          content: typeof res.response === "string" ? res.response : "",
-          structured:
-            typeof res.response === "object" && res.response !== null
-              ? (res.response as Record<string, unknown>)
-              : res.structured,
-          ts: new Date().toISOString(),
-        },
-      ]);
+      if (res.success && res.data) {
+        const d = res.data;
+        setTurns((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            content: typeof d.response === "string" ? d.response : "",
+            structured:
+              typeof d.response === "object" && d.response !== null
+                ? (d.response as Record<string, unknown>)
+                : d.structured,
+            ts: new Date().toISOString(),
+          },
+        ]);
+      } else {
+        setTurns((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            content: res.error?.message ?? "AI analysis is temporarily unavailable. Please try again.",
+            ts: new Date().toISOString(),
+          },
+        ]);
+      }
     },
     onError: (e: unknown) => toast.error(e instanceof Error ? e.message : "AI request failed"),
   });

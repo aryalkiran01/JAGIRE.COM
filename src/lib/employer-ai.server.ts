@@ -311,20 +311,37 @@ export const runEmployerAiFeature = createServerFn({ method: "POST" })
     promptParts.push(`## Request\n${data.message}`);
     const prompt = promptParts.join("\n\n");
 
-    const result = await aiGenerateJsonValidated(
-      prompt,
-      config.systemPrompt,
-      config.schema,
-      "general",
-    );
+    try {
+      const result = await aiGenerateJsonValidated(
+        prompt,
+        config.systemPrompt,
+        config.schema,
+        "general",
+      );
 
-    const serializableResult = JSON.parse(JSON.stringify(result)) as {
-      [key: string]: SerializableJson;
-    };
+      const serializableResult = JSON.parse(JSON.stringify(result)) as {
+        [key: string]: SerializableJson;
+      };
 
-    return {
-      response: serializableResult,
-      structured: serializableResult,
-      featureTitle: feature.title,
-    };
+      return {
+        success: true as const,
+        data: {
+          response: serializableResult,
+          structured: serializableResult,
+          featureTitle: feature.title,
+        },
+        provider: "ai",
+      };
+    } catch (err) {
+      console.error("runEmployerAiFeature failed:", (err as Error).message);
+      return {
+        success: false as const,
+        data: null,
+        error: {
+          code: "AI_ANALYSIS_FAILED",
+          message: "AI analysis is temporarily unavailable. Please try again.",
+        },
+        provider: null,
+      };
+    }
   });

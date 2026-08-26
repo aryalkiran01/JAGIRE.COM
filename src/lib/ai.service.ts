@@ -2,7 +2,7 @@
 
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth.middleware";
-import { aiGenerateJsonValidated, aiGenerateText } from "@/integrations/ai/ai-service";
+import { aiGenerateJsonValidated, aiGenerateTextResult } from "@/integrations/ai/ai-service";
 import { requirePremium } from "@/lib/premium.server";
 import {
   resumeAnalysisSchema,
@@ -12,6 +12,7 @@ import {
   learningRecommendationsSchema,
   careerCoachResponseSchema,
 } from "@/integrations/ai/schemas";
+import type { AIResult } from "@/integrations/ai/types";
 
 // ── Prompts ──────────────────────────────────────────────────────────────────
 
@@ -80,6 +81,14 @@ function clamp(n: unknown): number {
   return Math.max(0, Math.min(100, Math.round(Number(n) || 0)));
 }
 
+function aiSuccess<T>(data: T, provider: string): AIResult<T> {
+  return { success: true, data, provider };
+}
+
+function aiFailure<T>(code: string, message: string, provider: string | null = null): AIResult<T> {
+  return { success: false, data: null, error: { code, message }, provider };
+}
+
 export const scoreResume = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => {
@@ -89,64 +98,77 @@ export const scoreResume = createServerFn({ method: "POST" })
   })
   .handler(async ({ data, context }) => {
     await requirePremium(context.userId);
-    const parsed = await aiGenerateJsonValidated(
-      `Resume:\n${data.text}`,
-      RESUME_SYSTEM,
-      resumeAnalysisSchema,
-      "resume-analysis",
-    );
+    try {
+      const parsed = await aiGenerateJsonValidated(
+        `Resume:\n${data.text}`,
+        RESUME_SYSTEM,
+        resumeAnalysisSchema,
+        "resume-analysis",
+      );
 
-    const update = {
-      overall_score: clamp(parsed.overall_score),
-      ats_score: clamp(parsed.ats_score),
-      grammar_score: clamp(parsed.grammar_score),
-      formatting_score: clamp(parsed.formatting_score),
-      keyword_score: clamp(parsed.keyword_score),
-      professionalism_score: clamp(parsed.professionalism_score),
-      suggestions: parsed.suggestions ?? [],
-      parsed_data: { summary: parsed.summary, skills: parsed.extracted_skills ?? [] },
-    };
-    const { error } = await context.supabase
-      .from("resumes")
-      .update(update)
-      .eq("id", data.resumeId)
-      .eq("user_id", context.userId);
-    if (error) throw new Error(error.message);
-    return update;
+      const update = {
+        overall_score: clamp(parsed.overall_score),
+        ats_score: clamp(parsed.ats_score),
+        grammar_score: clamp(parsed.grammar_score),
+        formatting_score: clamp(parsed.formatting_score),
+        keyword_score: clamp(parsed.keyword_score),
+        professionalism_score: clamp(parsed.professionalism_score),
+        suggestions: parsed.suggestions ?? [],
+        parsed_data: { summary: parsed.summary, skills: parsed.extracted_skills ?? [] },
+      };
+      const { error } = await context.supabase
+        .from("resumes")
+        .update(update)
+        .eq("id", data.resumeId)
+        .eq("user_id", context.userId);
+      if (error) throw new Error(error.message);
+      return aiSuccess(update, "ai");
+    } catch (err) {
+      console.error("scoreResume failed:", (err as Error).message);
+      return aiFailure("AI_ANALYSIS_FAILED", "Unable to complete the resume scoring right now.");
+    }
   });
 
 export const careerRecommendations = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await requirePremium(context.userId);
-    const [{ data: profile }, { data: resume }] = await Promise.all([
-      context.supabase
-        .from("profiles")
-        .select("full_name,headline,bio,location,experience_years")
-        .eq("id", context.userId)
-        .maybeSingle(),
-      context.supabase
-        .from("resumes")
-        .select("parsed_data")
-        .eq("user_id", context.userId)
-        .eq("is_default", true)
-        .maybeSingle(),
-    ]);
-    const skills = (resume?.parsed_data as { skills?: string[] } | null)?.skills ?? [];
+    try {
+      const [{ data: profile }, { data: resume }] = await Promise.all([
+        context.supabase
+          .from("profiles")
+          .select("full_name,headline,bio,location,experience_years")
+          .eq("id", context.userId)
+          .maybeSingle(),
+        context.supabase
+          .from("resumes")
+          .select("parsed_data")
+          .eq("user_id", context.userId)
+          .eq("is_default", true)
+          .maybeSingle(),
+      ]);
+      const skills = (resume?.parsed_data as { skills?: string[] } | null)?.skills ?? [];
 
-    const parsed = await aiGenerateJsonValidated(
-      `Profile:${JSON.stringify(profile ?? {})}\nSkills:${skills.join(",") || "unknown"}`,
-      CAREER_SYSTEM,
-      careerRecommendationsSchema,
-      "career-suggestions",
-    );
+      const parsed = await aiGenerateJsonValidated(
+        `Profile:${JSON.stringify(profile ?? {})}\nSkills:${skills.join(",") || "unknown"}`,
+        CAREER_SYSTEM,
+        careerRecommendationsSchema,
+        "career-suggestions",
+      );
 
-    return {
-      career_paths: parsed.career_paths ?? [],
-      skill_gaps: parsed.skill_gaps ?? [],
-      recommended_certifications: parsed.recommended_certifications ?? [],
-      suggested_search_keywords: parsed.suggested_search_keywords ?? [],
-    };
+      return aiSuccess(
+        {
+          career_paths: parsed.career_paths ?? [],
+          skill_gaps: parsed.skill_gaps ?? [],
+          recommended_certifications: parsed.recommended_certifications ?? [],
+          suggested_search_keywords: parsed.suggested_search_keywords ?? [],
+        },
+        "ai",
+      );
+    } catch (err) {
+      console.error("careerRecommendations failed:", (err as Error).message);
+      return aiFailure("AI_ANALYSIS_FAILED", "Unable to generate career recommendations right now.");
+    }
   });
 
 //  ONLY ONE scanResumeFromStorage -
@@ -275,101 +297,106 @@ export const scanResumeFromStorage = createServerFn({ method: "POST" })
     if (text.length < 50) throw new Error("Could not extract enough text from the resume file");
     if (text.length > 8000) text = text.slice(0, 8000);
 
-    const scan = await aiGenerateJsonValidated(
-      `Resume:\n${text}`,
-      FULL_SCAN_SYSTEM,
-      fullResumeScanSchema,
-      "resume-analysis",
-    );
+    try {
+      const scan = await aiGenerateJsonValidated(
+        `Resume:\n${text}`,
+        FULL_SCAN_SYSTEM,
+        fullResumeScanSchema,
+        "resume-analysis",
+      );
 
-    const scoringUpdate = {
-      overall_score: clamp(scan.overall_score),
-      ats_score: clamp(scan.ats_score),
-      grammar_score: clamp(scan.grammar_score),
-      formatting_score: clamp(scan.formatting_score),
-      keyword_score: clamp(scan.keyword_score),
-      professionalism_score: clamp(scan.professionalism_score),
-      suggestions: scan.suggestions ?? [],
-      parsed_data: {
-        summary: scan.summary,
-        skills: scan.extracted_skills ?? [],
-        raw_text: text.slice(0, 5000),
-      },
-      career_roadmap: {
-        career_paths: scan.career_paths ?? [],
-        skill_gaps: scan.skill_gaps ?? [],
-        missing_skills: scan.missing_skills ?? [],
-        recommended_certifications: scan.recommended_certifications ?? [],
-        suggested_projects: scan.suggested_projects ?? [],
-        recommended_jobs: scan.recommended_jobs ?? [],
-        companies_hiring: scan.companies_hiring ?? [],
-        salary_prediction: scan.salary_prediction ?? null,
-        resume_improvements: scan.resume_improvements ?? [],
-        interview_prep_plan: scan.interview_prep_plan ?? null,
-        strengths: scan.strengths ?? [],
-        weaknesses: scan.weaknesses ?? [],
-        keywords: scan.keywords ?? [],
-      },
-    };
+      const scoringUpdate = {
+        overall_score: clamp(scan.overall_score),
+        ats_score: clamp(scan.ats_score),
+        grammar_score: clamp(scan.grammar_score),
+        formatting_score: clamp(scan.formatting_score),
+        keyword_score: clamp(scan.keyword_score),
+        professionalism_score: clamp(scan.professionalism_score),
+        suggestions: scan.suggestions ?? [],
+        parsed_data: {
+          summary: scan.summary,
+          skills: scan.extracted_skills ?? [],
+          raw_text: text.slice(0, 5000),
+        },
+        career_roadmap: {
+          career_paths: scan.career_paths ?? [],
+          skill_gaps: scan.skill_gaps ?? [],
+          missing_skills: scan.missing_skills ?? [],
+          recommended_certifications: scan.recommended_certifications ?? [],
+          suggested_projects: scan.suggested_projects ?? [],
+          recommended_jobs: scan.recommended_jobs ?? [],
+          companies_hiring: scan.companies_hiring ?? [],
+          salary_prediction: scan.salary_prediction ?? null,
+          resume_improvements: scan.resume_improvements ?? [],
+          interview_prep_plan: scan.interview_prep_plan ?? null,
+          strengths: scan.strengths ?? [],
+          weaknesses: scan.weaknesses ?? [],
+          keywords: scan.keywords ?? [],
+        },
+      };
 
-    const { error } = await context.supabase
-      .from("resumes")
-      .update(scoringUpdate)
-      .eq("id", resume.id)
-      .eq("user_id", context.userId);
-    if (error) throw new Error(error.message);
+      const { error } = await context.supabase
+        .from("resumes")
+        .update(scoringUpdate)
+        .eq("id", resume.id)
+        .eq("user_id", context.userId);
+      if (error) throw new Error(error.message);
 
-    const skills = (scan.extracted_skills ?? []).map((s) => s.toLowerCase()).filter(Boolean);
-    let matches: Array<{ id: string; title: string; company: string | null; score: number }> = [];
-    if (skills.length) {
-      const { data: jobs } = await context.supabase
-        .from("jobs")
-        .select("id, title, required_skills, company:companies(name)")
-        .eq("status", "active")
-        .limit(200);
-      matches = (jobs ?? [])
-        .map((j: any) => {
-          const js = ((j.required_skills ?? []) as string[]).map((s) => s.toLowerCase());
-          if (!js.length)
-            return { id: j.id, title: j.title, company: j.company?.name ?? null, score: 0 };
-          const hits = js.filter((s) => skills.some((k) => s.includes(k) || k.includes(s))).length;
-          const score = Math.round((hits / Math.max(js.length, 1)) * 100);
-          return { id: j.id, title: j.title, company: j.company?.name ?? null, score };
-        })
-        .filter((m) => m.score > 0)
-        .sort((a, b) => b.score - a.score)
-        .slice(0, 8);
+      const skills = (scan.extracted_skills ?? []).map((s) => s.toLowerCase()).filter(Boolean);
+      let matches: Array<{ id: string; title: string; company: string | null; score: number }> = [];
+      if (skills.length) {
+        const { data: jobs } = await context.supabase
+          .from("jobs")
+          .select("id, title, required_skills, company:companies(name)")
+          .eq("status", "active")
+          .limit(200);
+        matches = (jobs ?? [])
+          .map((j: any) => {
+            const js = ((j.required_skills ?? []) as string[]).map((s) => s.toLowerCase());
+            if (!js.length)
+              return { id: j.id, title: j.title, company: j.company?.name ?? null, score: 0 };
+            const hits = js.filter((s) => skills.some((k) => s.includes(k) || k.includes(s))).length;
+            const score = Math.round((hits / Math.max(js.length, 1)) * 100);
+            return { id: j.id, title: j.title, company: j.company?.name ?? null, score };
+          })
+          .filter((m) => m.score > 0)
+          .sort((a, b) => b.score - a.score)
+          .slice(0, 8);
+      }
+
+      const profilePatch = {
+        ai_profile_data: {
+          summary: scan.summary,
+          skills: scan.extracted_skills ?? [],
+          strengths: scan.strengths ?? [],
+          keywords: scan.keywords ?? [],
+          missing_skills: scan.missing_skills ?? [],
+        },
+      } as any;
+
+      const { data: existingProfile } = await context.supabase
+        .from("profiles")
+        .select("skills")
+        .eq("id", context.userId)
+        .maybeSingle();
+      const existingSkills = Array.isArray(existingProfile?.skills) ? existingProfile.skills : [];
+      if (
+        !existingSkills.length &&
+        Array.isArray(scan.extracted_skills) &&
+        scan.extracted_skills.length
+      ) {
+        profilePatch.skills = scan.extracted_skills.slice(0, 20);
+      }
+      await context.supabase
+        .from("profiles")
+        .update(profilePatch as any)
+        .eq("id", context.userId);
+
+      return aiSuccess({ ...scoringUpdate, matches }, "ai");
+    } catch (err) {
+      console.error("scanResumeFromStorage failed:", (err as Error).message);
+      return aiFailure("AI_ANALYSIS_FAILED", "Unable to complete the resume scan right now.");
     }
-
-    const profilePatch = {
-      ai_profile_data: {
-        summary: scan.summary,
-        skills: scan.extracted_skills ?? [],
-        strengths: scan.strengths ?? [],
-        keywords: scan.keywords ?? [],
-        missing_skills: scan.missing_skills ?? [],
-      },
-    } as any;
-
-    const { data: existingProfile } = await context.supabase
-      .from("profiles")
-      .select("skills")
-      .eq("id", context.userId)
-      .maybeSingle();
-    const existingSkills = Array.isArray(existingProfile?.skills) ? existingProfile.skills : [];
-    if (
-      !existingSkills.length &&
-      Array.isArray(scan.extracted_skills) &&
-      scan.extracted_skills.length
-    ) {
-      profilePatch.skills = scan.extracted_skills.slice(0, 20);
-    }
-    await context.supabase
-      .from("profiles")
-      .update(profilePatch as any)
-      .eq("id", context.userId);
-
-    return { ...scoringUpdate, matches };
   });
 
 export const importFromGitHub = createServerFn({ method: "POST" })
@@ -482,7 +509,7 @@ export const learningRecommendations = createServerFn({ method: "POST" })
         route: "/learn",
       }));
 
-      return { items: result };
+      return aiSuccess({ items: result }, "database");
     }
 
     // Fallback to AI generation with timestamp for uniqueness
@@ -501,38 +528,44 @@ export const learningRecommendations = createServerFn({ method: "POST" })
         "learning-recommendations",
       );
 
-      return {
-        items: (parsed?.items || []).map((item: any, index: number) => ({
-          id: `ai-${timestamp}-${randomSeed}-${index}`, // Unique ID every time
-          kind: item.kind || "course",
-          title: item.title,
-          provider: item.provider || "Online Platform",
-          description: item.description || "",
-          skills: item.skills || [],
-          url: generateSearchUrl(item.title, item.provider, item.skills),
-          route: "/learn",
-        })),
-      };
+      return aiSuccess(
+        {
+          items: (parsed?.items || []).map((item: any, index: number) => ({
+            id: `ai-${timestamp}-${randomSeed}-${index}`,
+            kind: item.kind || "course",
+            title: item.title,
+            provider: item.provider || "Online Platform",
+            description: item.description || "",
+            skills: item.skills || [],
+            url: generateSearchUrl(item.title, item.provider, item.skills),
+            route: "/learn",
+          })),
+        },
+        "ai",
+      );
     } catch (err) {
       console.warn("AI generation failed for learning recommendations:", (err as Error).message);
 
       // Return random database items
       if (dbItems && dbItems.length > 0) {
-        return {
-          items: [...dbItems]
-            .sort(() => Math.random() - 0.5) // Randomize
-            .slice(0, 8)
-            .map((item: any) => ({
-              id: item.id,
-              kind: item.kind || "course",
-              title: item.title,
-              provider: item.provider || "",
-              description: item.description || "",
-              skills: item.skills || [],
-              url: item.url || generateSearchUrl(item.title, item.provider, item.skills),
-              route: "/learn",
-            })),
-        };
+        return aiSuccess(
+          {
+            items: [...dbItems]
+              .sort(() => Math.random() - 0.5)
+              .slice(0, 8)
+              .map((item: any) => ({
+                id: item.id,
+                kind: item.kind || "course",
+                title: item.title,
+                provider: item.provider || "",
+                description: item.description || "",
+                skills: item.skills || [],
+                url: item.url || generateSearchUrl(item.title, item.provider, item.skills),
+                route: "/learn",
+              })),
+          },
+          "database",
+        );
       }
 
       // Fallback items
@@ -542,18 +575,21 @@ export const learningRecommendations = createServerFn({ method: "POST" })
           : ["web development", "javascript", "python", "react", "node.js"];
 
       const timestamp = Date.now();
-      return {
-        items: fallbackSkills.map((skill, i) => ({
-          id: `fallback-${timestamp}-${i}`,
-          kind: i % 2 === 0 ? "course" : "video",
-          title: `Learn ${skill} - Complete Guide`,
-          provider: i % 3 === 0 ? "Udemy" : i % 3 === 1 ? "YouTube" : "Coursera",
-          description: `Master ${skill} with hands-on projects and real-world examples`,
-          skills: [skill],
-          url: `https://www.google.com/search?q=${encodeURIComponent(`learn ${skill} course`)}`,
-          route: "/learn",
-        })),
-      };
+      return aiSuccess(
+        {
+          items: fallbackSkills.map((skill, i) => ({
+            id: `fallback-${timestamp}-${i}`,
+            kind: i % 2 === 0 ? "course" : "video",
+            title: `Learn ${skill} - Complete Guide`,
+            provider: i % 3 === 0 ? "Udemy" : i % 3 === 1 ? "YouTube" : "Coursera",
+            description: `Master ${skill} with hands-on projects and real-world examples`,
+            skills: [skill],
+            url: `https://www.google.com/search?q=${encodeURIComponent(`learn ${skill} course`)}`,
+            route: "/learn",
+          })),
+        },
+        "fallback",
+      );
     }
   });
 
@@ -567,32 +603,37 @@ export const importFromLinkedInText = createServerFn({ method: "POST" })
   })
   .handler(async ({ data, context }) => {
     await requirePremium(context.userId);
-    const parsed = await aiGenerateJsonValidated(
-      data.text,
-      LINKEDIN_SYSTEM,
-      linkedinImportSchema,
-      "linkedin-import",
-    );
-
-    const patch: Record<string, any> = {};
-    if (parsed.full_name) patch.full_name = parsed.full_name;
-    if (parsed.headline) patch.headline = parsed.headline;
-    if (parsed.about) patch.about = parsed.about;
-    if (parsed.location) patch.location = parsed.location;
-    if (parsed.current_position) patch.current_position = parsed.current_position;
-    if (Number.isFinite(parsed.experience_years))
-      patch.experience_years = Math.max(
-        0,
-        Math.min(60, Math.round(Number(parsed.experience_years))),
+    try {
+      const parsed = await aiGenerateJsonValidated(
+        data.text,
+        LINKEDIN_SYSTEM,
+        linkedinImportSchema,
+        "linkedin-import",
       );
-    if (parsed.skills?.length) patch.skills = parsed.skills.slice(0, 20);
-    if (data.url) patch.linkedin_url = data.url;
 
-    const { error } = await (context.supabase.from("profiles") as any)
-      .update(patch)
-      .eq("id", context.userId);
-    if (error) throw new Error(error.message);
-    return { imported: { fields: Object.keys(patch).length, skills: patch.skills?.length ?? 0 } };
+      const patch: Record<string, any> = {};
+      if (parsed.full_name) patch.full_name = parsed.full_name;
+      if (parsed.headline) patch.headline = parsed.headline;
+      if (parsed.about) patch.about = parsed.about;
+      if (parsed.location) patch.location = parsed.location;
+      if (parsed.current_position) patch.current_position = parsed.current_position;
+      if (Number.isFinite(parsed.experience_years))
+        patch.experience_years = Math.max(
+          0,
+          Math.min(60, Math.round(Number(parsed.experience_years))),
+        );
+      if (parsed.skills?.length) patch.skills = parsed.skills.slice(0, 20);
+      if (data.url) patch.linkedin_url = data.url;
+
+      const { error } = await (context.supabase.from("profiles") as any)
+        .update(patch)
+        .eq("id", context.userId);
+      if (error) throw new Error(error.message);
+      return { imported: { fields: Object.keys(patch).length, skills: patch.skills?.length ?? 0 } };
+    } catch (err) {
+      console.error("importFromLinkedInText failed:", (err as Error).message);
+      throw new Error("Unable to import LinkedIn data right now. Please try again.");
+    }
   });
 
 const CAREER_COACH_SYSTEM =
@@ -643,33 +684,38 @@ export const careerCoach = createServerFn({ method: "POST" })
       `User question: ${data.question}`,
     ].join("\n");
 
-    const response = await aiGenerateJsonValidated(
-      contextBlock,
-      CAREER_COACH_SYSTEM,
-      careerCoachResponseSchema,
-      "career-coach",
-    );
+    try {
+      const response = await aiGenerateJsonValidated(
+        contextBlock,
+        CAREER_COACH_SYSTEM,
+        careerCoachResponseSchema,
+        "career-coach",
+      );
 
-    // Persist session history
-    const sessionId = data.sessionId;
-    if (sessionId) {
-      const { data: existing } = await context.supabase
-        .from("career_coach_sessions")
-        .select("messages")
-        .eq("id", sessionId)
-        .eq("user_id", context.userId)
-        .maybeSingle();
-      const msgs = (existing?.messages as any[]) ?? [];
-      msgs.push({ role: "user", content: data.question, ts: new Date().toISOString() });
-      msgs.push({ role: "assistant", content: response, ts: new Date().toISOString() });
-      await context.supabase
-        .from("career_coach_sessions")
-        .update({ messages: msgs, updated_at: new Date().toISOString() })
-        .eq("id", sessionId)
-        .eq("user_id", context.userId);
+      // Persist session history
+      const sessionId = data.sessionId;
+      if (sessionId) {
+        const { data: existing } = await context.supabase
+          .from("career_coach_sessions")
+          .select("messages")
+          .eq("id", sessionId)
+          .eq("user_id", context.userId)
+          .maybeSingle();
+        const msgs = (existing?.messages as any[]) ?? [];
+        msgs.push({ role: "user", content: data.question, ts: new Date().toISOString() });
+        msgs.push({ role: "assistant", content: response, ts: new Date().toISOString() });
+        await context.supabase
+          .from("career_coach_sessions")
+          .update({ messages: msgs, updated_at: new Date().toISOString() })
+          .eq("id", sessionId)
+          .eq("user_id", context.userId);
+      }
+
+      return aiSuccess(response, "ai");
+    } catch (err) {
+      console.error("careerCoach failed:", (err as Error).message);
+      return aiFailure("AI_ANALYSIS_FAILED", "AI career coach is temporarily unavailable. Please try again.");
     }
-
-    return response;
   });
 
 // ── AI Assistant (RAG-powered career companion) ──────────────────────────────
@@ -876,24 +922,33 @@ export const aiAssistantChat = createServerFn({ method: "POST" })
     // 5. Generate response
     const fullPrompt = `## Conversation History\n${historyText}\n\n## User Context (use this to personalise your answer)\n${userContext}\n\n## Current Question\n${data.message}`;
 
-    const response = await aiGenerateText(
+    const aiResult = await aiGenerateTextResult(
       fullPrompt,
       ASSISTANT_SYSTEM,
-      undefined,
       "career-assistant",
     );
+
+    if (!aiResult.success || !aiResult.data) {
+      return {
+        conversationId,
+        response: null as string | null,
+        isNewConversation,
+        error: aiResult.error ?? { code: "AI_CHAT_FAILED", message: "AI assistant is temporarily unavailable. Please try again." },
+      };
+    }
 
     // 6. Save assistant response
     const { error: aiMsgErr } = await context.supabase.from("ai_messages").insert({
       conversation_id: conversationId,
       role: "assistant",
-      content: response,
+      content: aiResult.data,
     });
     if (aiMsgErr) throw new Error(aiMsgErr.message);
 
     return {
       conversationId,
-      response,
+      response: aiResult.data,
       isNewConversation,
+      error: null as null | { code: string; message: string },
     };
   });

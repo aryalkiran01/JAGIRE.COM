@@ -3,11 +3,12 @@ export {
   aiGenerateJson,
   aiGenerateJsonValidated,
   aiGenerateEmbedding,
+  aiGenerateTextResult,
+  aiGenerateJsonResult,
   getAIProviders,
   AIServiceImpl,
 } from "./ai-service";
 export { GeminiProvider } from "./gemini-provider";
-// export { OpenRouterProvider } from "./openrouter-provider";
 export { OllamaProvider } from "./ollama-provider";
 export { resolveOllamaModel, getOllamaModelCategory, OLLAMA_TIMEOUT_MS } from "./ollama-models";
 export {
@@ -35,4 +36,7 @@ export type {
   AITask,
   AIEmbeddingRequest,
   AIEmbeddingResponse,
+  AIResult,
+  AIResultSuccess,
+  AIResultFailure,
 } from "./types";

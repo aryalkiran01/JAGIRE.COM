@@ -85,3 +85,21 @@ export interface AIProvider {
   generateJson<T>(req: AIRequest): Promise<T>;
   generateEmbedding?(req: AIEmbeddingRequest): Promise<AIEmbeddingResponse>;
 }
+
+export interface AIResultSuccess<T> {
+  success: true;
+  data: T;
+  provider: string;
+}
+
+export interface AIResultFailure {
+  success: false;
+  data: null;
+  error: {
+    code: string;
+    message: string;
+  };
+  provider: string | null;
+}
+
+export type AIResult<T> = AIResultSuccess<T> | AIResultFailure;

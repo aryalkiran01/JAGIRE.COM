@@ -1,8 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { z } from "zod";
-import { AIProvider, AIRequest, AIEmbeddingRequest, AIEmbeddingResponse, AITask } from "./types";
+import { AIProvider, AIRequest, AIEmbeddingRequest, AIEmbeddingResponse, AITask, AIResult } from "./types";
 import { GeminiProvider } from "./gemini-provider";
-// import { OpenRouterProvider } from "./openrouter-provider";
 import { OllamaProvider } from "./ollama-provider";
 import { isTransient, isFatal } from "./errors";
 import { AITransientError } from "./types";
@@ -12,7 +11,7 @@ const BACKOFF_BASE_MS = 500;
 const VALIDATION_RETRY_LIMIT = 1;
 const CACHE_TTL_MS = 5 * 60 * 1000;
 const MAX_CACHE_ENTRIES = 200;
-const OLLAMA_FAST_FAIL_TIMEOUT_MS = 3_000;
+
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -33,24 +32,17 @@ function log(
 }
 
 function getConfiguredProviderOrder(): AIProvider[] {
-  const declared = process.env.AI_PROVIDER?.toLowerCase() ?? "gemini";
+  const declared = process.env.AI_PROVIDER?.toLowerCase() ?? "ollama";
   const list: AIProvider[] = [];
   switch (declared) {
-    case "gemini":
-    default:
-      if (process.env.GEMINI_API_KEY) list.push(new GeminiProvider());
-      // if (process.env.OPENROUTER_API_KEY) list.push(new OpenRouterProvider());
-      if (process.env.OLLAMA_HOST) list.push(new OllamaProvider());
-      break;
-    case "openrouter":
-      // if (process.env.OPENROUTER_API_KEY) list.push(new OpenRouterProvider());
-      if (process.env.GEMINI_API_KEY) list.push(new GeminiProvider());
-      if (process.env.OLLAMA_HOST) list.push(new OllamaProvider());
-      break;
     case "ollama":
-      list.push(new OllamaProvider());
+    default:
+      if (process.env.OLLAMA_HOST) list.push(new OllamaProvider());
       if (process.env.GEMINI_API_KEY) list.push(new GeminiProvider());
-      // if (process.env.OPENROUTER_API_KEY) list.push(new OpenRouterProvider());
+      break;
+    case "gemini":
+      if (process.env.GEMINI_API_KEY) list.push(new GeminiProvider());
+      if (process.env.OLLAMA_HOST) list.push(new OllamaProvider());
       break;
   }
   return list;
@@ -156,7 +148,7 @@ class AIServiceImpl {
     const key = cacheKey(req);
     const cached = getCached(key);
     if (cached !== undefined) return cached as string;
-    const result = await this.executeWithFallback((p) => p.generateText(req), "generateText", req);
+    const { result } = await this.executeWithFallback((p) => p.generateText(req), "generateText", req);
     setCached(key, result);
     return result;
   }
@@ -165,13 +157,49 @@ class AIServiceImpl {
     const key = cacheKey(req);
     const cached = getCached(key);
     if (cached !== undefined) return cached as T;
-    const result = await this.executeWithFallback(
+    const { result } = await this.executeWithFallback(
       (p) => p.generateJson<T>(req),
       "generateJson",
       req,
     );
     setCached(key, result);
     return result;
+  }
+
+  async generateTextResult(req: AIRequest): Promise<AIResult<string>> {
+    try {
+      const { result, providerName } = await this.executeWithFallback(
+        (p) => p.generateText(req),
+        "generateTextResult",
+        req,
+      );
+      return { success: true, data: result, provider: providerName };
+    } catch (err) {
+      const msg = (err as Error).message ?? "AI text generation failed";
+      log("error", `generateTextResult failed: ${msg}`);
+      return {
+        success: false,
+        data: null,
+        error: { code: "AI_TEXT_FAILED", message: "Unable to generate a response right now." },
+        provider: null,
+      };
+    }
+  }
+
+  async generateJsonResult<T>(req: AIRequest, schema: z.ZodType<T>): Promise<AIResult<T>> {
+    try {
+      const data = await this.generateJsonValidated(req, schema);
+      return { success: true, data, provider: this.providers[this.providerIndex]?.name ?? "unknown" };
+    } catch (err) {
+      const msg = (err as Error).message ?? "AI JSON generation failed";
+      log("error", `generateJsonResult failed: ${msg}`);
+      return {
+        success: false,
+        data: null,
+        error: { code: "AI_ANALYSIS_FAILED", message: "Unable to complete the analysis right now." },
+        provider: null,
+      };
+    }
   }
 
   async generateJsonValidated<T>(req: AIRequest, schema: z.ZodType<T>): Promise<T> {
@@ -407,7 +435,7 @@ class AIServiceImpl {
     fn: (p: AIProvider) => Promise<T>,
     label: string,
     req: AIRequest,
-  ): Promise<T> {
+  ): Promise<{ result: T; providerName: string }> {
     if (this.providers.length === 0) {
       throw new Error("No AI providers configured");
     }
@@ -417,30 +445,14 @@ class AIServiceImpl {
       const idx = (this.providerIndex + i) % this.providers.length;
       const provider = this.providers[idx];
 
-      // Fast-fail: if Ollama is not the primary and a cloud provider is available,
-      // don't wait for Ollama's long timeout — give it a short window.
-      const isOllamaFallback =
-        provider.name === "ollama" && idx !== this.providerIndex && this.providers.length > 1;
-
       try {
         const result = await retryWithBackoff(
           provider,
-          isOllamaFallback
-            ? (p) =>
-                Promise.race([
-                  fn(p),
-                  new Promise<never>((_, reject) =>
-                    setTimeout(
-                      () => reject(new AITransientError("Ollama fast-fail timeout", 408)),
-                      OLLAMA_FAST_FAIL_TIMEOUT_MS,
-                    ),
-                  ),
-                ])
-            : fn,
+          fn,
           `${label}:${provider.name}`,
         );
         this.providerIndex = idx;
-        return result;
+        return { result, providerName: provider.name };
       } catch (err) {
         lastError = err;
         if (isFatal(err)) {
@@ -514,6 +526,28 @@ export async function aiGenerateEmbedding(
   model?: string,
 ): Promise<AIEmbeddingResponse> {
   return getService().generateEmbedding({ input, model });
+}
+
+export async function aiGenerateTextResult(
+  prompt: string,
+  systemInstruction: string,
+  task: AITask,
+  model?: string,
+): Promise<AIResult<string>> {
+  return getService().generateTextResult({ prompt, systemInstruction, model, task });
+}
+
+export async function aiGenerateJsonResult<T>(
+  prompt: string,
+  systemInstruction: string,
+  schema: z.ZodType<T>,
+  task: AITask,
+  model?: string,
+): Promise<AIResult<T>> {
+  return getService().generateJsonResult<T>(
+    { prompt, systemInstruction, model, task, json: true },
+    schema,
+  );
 }
 
 export { AIServiceImpl };

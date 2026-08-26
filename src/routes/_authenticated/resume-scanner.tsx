@@ -116,12 +116,17 @@ function ResumeScanner() {
         if (ins.error) throw ins.error;
         toast.success("Resume uploaded — analyzing…");
         const result = await runScan({ data: { resumeId: ins.data.id } });
-        setMatches(result.matches ?? []);
-        toast.success("Analysis complete! Career roadmap generated.");
+        if (result.success && result.data) {
+          setMatches(result.data.matches ?? []);
+          toast.success("Analysis complete! Career roadmap generated.");
+        } else {
+          setMatches([]);
+          toast.error(result.error?.message ?? "Unable to complete the resume scan right now.");
+        }
         qc.invalidateQueries({ queryKey: ["my-resume-full"] });
         qc.invalidateQueries({ queryKey: ["my-resume"] });
       } catch (err) {
-        toast.error((err as Error).message);
+        toast.error((err as Error).message ?? "Unable to complete the resume scan right now.");
       } finally {
         setBusy(false);
       }
@@ -166,12 +171,17 @@ function ResumeScanner() {
       }
 
       const result = await runScan({ data: { resumeId: scanId } });
-      setMatches(result.matches ?? []);
-      toast.success("Re-analyzed! Career roadmap updated.");
+      if (result.success && result.data) {
+        setMatches(result.data.matches ?? []);
+        toast.success("Re-analyzed! Career roadmap updated.");
+      } else {
+        setMatches([]);
+        toast.error(result.error?.message ?? "Unable to complete the re-analysis right now.");
+      }
       qc.invalidateQueries({ queryKey: ["my-resume-full"] });
       qc.invalidateQueries({ queryKey: ["my-resume"] });
     } catch (err) {
-      toast.error((err as Error).message);
+      toast.error((err as Error).message ?? "Unable to complete the re-analysis right now.");
     } finally {
       setBusy(false);
     }

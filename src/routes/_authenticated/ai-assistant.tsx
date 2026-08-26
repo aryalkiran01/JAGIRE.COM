@@ -348,13 +348,24 @@ function AIAssistantPage() {
     },
     onSuccess: (result) => {
       setConversationId(result.conversationId);
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: result.response, ts: new Date().toISOString() },
-      ]);
+      if (result.response) {
+        setMessages((prev) => [
+          ...prev,
+          { role: "assistant", content: result.response, ts: new Date().toISOString() },
+        ]);
+      } else {
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            content: result.error?.message ?? "AI assistant is temporarily unavailable. Please try again.",
+            ts: new Date().toISOString(),
+          },
+        ]);
+      }
       qc.invalidateQueries({ queryKey: ["ai-conversations"] });
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: any) => toast.error(e.message ?? "Unable to reach AI assistant right now."),
   });
 
   function send() {

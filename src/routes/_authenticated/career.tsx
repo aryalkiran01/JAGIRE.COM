@@ -10,20 +10,27 @@ import { careerRecommendations } from "@/lib/ai.service";
 
 export const Route = createFileRoute("/_authenticated/career")({ component: Career });
 
-type Recs = Awaited<ReturnType<typeof careerRecommendations>>;
+type Recs = NonNullable<Extract<Awaited<ReturnType<typeof careerRecommendations>>, { success: true }>["data"]>;
 
 function Career() {
   const run = useServerFn(careerRecommendations);
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<Recs | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   async function generate() {
     setLoading(true);
+    setErrorMsg(null);
     try {
       const res = await run({ data: undefined });
-      setData(res);
+      if (res.success && res.data) {
+        setData(res.data);
+      } else {
+        setData(null);
+        setErrorMsg(res.error?.message ?? "Unable to generate career recommendations right now.");
+      }
     } catch (err) {
-      toast.error((err as Error).message);
+      setErrorMsg((err as Error).message ?? "Unable to generate career recommendations right now.");
     } finally {
       setLoading(false);
     }

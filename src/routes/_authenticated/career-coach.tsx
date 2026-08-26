@@ -107,14 +107,25 @@ function CareerCoachPage() {
       ]);
       setInput("");
     },
-    onSuccess: ({ response }) => {
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: response, ts: new Date().toISOString() },
-      ]);
+    onSuccess: ({ response, sid }) => {
+      if (response.success && response.data) {
+        setMessages((prev) => [
+          ...prev,
+          { role: "assistant", content: response.data!, ts: new Date().toISOString() },
+        ]);
+      } else {
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            content: response.error?.message ?? "AI analysis is temporarily unavailable. Please try again.",
+            ts: new Date().toISOString(),
+          },
+        ]);
+      }
       qc.invalidateQueries({ queryKey: ["coach-sessions"] });
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: any) => toast.error(e.message ?? "Unable to reach AI career coach right now."),
   });
 
   function send() {
