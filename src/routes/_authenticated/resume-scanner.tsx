@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState, useCallback, useRef } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState, useCallback, useRef, useMemo } from "react";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -8,7 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton, SkeletonCard } from "@/components/ui/skeleton-loader";
+import { SkeletonCard } from "@/components/ui/skeleton-loader";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   Sparkles,
   Upload,
@@ -28,14 +29,27 @@ import {
   AlertCircle,
   XCircle,
   FileUp,
+  RefreshCw,
+  Download,
+  ChevronRight,
+  Wallet,
+  MapPin,
+  ExternalLink,
+  Send,
+  Flag,
+  Globe,
   type LucideIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { scanResumeFromStorage } from "@/lib/ai.service";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/resume-scanner")({
   component: ResumeScanner,
+  head: () => ({ meta: [{ title: "AI Resume Scanner — Jagire" }] }),
 });
+
+// ── Types ───────────────────────────────────────────────────────────────────
 
 type Roadmap = {
   career_paths?: Array<{ title: string; why: string; next_steps: string[] }>;
@@ -55,52 +69,381 @@ type Roadmap = {
   } | null;
 };
 
+type ResumeData = {
+  id: string;
+  file_name?: string;
+  file_size?: number;
+  overall_score?: number;
+  ats_score?: number;
+  grammar_score?: number;
+  formatting_score?: number;
+  keyword_score?: number;
+  professionalism_score?: number;
+  suggestions?: string[];
+  parsed_data?: Record<string, any>;
+  resume_data?: any;
+  career_roadmap?: Roadmap;
+};
+
+type JobMatch = {
+  id: string;
+  title: string;
+  company: string | null;
+  score: number;
+  location?: string;
+  salaryMin?: number;
+  salaryMax?: number;
+  companyLocation?: string;
+  isNepalBased?: boolean;
+  jobType?: string;
+  requiredSkills?: string[];
+};
+
+type CompanyHiring = {
+  name: string;
+  sector: string;
+  location?: string;
+  isNepalBased?: boolean;
+  activeJobs?: number;
+};
+
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const VALID_FILE_TYPES = [
+  "application/pdf",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+];
+
+// ── Helper Functions ────────────────────────────────────────────────────────
+
+function formatNPR(value: number): string {
+  return `Rs. ${value.toLocaleString("en-IN")}`;
+}
+
+function formatNPRShort(value: number): string {
+  if (value >= 100000) {
+    return `Rs. ${(value / 100000).toFixed(1)}L`;
+  }
+  if (value >= 1000) {
+    return `Rs. ${(value / 1000).toFixed(0)}K`;
+  }
+  return `Rs. ${value}`;
+}
+
+function getScoreColor(value: number | null | undefined): string {
+  if (value == null) return "text-muted-foreground";
+  if (value >= 80) return "text-green-500";
+  if (value >= 60) return "text-amber-500";
+  return "text-red-500";
+}
+
+function getScoreIcon(value: number | null | undefined): LucideIcon {
+  if (value == null) return AlertCircle;
+  if (value >= 80) return CheckCircle2;
+  if (value >= 60) return AlertCircle;
+  return XCircle;
+}
+
+function getScoreMessage(value: number): string {
+  if (value >= 80) return "Excellent! Your resume is well-optimized for ATS systems.";
+  if (value >= 60) return "Good foundation. A few improvements could boost your visibility.";
+  return "Needs work. Focus on the recommendations below to improve.";
+}
+
+function validateFile(file: File): string | null {
+  if (file.size > MAX_FILE_SIZE) {
+    return "File must be under 10MB";
+  }
+  if (!VALID_FILE_TYPES.includes(file.type) && !file.name.match(/\.(pdf|docx)$/i)) {
+    return "Only PDF or DOCX files are supported";
+  }
+  return null;
+}
+
+// ── Score Ring Component ────────────────────────────────────────────────────
+
+function ScoreRing({ value }: { value: number }) {
+  const radius = 40;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference - (value / 100) * circumference;
+  const color = value >= 80 ? "text-green-500" : value >= 60 ? "text-amber-500" : "text-red-500";
+
+  return (
+    <div className="relative h-24 w-24 shrink-0">
+      <svg className="h-full w-full -rotate-90" viewBox="0 0 100 100">
+        <circle
+          cx="50"
+          cy="50"
+          r={radius}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="8"
+          className="text-muted"
+        />
+        <circle
+          cx="50"
+          cy="50"
+          r={radius}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="8"
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+          strokeLinecap="round"
+          className={`${color} transition-all duration-1000`}
+        />
+      </svg>
+      <div className="absolute inset-0 flex items-center justify-center">
+        <span className={`text-2xl font-bold ${color}`}>{value}</span>
+      </div>
+    </div>
+  );
+}
+
+// ── Salary Card Component ───────────────────────────────────────────────────
+
+function SalaryPredictionCard({
+  salary,
+}: {
+  salary: { low: number; mid: number; high: number; currency: string };
+}) {
+  const ranges = [
+    {
+      label: "Entry Level",
+      value: salary.low,
+      color: "text-muted-foreground",
+      borderColor: "border-border",
+    },
+    { label: "Average", value: salary.mid, color: "gradient-text", borderColor: "border-primary" },
+    {
+      label: "Experienced",
+      value: salary.high,
+      color: "text-green-600",
+      borderColor: "border-border",
+    },
+  ];
+
+  return (
+    <Card className="glass animate-fade-in-up">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Wallet className="h-5 w-5 text-primary" /> Salary Prediction (Nepal)
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-3 gap-4">
+          {ranges.map((range) => (
+            <div
+              key={range.label}
+              className={`text-center rounded-xl border-2 ${range.borderColor} p-4 hover:shadow-card-soft transition-all`}
+            >
+              <div className={`text-lg font-bold ${range.color}`}>
+                {formatNPRShort(range.value)}
+              </div>
+              <div className="text-xs text-muted-foreground mt-1">{range.label}</div>
+              <div className="text-[10px] text-muted-foreground mt-0.5">per month</div>
+            </div>
+          ))}
+        </div>
+        <div className="mt-4 p-3 bg-muted/30 rounded-lg">
+          <div className="text-sm font-medium mb-2">Detailed Breakdown</div>
+          <div className="space-y-1.5 text-xs text-muted-foreground">
+            <div className="flex justify-between">
+              <span>Entry Level:</span>
+              <span className="font-medium">{formatNPR(salary.low)}/month</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Average:</span>
+              <span className="font-medium">{formatNPR(salary.mid)}/month</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Experienced:</span>
+              <span className="font-medium">{formatNPR(salary.high)}/month</span>
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ── Section Card Component ──────────────────────────────────────────────────
+
+function SectionCard({
+  icon: Icon,
+  title,
+  children,
+  className,
+}: {
+  icon: LucideIcon;
+  title: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <Card className={cn("glass animate-fade-in-up", className)}>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Icon className="h-5 w-5 text-primary" />
+          {title}
+        </CardTitle>
+      </CardHeader>
+      <CardContent>{children}</CardContent>
+    </Card>
+  );
+}
+
+// ── Job Match Card Component ────────────────────────────────────────────────
+
+function JobMatchCard({ match, onApply }: { match: JobMatch; onApply: (match: JobMatch) => void }) {
+  const isHighMatch = match.score >= 80;
+  const isNepalBased = match.isNepalBased ?? false;
+
+  return (
+    <div className="rounded-xl border p-4 hover:bg-muted/30 hover:shadow-card-soft transition-all group">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h3 className="font-semibold text-sm group-hover:text-primary transition-colors">
+              {match.title}
+            </h3>
+            {isNepalBased ? (
+              <Badge variant="secondary" className="text-[10px]">
+                <Flag className="h-3 w-3 mr-1" />
+                Nepal
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="text-[10px]">
+                <Globe className="h-3 w-3 mr-1" />
+                International
+              </Badge>
+            )}
+          </div>
+          <div className="text-xs text-muted-foreground mt-1">{match.company ?? "—"}</div>
+
+          <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+            {match.location && (
+              <span className="flex items-center gap-1">
+                <MapPin className="h-3 w-3" />
+                {match.location}
+              </span>
+            )}
+            {match.salaryMin && match.salaryMax && (
+              <span className="flex items-center gap-1">
+                <Wallet className="h-3 w-3" />
+                {formatNPRShort(match.salaryMin)} - {formatNPRShort(match.salaryMax)}
+              </span>
+            )}
+            {match.jobType && (
+              <span className="flex items-center gap-1">
+                <Briefcase className="h-3 w-3" />
+                {match.jobType}
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="flex flex-col items-end gap-2">
+          <Badge
+            className={cn(
+              "text-primary-foreground",
+              isHighMatch ? "gradient-brand" : "bg-secondary",
+            )}
+          >
+            {match.score}% match
+          </Badge>
+          <Button
+            size="sm"
+            variant={isHighMatch ? "default" : "outline"}
+            onClick={() => onApply(match)}
+            className="text-xs"
+          >
+            <Send className="h-3 w-3 mr-1" />
+            Apply Now
+          </Button>
+        </div>
+      </div>
+
+      {/* Required Skills */}
+      {match.requiredSkills && match.requiredSkills.length > 0 && (
+        <div className="flex flex-wrap gap-1 mt-3">
+          {match.requiredSkills.slice(0, 5).map((skill, i) => (
+            <Badge key={i} variant="outline" className="text-[10px]">
+              {skill}
+            </Badge>
+          ))}
+          {match.requiredSkills.length > 5 && (
+            <span className="text-[10px] text-muted-foreground">
+              +{match.requiredSkills.length - 5} more
+            </span>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Main Component ──────────────────────────────────────────────────────────
+
 function ResumeScanner() {
   const { user } = useAuth();
   const qc = useQueryClient();
   const runScan = useServerFn(scanResumeFromStorage);
-  const [busy, setBusy] = useState(false);
+
   const [dragActive, setDragActive] = useState(false);
-  const [matches, setMatches] = useState<
-    Array<{ id: string; title: string; company: string | null; score: number }>
-  >([]);
+  const [matches, setMatches] = useState<JobMatch[]>([]);
+  const [isExporting, setIsExporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: resume, isLoading } = useQuery({
     queryKey: ["my-resume-full", user?.id],
     enabled: !!user,
-    queryFn: async () =>
-      (
-        await supabase
-          .from("resumes")
-          .select("*")
-          .eq("user_id", user!.id)
-          .eq("is_default", true)
-          .maybeSingle()
-      ).data,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("resumes")
+        .select("*")
+        .eq("user_id", user!.id)
+        .eq("is_default", true)
+        .maybeSingle();
+
+      if (error) throw error;
+      return data as ResumeData | null;
+    },
+  });
+
+  const scanMutation = useMutation({
+    mutationFn: async (resumeId: string) => {
+      return runScan({ data: { resumeId } });
+    },
+    onSuccess: (result) => {
+      setMatches(result.matches ?? []);
+      toast.success("Analysis complete! Career roadmap generated.");
+      qc.invalidateQueries({ queryKey: ["my-resume-full"] });
+      qc.invalidateQueries({ queryKey: ["my-resume"] });
+    },
+    onError: (error) => {
+      toast.error((error as Error).message);
+    },
   });
 
   const handleFile = useCallback(
     async (file: File) => {
       if (!user || !file) return;
-      if (file.size > 10 * 1024 * 1024) {
-        toast.error("File must be under 10MB");
+
+      const validationError = validateFile(file);
+      if (validationError) {
+        toast.error(validationError);
         return;
       }
-      const validTypes = [
-        "application/pdf",
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      ];
-      if (!validTypes.includes(file.type) && !file.name.match(/\.(pdf|docx)$/i)) {
-        toast.error("Only PDF or DOCX files are supported");
-        return;
-      }
-      setBusy(true);
+
+      const uploadToast = toast.loading("Uploading resume...");
+
       try {
         const path = `${user.id}/${Date.now()}-${file.name}`;
         const up = await supabase.storage.from("resumes").upload(path, file, { upsert: true });
         if (up.error) throw up.error;
+
         await supabase.from("resumes").update({ is_default: false }).eq("user_id", user.id);
+
         const ins = await supabase
           .from("resumes")
           .insert({
@@ -113,20 +456,16 @@ function ResumeScanner() {
           })
           .select()
           .single();
+
         if (ins.error) throw ins.error;
-        toast.success("Resume uploaded — analyzing…");
-        const result = await runScan({ data: { resumeId: ins.data.id } });
-        setMatches(result.matches ?? []);
-        toast.success("Analysis complete! Career roadmap generated.");
-        qc.invalidateQueries({ queryKey: ["my-resume-full"] });
-        qc.invalidateQueries({ queryKey: ["my-resume"] });
+
+        toast.success("Resume uploaded — analyzing...", { id: uploadToast });
+        await scanMutation.mutateAsync(ins.data.id);
       } catch (err) {
-        toast.error((err as Error).message);
-      } finally {
-        setBusy(false);
+        toast.error((err as Error).message, { id: uploadToast });
       }
     },
-    [user, runScan, qc],
+    [user, scanMutation],
   );
 
   const handleDrop = useCallback(
@@ -139,13 +478,15 @@ function ResumeScanner() {
     [handleFile],
   );
 
-  async function reAnalyze() {
-    if (!resume) return toast.error("Upload a resume first");
-    setBusy(true);
+  const reAnalyze = useCallback(async () => {
+    if (!resume) {
+      toast.error("Upload a resume first");
+      return;
+    }
+
     try {
       let scanId = resume.id;
 
-      // If this resume has no stored text, try to find a builder-saved resume
       const parsedData = resume.parsed_data as Record<string, any> | null;
       const hasStoredText = parsedData?.raw_text || resume.resume_data;
 
@@ -165,26 +506,69 @@ function ResumeScanner() {
         }
       }
 
-      const result = await runScan({ data: { resumeId: scanId } });
-      setMatches(result.matches ?? []);
-      toast.success("Re-analyzed! Career roadmap updated.");
-      qc.invalidateQueries({ queryKey: ["my-resume-full"] });
-      qc.invalidateQueries({ queryKey: ["my-resume"] });
+      await scanMutation.mutateAsync(scanId);
     } catch (err) {
       toast.error((err as Error).message);
-    } finally {
-      setBusy(false);
     }
-  }
+  }, [resume, user, scanMutation]);
 
-  function exportRoadmapPDF() {
+  const handleApply = useCallback(
+    async (match: JobMatch) => {
+      if (!user || !resume) {
+        toast.error("Please upload a resume first");
+        return;
+      }
+
+      try {
+        // Check if already applied
+        const { data: existingApplication } = await supabase
+          .from("applications")
+          .select("id")
+          .eq("job_id", match.id)
+          .eq("applicant_id", user.id)
+          .maybeSingle();
+
+        if (existingApplication) {
+          toast.info("You've already applied to this job");
+          return;
+        }
+
+        // Create application
+        const { error: applicationError } = await supabase.from("applications").insert({
+          job_id: match.id,
+          applicant_id: user.id,
+          resume_id: resume.id,
+          status: "applied",
+        });
+
+        if (applicationError) throw applicationError;
+
+        toast.success(`Applied to ${match.title} at ${match.company}!`);
+
+        // Invalidate applications query
+        qc.invalidateQueries({ queryKey: ["applications"] });
+      } catch (error) {
+        toast.error(`Failed to apply: ${(error as Error).message}`);
+      }
+    },
+    [user, resume, qc],
+  );
+
+  const exportRoadmapPDF = useCallback(async () => {
+    const roadmap = resume?.career_roadmap;
     if (!roadmap) return;
-    import("jspdf").then(({ jsPDF }) => {
+
+    setIsExporting(true);
+
+    try {
+      const { jsPDF } = await import("jspdf");
       const doc = new jsPDF();
       let y = 20;
+
       doc.setFontSize(20);
       doc.text("Career Roadmap", 20, y);
       y += 10;
+
       doc.setFontSize(10);
       doc.text(`Generated: ${new Date().toLocaleDateString()}`, 20, y);
       y += 10;
@@ -238,10 +622,10 @@ function ResumeScanner() {
           roadmap.companies_hiring.map((c) => `${c.name} (${c.sector})`),
         );
       if (roadmap.salary_prediction)
-        addSection("Salary Prediction", [
-          `Low: ${roadmap.salary_prediction.low} ${roadmap.salary_prediction.currency}`,
-          `Mid: ${roadmap.salary_prediction.mid} ${roadmap.salary_prediction.currency}`,
-          `High: ${roadmap.salary_prediction.high} ${roadmap.salary_prediction.currency}`,
+        addSection("Salary Prediction (Nepal)", [
+          `Entry Level: ${formatNPR(roadmap.salary_prediction.low)}/month`,
+          `Average: ${formatNPR(roadmap.salary_prediction.mid)}/month`,
+          `Experienced: ${formatNPR(roadmap.salary_prediction.high)}/month`,
         ]);
       if (roadmap.resume_improvements?.length)
         addSection("Resume Improvements", roadmap.resume_improvements);
@@ -253,52 +637,50 @@ function ResumeScanner() {
       }
 
       doc.save("career-roadmap.pdf");
-      toast.success("Roadmap exported");
+      toast.success("Roadmap exported successfully");
+    } catch (error) {
+      toast.error("Failed to export PDF");
+    } finally {
+      setIsExporting(false);
+    }
+  }, [resume]);
+
+  const scores = useMemo(() => {
+    if (!resume) return [];
+
+    return [
+      { label: "Overall", value: resume.overall_score, icon: Sparkles, color: "text-primary" },
+      { label: "ATS", value: resume.ats_score, icon: ScanText, color: "text-blue-500" },
+      {
+        label: "Grammar",
+        value: resume.grammar_score,
+        icon: CheckCircle2,
+        color: "text-green-500",
+      },
+      { label: "Formatting", value: resume.formatting_score, icon: FileText, color: "text-accent" },
+      { label: "Keywords", value: resume.keyword_score, icon: Target, color: "text-orange-500" },
+      {
+        label: "Professionalism",
+        value: resume.professionalism_score,
+        icon: Award,
+        color: "text-purple-500",
+      },
+    ];
+  }, [resume]);
+
+  const suggestions = resume?.suggestions ?? [];
+  const roadmap = resume?.career_roadmap ?? null;
+  const isBusy = scanMutation.isPending;
+
+  // Sort matches: Nepal-based first, then by score
+  const sortedMatches = useMemo(() => {
+    return [...matches].sort((a, b) => {
+      if (a.isNepalBased !== b.isNepalBased) {
+        return a.isNepalBased ? -1 : 1;
+      }
+      return b.score - a.score;
     });
-  }
-
-  const scores = resume
-    ? [
-        { label: "Overall", value: resume.overall_score, icon: Sparkles, color: "text-primary" },
-        { label: "ATS", value: resume.ats_score, icon: ScanText, color: "text-blue-500" },
-        {
-          label: "Grammar",
-          value: resume.grammar_score,
-          icon: CheckCircle2,
-          color: "text-green-500",
-        },
-        {
-          label: "Formatting",
-          value: resume.formatting_score,
-          icon: FileText,
-          color: "text-accent",
-        },
-        { label: "Keywords", value: resume.keyword_score, icon: Target, color: "text-orange-500" },
-        {
-          label: "Professionalism",
-          value: resume.professionalism_score,
-          icon: Award,
-          color: "text-purple-500",
-        },
-      ]
-    : [];
-  const suggestions = (resume?.suggestions as string[] | null) ?? [];
-  const roadmap = (resume?.career_roadmap as Roadmap | null) ?? null;
-  const skillGaps = roadmap?.skill_gaps ?? [];
-
-  function getScoreColor(value: number | null | undefined): string {
-    if (value == null) return "text-muted-foreground";
-    if (value >= 80) return "text-green-500";
-    if (value >= 60) return "text-amber-500";
-    return "text-red-500";
-  }
-
-  function getScoreIcon(value: number | null | undefined) {
-    if (value == null) return AlertCircle;
-    if (value >= 80) return CheckCircle2;
-    if (value >= 60) return AlertCircle;
-    return XCircle;
-  }
+  }, [matches]);
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-5xl space-y-6">
@@ -317,11 +699,11 @@ function ResumeScanner() {
           </p>
         </div>
         {resume && (
-          <Button variant="outline" onClick={reAnalyze} disabled={busy}>
-            {busy ? (
+          <Button variant="outline" onClick={reAnalyze} disabled={isBusy}>
+            {isBusy ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
-              <Sparkles className="mr-2 h-4 w-4" />
+              <RefreshCw className="mr-2 h-4 w-4" />
             )}
             Re-analyze
           </Button>
@@ -338,7 +720,7 @@ function ResumeScanner() {
             }}
             onDragLeave={() => setDragActive(false)}
             onDrop={handleDrop}
-            onClick={() => !busy && fileInputRef.current?.click()}
+            onClick={() => !isBusy && fileInputRef.current?.click()}
             className={`relative border-2 border-dashed rounded-2xl p-10 text-center cursor-pointer transition-all ${
               dragActive
                 ? "border-primary bg-primary/5 scale-[1.02]"
@@ -354,9 +736,10 @@ function ResumeScanner() {
                 const file = e.target.files?.[0];
                 if (file) handleFile(file);
               }}
-              disabled={busy}
+              disabled={isBusy}
             />
-            {busy ? (
+
+            {isBusy ? (
               <>
                 <Loader2 className="h-12 w-12 mx-auto mb-4 animate-spin text-primary" />
                 <div className="font-semibold text-lg">Analyzing your resume…</div>
@@ -423,11 +806,7 @@ function ResumeScanner() {
               <ScoreRing value={resume.overall_score ?? 0} />
               <div className="flex-1">
                 <p className="text-sm text-muted-foreground">
-                  {resume.overall_score >= 80
-                    ? "Excellent! Your resume is well-optimized for ATS systems."
-                    : resume.overall_score >= 60
-                      ? "Good foundation. A few improvements could boost your visibility."
-                      : "Needs work. Focus on the recommendations below to improve."}
+                  {getScoreMessage(resume.overall_score)}
                 </p>
               </div>
             </div>
@@ -486,19 +865,19 @@ function ResumeScanner() {
             <h2 className="text-2xl font-bold flex items-center gap-2">
               <Rocket className="h-6 w-6 text-primary" /> Career Roadmap
             </h2>
-            <Button variant="outline" size="sm" onClick={exportRoadmapPDF}>
-              <FileDown className="h-4 w-4 mr-1" /> Export PDF
+            <Button variant="outline" size="sm" onClick={exportRoadmapPDF} disabled={isExporting}>
+              {isExporting ? (
+                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4 mr-1" />
+              )}
+              Export PDF
             </Button>
           </div>
 
           {roadmap.career_paths && roadmap.career_paths.length > 0 && (
-            <Card className="glass animate-fade-in-up">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Target className="h-5 w-5" /> Career Paths
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
+            <SectionCard icon={Target} title="Career Paths">
+              <div className="space-y-3">
                 {roadmap.career_paths.map((c, i) => (
                   <div
                     key={i}
@@ -518,62 +897,43 @@ function ResumeScanner() {
                     )}
                   </div>
                 ))}
-              </CardContent>
-            </Card>
+              </div>
+            </SectionCard>
           )}
 
           <div className="grid md:grid-cols-2 gap-4">
             {roadmap.skill_gaps && roadmap.skill_gaps.length > 0 && (
-              <Card className="glass animate-fade-in-up">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <TrendingUp className="h-5 w-5" /> Skill Gaps
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex flex-wrap gap-2">
-                    {roadmap.skill_gaps.map((s, i) => (
-                      <Badge
-                        key={i}
-                        variant="secondary"
-                        className="hover:scale-105 transition-transform"
-                      >
-                        {s}
-                      </Badge>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
+              <SectionCard icon={TrendingUp} title="Skill Gaps">
+                <div className="flex flex-wrap gap-2">
+                  {roadmap.skill_gaps.map((s, i) => (
+                    <Badge
+                      key={i}
+                      variant="secondary"
+                      className="hover:scale-105 transition-transform"
+                    >
+                      {s}
+                    </Badge>
+                  ))}
+                </div>
+              </SectionCard>
             )}
 
             {roadmap.missing_skills && roadmap.missing_skills.length > 0 && (
-              <Card className="glass animate-fade-in-up stagger-1">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <Target className="h-5 w-5" /> Missing Skills
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex flex-wrap gap-2">
-                    {roadmap.missing_skills.map((s, i) => (
-                      <Badge key={i} variant="outline">
-                        {s}
-                      </Badge>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
+              <SectionCard icon={Target} title="Missing Skills">
+                <div className="flex flex-wrap gap-2">
+                  {roadmap.missing_skills.map((s, i) => (
+                    <Badge key={i} variant="outline">
+                      {s}
+                    </Badge>
+                  ))}
+                </div>
+              </SectionCard>
             )}
           </div>
 
           {roadmap.recommended_certifications && roadmap.recommended_certifications.length > 0 && (
-            <Card className="glass animate-fade-in-up">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Award className="h-5 w-5" /> Recommended Certifications
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="grid md:grid-cols-2 gap-3">
+            <SectionCard icon={Award} title="Recommended Certifications">
+              <div className="grid md:grid-cols-2 gap-3">
                 {roadmap.recommended_certifications.map((c, i) => (
                   <div
                     key={i}
@@ -586,18 +946,13 @@ function ResumeScanner() {
                     <div className="text-sm text-muted-foreground">{c.provider}</div>
                   </div>
                 ))}
-              </CardContent>
-            </Card>
+              </div>
+            </SectionCard>
           )}
 
           {roadmap.suggested_projects && roadmap.suggested_projects.length > 0 && (
-            <Card className="glass animate-fade-in-up">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Rocket className="h-5 w-5" /> Suggested Projects
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
+            <SectionCard icon={Rocket} title="Suggested Projects">
+              <div className="space-y-2">
                 {roadmap.suggested_projects.map((p, i) => (
                   <div
                     key={i}
@@ -607,57 +962,16 @@ function ResumeScanner() {
                     <p className="text-sm text-muted-foreground mt-0.5">{p.description}</p>
                   </div>
                 ))}
-              </CardContent>
-            </Card>
+              </div>
+            </SectionCard>
           )}
 
-          {roadmap.salary_prediction && (
-            <Card className="glass animate-fade-in-up">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <DollarSign className="h-5 w-5" /> Salary Prediction
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="text-center rounded-xl border p-4 hover:shadow-card-soft transition-all">
-                    <div className="text-2xl font-bold text-muted-foreground">
-                      {roadmap.salary_prediction.low}
-                    </div>
-                    <div className="text-xs text-muted-foreground mt-1">
-                      Low ({roadmap.salary_prediction.currency})
-                    </div>
-                  </div>
-                  <div className="text-center rounded-xl border-2 border-primary p-4 gradient-brand/5">
-                    <div className="text-2xl font-bold gradient-text">
-                      {roadmap.salary_prediction.mid}
-                    </div>
-                    <div className="text-xs text-muted-foreground mt-1">
-                      Mid ({roadmap.salary_prediction.currency})
-                    </div>
-                  </div>
-                  <div className="text-center rounded-xl border p-4 hover:shadow-card-soft transition-all">
-                    <div className="text-2xl font-bold text-green-600">
-                      {roadmap.salary_prediction.high}
-                    </div>
-                    <div className="text-xs text-muted-foreground mt-1">
-                      High ({roadmap.salary_prediction.currency})
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+          {roadmap.salary_prediction && <SalaryPredictionCard salary={roadmap.salary_prediction} />}
 
           <div className="grid md:grid-cols-2 gap-4">
             {roadmap.recommended_jobs && roadmap.recommended_jobs.length > 0 && (
-              <Card className="glass animate-fade-in-up">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Briefcase className="h-5 w-5" /> Recommended Jobs
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
+              <SectionCard icon={Briefcase} title="Recommended Jobs">
+                <div className="space-y-2">
                   {roadmap.recommended_jobs.map((j, i) => (
                     <div
                       key={i}
@@ -667,60 +981,46 @@ function ResumeScanner() {
                       <p className="text-sm text-muted-foreground">{j.why}</p>
                     </div>
                   ))}
-                </CardContent>
-              </Card>
+                </div>
+              </SectionCard>
             )}
 
             {roadmap.companies_hiring && roadmap.companies_hiring.length > 0 && (
-              <Card className="glass animate-fade-in-up stagger-1">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Building2 className="h-5 w-5" /> Companies Hiring
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
+              <SectionCard icon={Building2} title="Companies Hiring">
+                <div className="space-y-2">
                   {roadmap.companies_hiring.map((c, i) => (
                     <div
                       key={i}
                       className="flex items-center justify-between rounded-lg border p-3 hover:bg-muted/30 transition-colors"
                     >
-                      <span className="font-medium">{c.name}</span>
+                      <div>
+                        <div className="font-medium">{c.name}</div>
+                        <div className="text-xs text-muted-foreground">{c.sector}</div>
+                      </div>
                       <Badge variant="secondary">{c.sector}</Badge>
                     </div>
                   ))}
-                </CardContent>
-              </Card>
+                </div>
+              </SectionCard>
             )}
           </div>
 
           {roadmap.resume_improvements && roadmap.resume_improvements.length > 0 && (
-            <Card className="glass animate-fade-in-up">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Lightbulb className="h-5 w-5" /> Resume Improvements
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-2">
-                  {roadmap.resume_improvements.map((s, i) => (
-                    <li key={i} className="flex items-start gap-2 text-sm">
-                      <Lightbulb className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
-                      {s}
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
+            <SectionCard icon={Lightbulb} title="Resume Improvements">
+              <ul className="space-y-2">
+                {roadmap.resume_improvements.map((s, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm">
+                    <Lightbulb className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+                    {s}
+                  </li>
+                ))}
+              </ul>
+            </SectionCard>
           )}
 
           {roadmap.interview_prep_plan && (
-            <Card className="glass animate-fade-in-up">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Target className="h-5 w-5" /> Interview Preparation Plan
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <SectionCard icon={Target} title="Interview Preparation Plan">
+              <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {[
                   {
                     label: "30 Days",
@@ -758,77 +1058,30 @@ function ResumeScanner() {
                     </ul>
                   </div>
                 ))}
-              </CardContent>
-            </Card>
+              </div>
+            </SectionCard>
           )}
         </div>
       )}
 
       {/* Job matches */}
-      {matches.length > 0 && (
+      {sortedMatches.length > 0 && (
         <Card className="glass animate-fade-in-up">
           <CardContent className="p-6 space-y-3">
             <h2 className="text-xl font-bold flex items-center gap-2">
               <Briefcase className="h-5 w-5" /> Top Job Matches
             </h2>
-            <p className="text-sm text-muted-foreground">Based on your resume skills.</p>
+            <p className="text-sm text-muted-foreground">
+              Based on your resume skills. Nepal-based jobs shown first.
+            </p>
             <div className="space-y-2">
-              {matches.map((m) => (
-                <Link
-                  key={m.id}
-                  to="/jobs/$jobId"
-                  params={{ jobId: m.id }}
-                  className="flex items-center justify-between p-4 rounded-xl border hover:bg-muted/30 hover:shadow-card-soft transition-all"
-                >
-                  <div>
-                    <div className="font-medium">{m.title}</div>
-                    <div className="text-xs text-muted-foreground">{m.company ?? "—"}</div>
-                  </div>
-                  <Badge className="gradient-brand text-primary-foreground">{m.score}% match</Badge>
-                </Link>
+              {sortedMatches.map((match) => (
+                <JobMatchCard key={match.id} match={match} onApply={handleApply} />
               ))}
             </div>
           </CardContent>
         </Card>
       )}
-    </div>
-  );
-}
-
-function ScoreRing({ value }: { value: number }) {
-  const radius = 40;
-  const circumference = 2 * Math.PI * radius;
-  const offset = circumference - (value / 100) * circumference;
-  const color = value >= 80 ? "text-green-500" : value >= 60 ? "text-amber-500" : "text-red-500";
-
-  return (
-    <div className="relative h-24 w-24 shrink-0">
-      <svg className="h-full w-full -rotate-90" viewBox="0 0 100 100">
-        <circle
-          cx="50"
-          cy="50"
-          r={radius}
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="8"
-          className="text-muted"
-        />
-        <circle
-          cx="50"
-          cy="50"
-          r={radius}
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="8"
-          strokeDasharray={circumference}
-          strokeDashoffset={offset}
-          strokeLinecap="round"
-          className={`${color} transition-all duration-1000`}
-        />
-      </svg>
-      <div className="absolute inset-0 flex items-center justify-center">
-        <span className={`text-2xl font-bold ${color}`}>{value}</span>
-      </div>
     </div>
   );
 }

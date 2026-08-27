@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
 import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -173,7 +173,7 @@ function Admin() {
     mutationFn: async ({ userId, newRole }: { userId: string; newRole: string }) => {
       const { error } = await supabase
         .from("user_roles")
-        .update({ role: newRole })
+        .update({ role: newRole as "seeker" | "employer" | "admin" | "job_seeker" })
         .eq("user_id", userId);
       if (error) throw error;
     },
@@ -224,6 +224,9 @@ function Admin() {
       toast.success("Company deleted");
       qc.invalidateQueries({ queryKey: ["admin-companies", "admin-stats"] });
     },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   const deleteJobFn = useServerFn(deleteJobAsAdmin);
   const deleteJob = async (id: string) => {
     try {
@@ -236,28 +239,12 @@ function Admin() {
     }
   };
 
-    onError: (e: any) => toast.error(e.message),
-  });
-
   const setJobStatus = async (id: string, status: "active" | "closed" | "draft") => {
     const { error } = await supabase.from("jobs").update({ status }).eq("id", id);
     if (error) return toast.error(error.message);
     toast.success("Updated");
     qc.invalidateQueries({ queryKey: ["admin-jobs"] });
   };
-
-  const deleteJob = useMutation({
-    mutationFn: async (jobId: string) => {
-      const res = await adminDeleteJob({ data: { jobId } });
-      if (!res.success) throw new Error(res.message);
-      return res;
-    },
-    onSuccess: () => {
-      toast.success("Job deleted");
-      qc.invalidateQueries({ queryKey: ["admin-jobs", "admin-stats"] });
-    },
-    onError: (e: any) => toast.error(e.message),
-  });
 
   const replyTicket = async (
     id: string,
@@ -546,15 +533,25 @@ function Admin() {
                     </div>
                     <Badge>{j.status}</Badge>
                     <div className="flex items-center gap-2">
-                      <Button size="sm" variant="outline" onClick={() => setJobStatus(j.id, j.status === "active" ? "closed" : "active")}>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                          setJobStatus(j.id, j.status === "active" ? "closed" : "active")
+                        }
+                      >
                         {j.status === "active" ? "Close" : "Activate"}
                       </Button>
-                      <ConfirmDelete label="Delete job" description={`Permanently remove “${j.title}” and its applications?`} onConfirm={() => void deleteJob(j.id)} />
+                      <ConfirmDelete
+                        label="Delete job"
+                        description={`Permanently remove “${j.title}” and its applications?`}
+                        onConfirm={() => void deleteJob(j.id)}
+                      />
                     </div>
                     <ConfirmDelete
                       label="Delete job"
                       description={`Permanently delete "${j.title}"? All applications and interviews for this job will also be removed.`}
-                      onConfirm={() => deleteJob.mutate(j.id)}
+                      onConfirm={() => void deleteJob(j.id)}
                     />
                   </div>
                 ))}
@@ -886,7 +883,10 @@ function AdminSubscriptions() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: async (payload: { id: string; updates: Record<string, unknown> }) => {
+    mutationFn: async (payload: {
+      id: string;
+      updates: Database["public"]["Tables"]["subscriptions"]["Update"];
+    }) => {
       const { error } = await supabase
         .from("subscriptions")
         .update(payload.updates)

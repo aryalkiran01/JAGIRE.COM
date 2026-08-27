@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth.middleware";
 import { aiGenerateJsonValidated, aiGenerateText } from "@/integrations/ai/ai-service";
 import { requirePremium } from "@/lib/premium.server";
@@ -13,66 +14,542 @@ import {
   careerCoachResponseSchema,
 } from "@/integrations/ai/schemas";
 
-// ── Prompts ──────────────────────────────────────────────────────────────────
+// ── Types ───────────────────────────────────────────────────────────────────
 
-const RESUME_SYSTEM =
-  "ATS resume reviewer. Score 0-100. Return JSON only: {overall_score,ats_score,grammar_score,formatting_score,keyword_score,professionalism_score,suggestions[8],summary,extracted_skills[20]}";
-
-const FULL_SCAN_SYSTEM =
-  "Expert resume analyst and career coach. Analyse the resume and return ONE valid JSON object.\n" +
-  "CRITICAL: Use ONLY JSON syntax. Arrays in brackets []. Objects in braces {}.\n" +
-  'Example: "skills": ["React", "TypeScript"] NOT "skills": "React, TypeScript"\n\n' +
-  "Return these keys:\n" +
-  "- overall_score, ats_score, grammar_score, formatting_score, keyword_score, professionalism_score: numbers 0-100\n" +
-  "- suggestions: array of 8 strings\n" +
-  "- summary: string\n" +
-  "- extracted_skills: array of 20 strings\n" +
-  "- strengths: array of 5 strings\n" +
-  "- weaknesses: array of 5 strings\n" +
-  "- missing_skills: array of 10 strings\n" +
-  "- keywords: array of 15 strings\n" +
-  "- career_paths: array of 4 objects {title, why, next_steps[]}\n" +
-  "- skill_gaps: array of 8 strings\n" +
-  "- recommended_certifications: array of 5 objects {name, provider}\n" +
-  "- suggested_projects: array of 4 objects {title, description}\n" +
-  "- recommended_jobs: array of 5 objects {title, why}\n" +
-  "- companies_hiring: array of 5 objects {name, sector}\n" +
-  "- salary_prediction: object {low, mid, high, currency} or null\n" +
-  "- resume_improvements: array of 8 strings\n" +
-  "- interview_prep_plan: object {thirty_days[], sixty_days[], ninety_days[], one_eighty_days[]} or null\n\n" +
-  "Return ONLY the JSON. No markdown, no explanations.";
-
-const CAREER_SYSTEM = `
-You are a senior career coach.
-
-Return ONLY valid JSON matching this schema exactly.
-Never return markdown or explanations.
-Every array field MUST always be an array, even if it has one item.
-Never return null. Use [] instead.
-`;
-const LINKEDIN_SYSTEM =
-  "Extract LinkedIn profile. JSON only: {full_name,headline,about,location,current_position,experience_years(int),skills[20]}";
-
-type ValidatedLearningItem = {
+export type JobMatchResult = {
   id: string;
-  kind: string;
   title: string;
-  provider: string;
-  description: string;
-  skills: string[];
-  url: string;
-  route: string;
+  company: string | null;
+  companyId: string | null;
+  score: number;
+  location: string | null;
+  salaryMin: number | null;
+  salaryMax: number | null;
+  salaryCurrency: string | null;
+  jobType: string | null;
+  requiredSkills: string[];
+  matchingSkills: string[];
+  missingSkills: string[];
+  isNepalBased: boolean;
+  companyLocation: string | null;
+  description: string | null;
+  matchReasoning: string;
+  recommendedNextSteps: string[];
 };
 
-const LEARNING_SYSTEM =
-  'Career coach. JSON only: {"items":[{"kind":"course|video|challenge|interview","title":"","provider":"","skills":[],"description":""}]}. ' +
-  "Generate specific, realistic learning resources with well-known platforms (Udemy, YouTube, Coursera, freeCodeCamp, edX, Pluralsight). " +
-  "Do NOT include URLs - the system will generate search links automatically. " +
-  "Skills array should contain relevant technologies/topics.";
+// ── Prompt Templates ─────────────────────────────────────────────────────────
+
+const PROMPTS = {
+  RESUME_ANALYSIS: {
+    system: `You are an expert ATS (Applicant Tracking System) resume reviewer with deep expertise in recruitment technology and HR best practices.
+
+Analyze the resume and provide a comprehensive assessment focusing on:
+1. ATS compatibility (parsing accuracy, keyword optimization, formatting)
+2. Grammar and language quality
+3. Professional formatting and structure
+4. Industry-relevant keywords and skills
+5. Overall professionalism and impact
+
+Scoring guidelines:
+- 90-100: Excellent - ready for top-tier applications
+- 75-89: Good - minor improvements needed
+- 60-74: Average - significant improvements required
+- Below 60: Needs major revision
+
+Return JSON in this exact format:
+{
+  "overall_score": number,
+  "ats_score": number,
+  "grammar_score": number,
+  "formatting_score": number,
+  "keyword_score": number,
+  "professionalism_score": number,
+  "suggestions": string[] (8 actionable, specific improvements),
+  "summary": string (2-3 sentence professional summary),
+  "extracted_skills": string[] (up to 20 skills found in resume)
+}
+
+Important:
+- Scores must be integers 0-100
+- Suggestions should be specific and actionable (e.g., "Add quantifiable achievements to your work experience section")
+- Extract only skills actually mentioned or clearly implied in the resume
+- Be constructive and encouraging in tone`,
+  },
+
+  FULL_SCAN: {
+    system: `You are a senior career strategist and resume expert with 15+ years of experience in talent acquisition and career coaching.
+
+Analyze the resume comprehensively and provide a complete career development assessment.
+
+CRITICAL INSTRUCTIONS:
+- Return ONLY valid JSON - no markdown, no explanations
+- All arrays must use [] syntax, objects use {} syntax
+- Do not use null values - use empty arrays [] instead
+- Ensure all string values are properly escaped
+- For salary_prediction, use NPR (Nepali Rupees) with monthly figures
+- For companies_hiring, PRIORITIZE NEPALI COMPANIES FIRST, then international
+
+Return this exact structure:
+{
+  "overall_score": number (0-100),
+  "ats_score": number (0-100),
+  "grammar_score": number (0-100),
+  "formatting_score": number (0-100),
+  "keyword_score": number (0-100),
+  "professionalism_score": number (0-100),
+  "suggestions": string[] (8 specific improvements),
+  "summary": string (professional summary),
+  "extracted_skills": string[] (20 skills),
+  "strengths": string[] (5 key strengths),
+  "weaknesses": string[] (5 areas for improvement),
+  "missing_skills": string[] (10 skills to acquire),
+  "keywords": string[] (15 ATS keywords),
+  "career_paths": [
+    {
+      "title": string,
+      "why": string (explanation),
+      "next_steps": string[] (3-5 steps)
+    }
+  ] (4 paths),
+  "skill_gaps": string[] (8 gaps to address),
+  "recommended_certifications": [
+    {
+      "name": string,
+      "provider": string
+    }
+  ] (5 certifications),
+  "suggested_projects": [
+    {
+      "title": string,
+      "description": string
+    }
+  ] (4 projects),
+  "recommended_jobs": [
+    {
+      "title": string,
+      "why": string
+    }
+  ] (5 job titles),
+  "companies_hiring": [
+    {
+      "name": string,
+      "sector": string,
+      "location": string (Nepal city or "International"),
+      "is_nepal_based": boolean
+    }
+  ] (5 companies - NEPALI COMPANIES FIRST),
+  "salary_prediction": {
+    "low": number (NPR monthly),
+    "mid": number (NPR monthly),
+    "high": number (NPR monthly),
+    "currency": "NPR"
+  },
+  "resume_improvements": string[] (8 improvements),
+  "interview_prep_plan": {
+    "thirty_days": string[],
+    "sixty_days": string[],
+    "ninety_days": string[],
+    "one_eighty_days": string[]
+  }
+}
+
+IMPORTANT NEPAL CONTEXT:
+- This is for the Nepali job market (Jagire.com)
+- Prioritize companies based in Nepal (Kathmandu, Lalitpur, Pokhara, Bhaktapur, etc.)
+- Include international companies but list them AFTER Nepali ones
+- Salary should be in NPR (Rs.) with realistic Nepali market rates
+- Entry level: Rs. 30,000-60,000/month
+- Mid level: Rs. 60,000-120,000/month
+- Senior level: Rs. 120,000-250,000/month`,
+  },
+
+  JOB_MATCH_ANALYSIS: {
+    system: `You are an expert job matching AI for Jagire.com, a Nepal-focused job platform.
+
+Your task is to analyze the candidate's profile and match them with the available jobs.
+
+## Matching Criteria:
+1. **Skills Match (40%)**: How well the candidate's skills align with required skills
+2. **Experience Level (25%)**: Whether experience level matches the job requirements
+3. **Job Title Relevance (20%)**: How relevant the candidate's background is to the job title
+4. **Location Preference (15%)**: Whether location aligns with candidate preferences
+
+## Scoring Guidelines:
+- 90-100: Exceptional match - candidate is ideal
+- 75-89: Strong match - highly recommended
+- 60-74: Good match - worth applying
+- 40-59: Moderate match - may need training
+- Below 40: Weak match - not recommended
+
+## Important:
+- Consider related skills (e.g., JavaScript = TypeScript, React = Frontend)
+- Consider the Nepali job market context
+- Prioritize Nepal-based companies in your analysis
+- Be realistic about skill matches
+- Consider both hard skills and soft skills
+
+## Return JSON:
+{
+  "matches": [
+    {
+      "job_id": string,
+      "score": number (0-100),
+      "matching_skills": string[],
+      "missing_skills": string[],
+      "match_reasoning": string (brief explanation),
+      "recommended_next_steps": string[] (2-3 actionable steps)
+    }
+  ]
+}
+
+Return ONLY valid JSON. No markdown, no explanations.`,
+  },
+
+  CAREER_RECOMMENDATIONS: {
+    system: `You are a senior career coach specializing in technology and professional development in Nepal.
+
+Analyze the candidate's profile and provide personalized career guidance based on:
+- Current skills and experience level
+- Market demand in Nepal and internationally
+- Growth potential and career trajectory
+- Skills gaps and development opportunities
+
+Return ONLY valid JSON matching this schema:
+{
+  "career_paths": [
+    {
+      "title": string,
+      "description": string,
+      "required_skills": string[],
+      "salary_range": string (in NPR),
+      "growth_potential": string
+    }
+  ],
+  "skill_gaps": string[],
+  "recommended_certifications": [
+    {
+      "name": string,
+      "provider": string,
+      "difficulty": string,
+      "time_to_complete": string
+    }
+  ],
+  "suggested_search_keywords": string[]
+}
+
+Rules:
+- Be specific and realistic for Nepal market
+- Consider both local and remote opportunities
+- Focus on actionable recommendations
+- All arrays should have 3-8 items`,
+  },
+
+  LINKEDIN_IMPORT: {
+    system: `Extract and structure LinkedIn profile information from the provided text.
+
+Parse the text and identify:
+- Full name (use professional name format)
+- Headline (professional title)
+- About/Summary section
+- Location (city, country)
+- Current position (title and company)
+- Total years of experience (calculate if possible)
+- Skills (extract from skills section, endorsements, and descriptions)
+
+Return JSON in this format:
+{
+  "full_name": string,
+  "headline": string,
+  "about": string,
+  "location": string,
+  "current_position": string,
+  "experience_years": number,
+  "skills": string[] (up to 20)
+}
+
+Note: 
+- If information is not found, use empty string or 0
+- For experience_years, estimate based on work history if not explicitly stated`,
+  },
+
+  LEARNING_RECOMMENDATIONS: {
+    system: `You are a learning and development specialist who creates personalized education plans.
+
+Generate learning recommendations that are:
+1. Specific and actionable
+2. Appropriate for the user's current skill level
+3. From reputable platforms and providers
+4. Aligned with career goals
+
+Focus on these learning types:
+- Courses (structured learning paths)
+- Videos (quick tutorials and lectures)
+- Challenges (hands-on practice)
+- Interview preparation
+
+For each recommendation, provide:
+- Title: Specific course/resource name
+- Provider: Well-known platform (Udemy, Coursera, edX, YouTube, freeCodeCamp, Pluralsight)
+- Skills: Technologies or topics covered
+- Description: What they'll learn and why it's valuable
+
+CRITICAL: Do NOT include URLs - the system generates search links automatically.
+
+Return JSON:
+{
+  "items": [
+    {
+      "kind": "course|video|challenge|interview",
+      "title": string,
+      "provider": string,
+      "skills": string[],
+      "description": string
+    }
+  ]
+}
+
+Generate 8 diverse, realistic recommendations.`,
+  },
+
+  CAREER_COACH: {
+    system: `You are Jagire AI Career Coach, an expert career advisor with deep knowledge of:
+- Career development strategies in Nepal
+- Resume optimization for Nepali and international jobs
+- Interview preparation
+- Skills development
+- Job market trends in Nepal and globally
+- Professional networking
+
+You have access to the user's:
+- Profile information
+- Resume scores and analysis
+- Skills and experience
+- Application history
+- Career goals
+
+Provide personalized, actionable advice that is:
+1. Specific to their situation
+2. Practical and implementable
+3. Encouraging but honest
+4. Focused on actionable steps
+
+Return JSON:
+{
+  "advice": string (main advice, 3-4 sentences),
+  "recommended_skills": string[] (8 skills to develop),
+  "action_plan": string[] (6 specific actions),
+  "improvement_suggestions": string[] (6 areas to improve),
+  "follow_up_questions": string[] (3 questions to better understand their goals)
+}`,
+  },
+
+  AI_ASSISTANT: {
+    system: `You are Jagire AI Assistant, a knowledgeable career mentor for Jagire.com, a Nepal-focused job platform.
+
+Your expertise includes:
+- Job search strategies in Nepal
+- Resume and cover letter optimization
+- Interview preparation
+- Skills development
+- Career transitions
+- Salary negotiation (NPR)
+- Professional networking
+
+CONTEXT AWARENESS:
+- You have access to the user's profile, resume, applications, and saved jobs
+- Use this context to provide personalized, relevant advice
+- Reference their specific situation in your answers
+- Consider Nepal's job market and industry trends
+
+RESPONSE GUIDELINES:
+- Use clear markdown formatting (headings, bullet points, bold)
+- Keep responses 150-400 words (concise but thorough)
+- Provide specific, actionable recommendations
+- Use Nepali context where relevant (Rs. for salary, local companies)
+- Be encouraging and professional
+- Ask clarifying questions when needed
+
+SALARY INFORMATION:
+- Always display in NPR/Rs. format (e.g., Rs. 50,000/month)
+- Provide realistic ranges based on role and experience in Nepal
+- Consider both local and international opportunities`,
+  },
+};
+
+// ── Utility Functions ────────────────────────────────────────────────────────
 
 function clamp(n: unknown): number {
   return Math.max(0, Math.min(100, Math.round(Number(n) || 0)));
 }
+
+function generateSearchUrl(title: string, provider: string, skills: string[]): string {
+  const searchTerm = title || skills[0] || "learning";
+  const encoded = encodeURIComponent(searchTerm);
+
+  const providerUrls: Record<string, string> = {
+    udemy: `https://www.udemy.com/courses/search/?q=${encoded}`,
+    youtube: `https://www.youtube.com/results?search_query=${encoded}+course`,
+    coursera: `https://www.coursera.org/search?query=${encoded}`,
+    edx: `https://www.edx.org/search?q=${encoded}`,
+    pluralsight: `https://www.pluralsight.com/search?q=${encoded}`,
+    freecodecamp: `https://www.freecodecamp.org/learn/`,
+  };
+
+  const providerLower = provider.toLowerCase();
+  for (const [key, url] of Object.entries(providerUrls)) {
+    if (providerLower.includes(key)) return url;
+  }
+
+  return `https://www.google.com/search?q=${encodeURIComponent(`${searchTerm} ${provider} course`)}`;
+}
+
+function extractConversationTitle(question: string): string {
+  const cleaned = question.trim().replace(/\s+/g, " ");
+  return cleaned.length > 50 ? cleaned.slice(0, 50) + "…" : cleaned || "New conversation";
+}
+
+function isNepalBasedCompany(location: string | null | undefined): boolean {
+  if (!location) return false;
+
+  const nepalLocations = [
+    "nepal",
+    "kathmandu",
+    "lalitpur",
+    "pokhara",
+    "bhaktapur",
+    "butwal",
+    "biratnagar",
+    "dharan",
+    "janakpur",
+    "hetauda",
+    "dhangadhi",
+    "itahari",
+    "nepalgunj",
+    "birgunj",
+    "banepa",
+    "dhulikhel",
+    "damak",
+    "tikapur",
+  ];
+
+  const lowerLocation = location.toLowerCase();
+  return nepalLocations.some((city) => lowerLocation.includes(city));
+}
+
+// ── AI Job Matching Function ───────────────────────────────────────────────
+
+async function aiMatchJobs(
+  resumeSkills: string[],
+  profile: any,
+  jobs: any[],
+): Promise<JobMatchResult[]> {
+  if (!jobs.length || !resumeSkills.length) return [];
+
+  const candidateProfile = {
+    skills: resumeSkills,
+    headline: profile?.headline || "",
+    experience_years: profile?.experience_years || 0,
+    current_position: profile?.current_position || "",
+    location: profile?.location || "",
+  };
+
+  const jobsForAI = jobs.map((job: any) => ({
+    job_id: job.id,
+    title: job.title,
+    company: job.company?.name || "Unknown",
+    required_skills: job.required_skills || [],
+    experience_level: job.experience_level || "",
+    location: job.location || job.company?.headquarters || "Remote",
+    description: job.description?.substring(0, 300) || "",
+  }));
+
+  const prompt = `## Candidate Profile:
+${JSON.stringify(candidateProfile, null, 2)}
+
+## Available Jobs:
+${JSON.stringify(jobsForAI, null, 2)}
+
+Analyze each job and match it with the candidate. Return the match results.`;
+
+  const jobMatchSchema = z.object({
+    matches: z
+      .array(
+        z.object({
+          job_id: z.string(),
+          score: z.number(),
+          matching_skills: z.array(z.string()),
+          missing_skills: z.array(z.string()),
+          match_reasoning: z.string(),
+          recommended_next_steps: z.array(z.string()),
+        }),
+      )
+      .optional(),
+  });
+
+  try {
+    const aiResult = (await aiGenerateJsonValidated(
+      prompt,
+      PROMPTS.JOB_MATCH_ANALYSIS.system,
+      jobMatchSchema,
+      "job-matching",
+    )) as {
+      matches?: Array<{
+        job_id: string;
+        score: number;
+        matching_skills: string[];
+        missing_skills: string[];
+        match_reasoning: string;
+        recommended_next_steps: string[];
+      }>;
+    };
+
+    const aiMatches = aiResult.matches || [];
+
+    return aiMatches
+      .map((aiMatch: any) => {
+        const job = jobs.find((j: any) => j.id === aiMatch.job_id);
+        if (!job) return null;
+
+        const company = job.company;
+        const companyLocation = company?.headquarters || company?.location || job.location || null;
+        const nepalBased = isNepalBasedCompany(companyLocation);
+
+        return {
+          id: job.id,
+          title: job.title,
+          company: company?.name ?? null,
+          companyId: company?.id ?? null,
+          score: clamp(aiMatch.score),
+          location: job.location ?? null,
+          salaryMin: job.salary_min ?? null,
+          salaryMax: job.salary_max ?? null,
+          salaryCurrency: job.salary_currency ?? "NPR",
+          jobType: job.job_type ?? null,
+          requiredSkills: job.required_skills || [],
+          matchingSkills: aiMatch.matching_skills || [],
+          missingSkills: aiMatch.missing_skills || [],
+          isNepalBased: nepalBased,
+          companyLocation,
+          description: job.description ?? null,
+          matchReasoning: aiMatch.match_reasoning || "",
+          recommendedNextSteps: aiMatch.recommended_next_steps || [],
+        };
+      })
+      .filter((match: JobMatchResult | null): match is JobMatchResult => match !== null)
+      .sort((a: JobMatchResult, b: JobMatchResult) => {
+        if (a.isNepalBased !== b.isNepalBased) {
+          return a.isNepalBased ? -1 : 1;
+        }
+        return b.score - a.score;
+      })
+      .slice(0, 10);
+  } catch (error) {
+    console.warn("AI job matching failed:", error);
+    return [];
+  }
+}
+
+// ── Resume Analysis Functions ────────────────────────────────────────────────
 
 export const scoreResume = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -83,9 +560,10 @@ export const scoreResume = createServerFn({ method: "POST" })
   })
   .handler(async ({ data, context }) => {
     await requirePremium(context.userId);
+
     const parsed = await aiGenerateJsonValidated(
       `Resume:\n${data.text}`,
-      RESUME_SYSTEM,
+      PROMPTS.RESUME_ANALYSIS.system,
       resumeAnalysisSchema,
       "resume-analysis",
     );
@@ -100,11 +578,13 @@ export const scoreResume = createServerFn({ method: "POST" })
       suggestions: parsed.suggestions ?? [],
       parsed_data: { summary: parsed.summary, skills: parsed.extracted_skills ?? [] },
     };
+
     const { error } = await context.supabase
       .from("resumes")
       .update(update)
       .eq("id", data.resumeId)
       .eq("user_id", context.userId);
+
     if (error) throw new Error(error.message);
     return update;
   });
@@ -113,6 +593,7 @@ export const careerRecommendations = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await requirePremium(context.userId);
+
     const [{ data: profile }, { data: resume }] = await Promise.all([
       context.supabase
         .from("profiles")
@@ -126,11 +607,12 @@ export const careerRecommendations = createServerFn({ method: "POST" })
         .eq("is_default", true)
         .maybeSingle(),
     ]);
+
     const skills = (resume?.parsed_data as { skills?: string[] } | null)?.skills ?? [];
 
     const parsed = await aiGenerateJsonValidated(
       `Profile:${JSON.stringify(profile ?? {})}\nSkills:${skills.join(",") || "unknown"}`,
-      CAREER_SYSTEM,
+      PROMPTS.CAREER_RECOMMENDATIONS.system,
       careerRecommendationsSchema,
       "career-suggestions",
     );
@@ -143,7 +625,6 @@ export const careerRecommendations = createServerFn({ method: "POST" })
     };
   });
 
-//  ONLY ONE scanResumeFromStorage -
 export const scanResumeFromStorage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => {
@@ -151,25 +632,25 @@ export const scanResumeFromStorage = createServerFn({ method: "POST" })
     if (!i?.resumeId) throw new Error("Missing resumeId");
     return { resumeId: i.resumeId };
   })
-
   .handler(async ({ data, context }) => {
     await requirePremium(context.userId);
+
     const { data: resume, error: rErr } = await context.supabase
       .from("resumes")
       .select("id, file_path, mime_type, file_name, user_id, resume_data, parsed_data")
       .eq("id", data.resumeId)
       .eq("user_id", context.userId)
       .maybeSingle();
+
     if (rErr || !resume) throw new Error("Resume not found");
 
     let text = "";
     const parsedData = resume.parsed_data as Record<string, unknown> | null | undefined;
     const storedRawText = typeof parsedData?.raw_text === "string" ? parsedData.raw_text : "";
+
     if (storedRawText) {
       text = storedRawText;
-    }
-    // If no stored text, try resume_data JSON
-    else if (resume.resume_data) {
+    } else if (resume.resume_data) {
       const resumeData = resume.resume_data as any;
       text = [
         resumeData.full_name,
@@ -182,9 +663,7 @@ export const scanResumeFromStorage = createServerFn({ method: "POST" })
       ]
         .filter(Boolean)
         .join("\n");
-    }
-    // If no stored text, try file extraction
-    else if (resume.file_path) {
+    } else if (resume.file_path) {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       const dl = await supabaseAdmin.storage.from("resumes").download(resume.file_path);
       if (dl.error || !dl.data) throw new Error(dl.error?.message ?? "Failed to download resume");
@@ -202,28 +681,16 @@ export const scanResumeFromStorage = createServerFn({ method: "POST" })
         } else if (isPdf) {
           let extractedSuccessfully = false;
 
-          // Method 1: pdf-parse
           try {
             const pdfParseModule = await import("pdf-parse");
-
             const pdfParse = pdfParseModule.default ?? pdfParseModule;
-
             const pdfData = await pdfParse(Buffer.from(buf));
-
             text = pdfData.text ?? "";
-
             extractedSuccessfully = text.trim().length >= 50;
-
-            if (!extractedSuccessfully) {
-              console.warn(
-                `pdf-parse extracted only ${text.trim().length} characters, trying unpdf...`,
-              );
-            }
           } catch (err) {
             console.warn("pdf-parse failed:", err);
           }
 
-          // Method 2: unpdf fallback
           if (!extractedSuccessfully) {
             try {
               const { extractText, getDocumentProxy } = await import("unpdf");
@@ -231,18 +698,12 @@ export const scanResumeFromStorage = createServerFn({ method: "POST" })
               const out = await extractText(pdf, { mergePages: true });
               text = Array.isArray(out.text) ? out.text.join("\n") : (out.text as string);
               extractedSuccessfully = text?.trim().length >= 50;
-
-              if (!extractedSuccessfully) {
-                console.warn(`unpdf extracted only ${text?.trim().length || 0} characters`);
-              }
             } catch (unpdfError) {
               console.warn("unpdf failed:", unpdfError);
             }
           }
 
-          // Method 3: raw text extraction as last resort
           if (!extractedSuccessfully) {
-            console.warn("Both PDF parsers failed. Attempting raw text extraction...");
             const rawText = new TextDecoder().decode(buf);
             const readableParts = rawText.match(/[a-zA-Z0-9\s.,!?@#&*()\-–—:;'"/\\]{4,}/g) || [];
             text = readableParts.join(" ").replace(/\s+/g, " ").trim();
@@ -271,7 +732,7 @@ export const scanResumeFromStorage = createServerFn({ method: "POST" })
 
     const scan = await aiGenerateJsonValidated(
       `Resume:\n${text}`,
-      FULL_SCAN_SYSTEM,
+      PROMPTS.FULL_SCAN.system,
       fullResumeScanSchema,
       "resume-analysis",
     );
@@ -313,28 +774,51 @@ export const scanResumeFromStorage = createServerFn({ method: "POST" })
       .eq("user_id", context.userId);
     if (error) throw new Error(error.message);
 
+    // ── AI Job Matching ─────────────────────────────────────────────────────
+
     const skills = (scan.extracted_skills ?? []).map((s) => s.toLowerCase()).filter(Boolean);
-    let matches: Array<{ id: string; title: string; company: string | null; score: number }> = [];
+    let matches: JobMatchResult[] = [];
+
     if (skills.length) {
+      // Fetch user profile for better matching
+      const { data: profile } = await context.supabase
+        .from("profiles")
+        .select("headline, experience_years, current_position, location")
+        .eq("id", context.userId)
+        .maybeSingle();
+
+      // Fetch all active jobs
       const { data: jobs } = await context.supabase
         .from("jobs")
-        .select("id, title, required_skills, company:companies(name)")
+        .select(
+          `
+          id,
+          title,
+          required_skills,
+          salary_min,
+          salary_max,
+          salary_currency,
+          location,
+          job_type,
+          description,
+          experience_level,
+          company:companies(
+            id,
+            name,
+            headquarters,
+            location
+          )
+        `,
+        )
         .eq("status", "active")
-        .limit(200);
-      matches = (jobs ?? [])
-        .map((j: any) => {
-          const js = ((j.required_skills ?? []) as string[]).map((s) => s.toLowerCase());
-          if (!js.length)
-            return { id: j.id, title: j.title, company: j.company?.name ?? null, score: 0 };
-          const hits = js.filter((s) => skills.some((k) => s.includes(k) || k.includes(s))).length;
-          const score = Math.round((hits / Math.max(js.length, 1)) * 100);
-          return { id: j.id, title: j.title, company: j.company?.name ?? null, score };
-        })
-        .filter((m) => m.score > 0)
-        .sort((a, b) => b.score - a.score)
-        .slice(0, 8);
+        .limit(50);
+
+      if (jobs?.length) {
+        matches = await aiMatchJobs(skills, profile, jobs);
+      }
     }
 
+    // Update profile with AI data
     const profilePatch = {
       ai_profile_data: {
         summary: scan.summary,
@@ -350,6 +834,7 @@ export const scanResumeFromStorage = createServerFn({ method: "POST" })
       .select("skills")
       .eq("id", context.userId)
       .maybeSingle();
+
     const existingSkills = Array.isArray(existingProfile?.skills) ? existingProfile.skills : [];
     if (
       !existingSkills.length &&
@@ -358,6 +843,7 @@ export const scanResumeFromStorage = createServerFn({ method: "POST" })
     ) {
       profilePatch.skills = scan.extracted_skills.slice(0, 20);
     }
+
     await context.supabase
       .from("profiles")
       .update(profilePatch as any)
@@ -365,6 +851,8 @@ export const scanResumeFromStorage = createServerFn({ method: "POST" })
 
     return { ...scoringUpdate, matches };
   });
+
+// ── Import Functions ─────────────────────────────────────────────────────────
 
 export const importFromGitHub = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -376,18 +864,22 @@ export const importFromGitHub = createServerFn({ method: "POST" })
   })
   .handler(async ({ data, context }) => {
     await requirePremium(context.userId);
+
     const headers = {
       Accept: "application/vnd.github+json",
       "User-Agent": "Jagire-App",
     };
+
     const [uRes, rRes] = await Promise.all([
       fetch(`https://api.github.com/users/${data.username}`, { headers }),
       fetch(`https://api.github.com/users/${data.username}/repos?sort=stars&per_page=100`, {
         headers,
       }),
     ]);
+
     if (uRes.status === 404) throw new Error("GitHub user not found");
     if (!uRes.ok) throw new Error(`GitHub error (${uRes.status})`);
+
     const u = await uRes.json();
     const repos: any[] = rRes.ok ? await rRes.json() : [];
 
@@ -412,6 +904,7 @@ export const importFromGitHub = createServerFn({ method: "POST" })
       github_url: `https://github.com/${data.username}`,
       projects,
     };
+
     if (u.name) patch.full_name = u.name;
     if (u.bio) patch.about = u.bio;
     if (u.location) patch.location = u.location;
@@ -422,133 +915,9 @@ export const importFromGitHub = createServerFn({ method: "POST" })
     const { error } = await (context.supabase.from("profiles") as any)
       .update(patch)
       .eq("id", context.userId);
+
     if (error) throw new Error(error.message);
     return { imported: { projects: projects.length, skills: skills.length } };
-  });
-
-export const learningRecommendations = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    await requirePremium(context.userId);
-
-    const { data: profile } = await context.supabase
-      .from("profiles")
-      .select("skills, headline, experience_years")
-      .eq("id", context.userId)
-      .maybeSingle();
-
-    const userSkills: string[] = (profile as any)?.skills ?? [];
-    const skillsText = userSkills.join(", ") || "software engineering";
-
-    // Try database first
-    const { data: dbItems } = await context.supabase
-      .from("learning_items")
-      .select("id, title, kind, provider, url, skills, description")
-      .limit(100);
-
-    // Helper function
-    function generateSearchUrl(title: string, provider: string, skills: string[]): string {
-      const searchTerm = title || skills[0] || "learning";
-      const encoded = encodeURIComponent(searchTerm);
-      if (provider?.toLowerCase().includes("udemy")) {
-        return `https://www.udemy.com/courses/search/?q=${encoded}`;
-      } else if (provider?.toLowerCase().includes("youtube")) {
-        return `https://www.youtube.com/results?search_query=${encoded}+course`;
-      } else if (provider?.toLowerCase().includes("coursera")) {
-        return `https://www.coursera.org/search?query=${encoded}`;
-      }
-      return `https://www.google.com/search?q=${encodeURIComponent(searchTerm + " " + provider + " course")}`;
-    }
-
-    // If we have database items, return RANDOMIZED selection
-    if (dbItems && dbItems.length >= 8) {
-      // Shuffle ALL items first for randomness
-      const shuffled = [...dbItems].sort(() => Math.random() - 0.5);
-
-      const result = shuffled.slice(0, 8).map((item: any) => ({
-        id: item.id,
-        kind: item.kind || "course",
-        title: item.title,
-        provider: item.provider || "",
-        description: item.description || "",
-        skills: item.skills || [],
-        url: item.url || generateSearchUrl(item.title, item.provider, item.skills),
-        route: "/learn",
-      }));
-
-      return { items: result };
-    }
-
-    // Fallback to AI generation with timestamp for uniqueness
-    try {
-      const timestamp = Date.now();
-      const randomSeed = Math.random().toString(36).substring(2, 8);
-
-      const prompt = `Based on these skills: ${skillsText}, suggest 8 DIFFERENT learning resources. 
-      For each, provide: kind (course/video/challenge/interview), title, provider (Udemy/YouTube/Coursera/etc.), 
-      skills array, and a brief description. Make the suggestions diverse and varied.`;
-
-      const parsed = await aiGenerateJsonValidated(
-        prompt,
-        LEARNING_SYSTEM,
-        learningRecommendationsSchema,
-        "learning-recommendations",
-      );
-
-      return {
-        items: (parsed?.items || []).map((item: any, index: number) => ({
-          id: `ai-${timestamp}-${randomSeed}-${index}`, // Unique ID every time
-          kind: item.kind || "course",
-          title: item.title,
-          provider: item.provider || "Online Platform",
-          description: item.description || "",
-          skills: item.skills || [],
-          url: generateSearchUrl(item.title, item.provider, item.skills),
-          route: "/learn",
-        })),
-      };
-    } catch (err) {
-      console.warn("AI generation failed for learning recommendations:", (err as Error).message);
-
-      // Return random database items
-      if (dbItems && dbItems.length > 0) {
-        return {
-          items: [...dbItems]
-            .sort(() => Math.random() - 0.5) // Randomize
-            .slice(0, 8)
-            .map((item: any) => ({
-              id: item.id,
-              kind: item.kind || "course",
-              title: item.title,
-              provider: item.provider || "",
-              description: item.description || "",
-              skills: item.skills || [],
-              url: item.url || generateSearchUrl(item.title, item.provider, item.skills),
-              route: "/learn",
-            })),
-        };
-      }
-
-      // Fallback items
-      const fallbackSkills =
-        userSkills.length > 0
-          ? userSkills.slice(0, 5)
-          : ["web development", "javascript", "python", "react", "node.js"];
-
-      const timestamp = Date.now();
-      return {
-        items: fallbackSkills.map((skill, i) => ({
-          id: `fallback-${timestamp}-${i}`,
-          kind: i % 2 === 0 ? "course" : "video",
-          title: `Learn ${skill} - Complete Guide`,
-          provider: i % 3 === 0 ? "Udemy" : i % 3 === 1 ? "YouTube" : "Coursera",
-          description: `Master ${skill} with hands-on projects and real-world examples`,
-          skills: [skill],
-          url: `https://www.google.com/search?q=${encodeURIComponent(`learn ${skill} course`)}`,
-          route: "/learn",
-        })),
-      };
-    }
   });
 
 export const importFromLinkedInText = createServerFn({ method: "POST" })
@@ -561,9 +930,10 @@ export const importFromLinkedInText = createServerFn({ method: "POST" })
   })
   .handler(async ({ data, context }) => {
     await requirePremium(context.userId);
+
     const parsed = await aiGenerateJsonValidated(
       data.text,
-      LINKEDIN_SYSTEM,
+      PROMPTS.LINKEDIN_IMPORT.system,
       linkedinImportSchema,
       "linkedin-import",
     );
@@ -585,14 +955,117 @@ export const importFromLinkedInText = createServerFn({ method: "POST" })
     const { error } = await (context.supabase.from("profiles") as any)
       .update(patch)
       .eq("id", context.userId);
+
     if (error) throw new Error(error.message);
     return { imported: { fields: Object.keys(patch).length, skills: patch.skills?.length ?? 0 } };
   });
 
-const CAREER_COACH_SYSTEM =
-  "You are Jagire AI Career Coach. You have the user's profile, resume scores, skills, and application history. " +
-  "Give personalised, actionable career advice. " +
-  "JSON only: {advice(string),recommended_skills(string[8]),action_plan(string[6]),improvement_suggestions(string[6]),follow_up_questions(string[3])}";
+// ── Learning Recommendations ─────────────────────────────────────────────────
+
+export const learningRecommendations = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await requirePremium(context.userId);
+
+    const { data: profile } = await context.supabase
+      .from("profiles")
+      .select("skills, headline, experience_years")
+      .eq("id", context.userId)
+      .maybeSingle();
+
+    const userSkills: string[] = (profile as any)?.skills ?? [];
+    const skillsText = userSkills.join(", ") || "software engineering";
+
+    const { data: dbItems } = await context.supabase
+      .from("learning_items")
+      .select("id, title, kind, provider, url, skills, description")
+      .limit(100);
+
+    if (dbItems && dbItems.length >= 8) {
+      const shuffled = [...dbItems].sort(() => Math.random() - 0.5);
+      const result = shuffled.slice(0, 8).map((item: any) => ({
+        id: item.id,
+        kind: item.kind || "course",
+        title: item.title,
+        provider: item.provider || "",
+        description: item.description || "",
+        skills: item.skills || [],
+        url: item.url || generateSearchUrl(item.title, item.provider, item.skills),
+        route: "/learn",
+      }));
+      return { items: result };
+    }
+
+    try {
+      const timestamp = Date.now();
+      const randomSeed = Math.random().toString(36).substring(2, 8);
+
+      const prompt = `Based on these skills: ${skillsText}, suggest 8 DIFFERENT learning resources. 
+      For each, provide: kind (course/video/challenge/interview), title, provider (Udemy/YouTube/Coursera/etc.), 
+      skills array, and a brief description. Make the suggestions diverse and varied.`;
+
+      const parsed = await aiGenerateJsonValidated(
+        prompt,
+        PROMPTS.LEARNING_RECOMMENDATIONS.system,
+        learningRecommendationsSchema,
+        "learning-recommendations",
+      );
+
+      return {
+        items: (parsed?.items || []).map((item: any, index: number) => ({
+          id: `ai-${timestamp}-${randomSeed}-${index}`,
+          kind: item.kind || "course",
+          title: item.title,
+          provider: item.provider || "Online Platform",
+          description: item.description || "",
+          skills: item.skills || [],
+          url: generateSearchUrl(item.title, item.provider, item.skills),
+          route: "/learn",
+        })),
+      };
+    } catch (err) {
+      console.warn("AI generation failed for learning recommendations:", (err as Error).message);
+
+      if (dbItems && dbItems.length > 0) {
+        return {
+          items: [...dbItems]
+            .sort(() => Math.random() - 0.5)
+            .slice(0, 8)
+            .map((item: any) => ({
+              id: item.id,
+              kind: item.kind || "course",
+              title: item.title,
+              provider: item.provider || "",
+              description: item.description || "",
+              skills: item.skills || [],
+              url: item.url || generateSearchUrl(item.title, item.provider, item.skills),
+              route: "/learn",
+            })),
+        };
+      }
+
+      const fallbackSkills =
+        userSkills.length > 0
+          ? userSkills.slice(0, 5)
+          : ["web development", "javascript", "python", "react", "node.js"];
+
+      const timestamp = Date.now();
+      return {
+        items: fallbackSkills.map((skill, i) => ({
+          id: `fallback-${timestamp}-${i}`,
+          kind: i % 2 === 0 ? "course" : "video",
+          title: `Learn ${skill} - Complete Guide`,
+          provider: i % 3 === 0 ? "Udemy" : i % 3 === 1 ? "YouTube" : "Coursera",
+          description: `Master ${skill} with hands-on projects and real-world examples`,
+          skills: [skill],
+          url: `https://www.google.com/search?q=${encodeURIComponent(`learn ${skill} course`)}`,
+          route: "/learn",
+        })),
+      };
+    }
+  });
+
+// ── Career Coach ─────────────────────────────────────────────────────────────
 
 export const careerCoach = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -603,6 +1076,7 @@ export const careerCoach = createServerFn({ method: "POST" })
   })
   .handler(async ({ data, context }) => {
     await requirePremium(context.userId);
+
     const [{ data: profile }, { data: resume }, { data: applications }] = await Promise.all([
       context.supabase
         .from("profiles")
@@ -627,11 +1101,7 @@ export const careerCoach = createServerFn({ method: "POST" })
       .join(", ");
 
     const contextBlock = [
-      `Profile: ${JSON.stringify(
-        profile && typeof profile === "object" && !Array.isArray(profile)
-          ? { ...(profile as Record<string, any>) }
-          : (profile ?? {}),
-      )}`,
+      `Profile: ${JSON.stringify(profile ?? {})}`,
       `Resume scores: overall=${resume?.overall_score ?? "?"}, ats=${resume?.ats_score ?? "?"}, grammar=${resume?.grammar_score ?? "?"}`,
       `Recent applications: ${appSummary || "none"}`,
       `User question: ${data.question}`,
@@ -639,12 +1109,11 @@ export const careerCoach = createServerFn({ method: "POST" })
 
     const response = await aiGenerateJsonValidated(
       contextBlock,
-      CAREER_COACH_SYSTEM,
+      PROMPTS.CAREER_COACH.system,
       careerCoachResponseSchema,
       "career-coach",
     );
 
-    // Persist session history
     const sessionId = data.sessionId;
     if (sessionId) {
       const { data: existing } = await context.supabase
@@ -653,9 +1122,11 @@ export const careerCoach = createServerFn({ method: "POST" })
         .eq("id", sessionId)
         .eq("user_id", context.userId)
         .maybeSingle();
+
       const msgs = (existing?.messages as any[]) ?? [];
       msgs.push({ role: "user", content: data.question, ts: new Date().toISOString() });
       msgs.push({ role: "assistant", content: response, ts: new Date().toISOString() });
+
       await context.supabase
         .from("career_coach_sessions")
         .update({ messages: msgs, updated_at: new Date().toISOString() })
@@ -666,16 +1137,7 @@ export const careerCoach = createServerFn({ method: "POST" })
     return response;
   });
 
-// ── AI Assistant (RAG-powered career companion) ──────────────────────────────
-
-const ASSISTANT_SYSTEM =
-  "You are Jagire AI Assistant, an expert career mentor for a Nepal-focused job platform. " +
-  "Help users: find better jobs, improve resumes, develop skills, prepare interviews, make career decisions. " +
-  "Use the provided user context to give personalised, practical answers — not generic advice. " +
-  "Give concrete steps and recommendations. Be professional, supportive, career-focused. " +
-  "Always display salary in NPR / Rs. (e.g. Rs. 50,000/month). Never use dollars. " +
-  "Format responses in clean markdown with headings, bullet points, and bold where helpful. " +
-  "Keep responses concise but thorough — typically 150-400 words.";
+// ── AI Assistant ─────────────────────────────────────────────────────────────
 
 async function buildUserContext(supabase: any, userId: string, role: string | null) {
   const isEmployer = role === "employer";
@@ -754,16 +1216,16 @@ async function buildUserContext(supabase: any, userId: string, role: string | nu
     ctx.push(`## Saved Jobs\n${savedJobs.map((s: any) => `- ${s.job?.title}`).join("\n")}`);
   }
 
-  // For job-related questions, fetch active jobs
   ctx.push(`## Active Jobs (sample)`);
   const { data: activeJobs } = await supabase
     .from("jobs")
     .select(
-      "id,title,required_skills,salary_min,salary_max,salary_currency,location,job_type, company:companies(name)",
+      "id,title,required_skills,salary_min,salary_max,salary_currency,location,job_type, company:companies(name,headquarters)",
     )
     .eq("status", "active")
     .order("created_at", { ascending: false })
     .limit(20);
+
   if (activeJobs?.length) {
     ctx.push(
       activeJobs
@@ -781,6 +1243,7 @@ async function buildUserContext(supabase: any, userId: string, role: string | nu
       .select("id,name,industry,headquarters,description")
       .eq("owner_id", userId)
       .maybeSingle();
+
     if (company) {
       ctx.push(`## Your Company\n${JSON.stringify(company)}`);
       const { data: postedJobs } = await supabase
@@ -788,6 +1251,7 @@ async function buildUserContext(supabase: any, userId: string, role: string | nu
         .select("id,title,status,applications_count")
         .eq("company_id", company.id)
         .limit(10);
+
       if (postedJobs?.length) {
         ctx.push(
           `## Posted Jobs\n${postedJobs.map((j: any) => `- ${j.title} (${j.status}, ${j.applications_count} applicants)`).join("\n")}`,
@@ -797,11 +1261,6 @@ async function buildUserContext(supabase: any, userId: string, role: string | nu
   }
 
   return ctx.join("\n\n");
-}
-
-function extractConversationTitle(question: string): string {
-  const cleaned = question.trim().replace(/\s+/g, " ");
-  return cleaned.length > 50 ? cleaned.slice(0, 50) + "…" : cleaned || "New conversation";
 }
 
 export const aiAssistantChat = createServerFn({ method: "POST" })
@@ -817,9 +1276,11 @@ export const aiAssistantChat = createServerFn({ method: "POST" })
   })
   .handler(async ({ data, context }) => {
     await requirePremium(context.userId);
-    // 1. Resolve or create conversation
+
+    // Resolve or create conversation
     let conversationId = data.conversationId;
     let isNewConversation = false;
+
     if (!conversationId) {
       const { data: newConv, error } = await context.supabase
         .from("ai_conversations")
@@ -829,21 +1290,22 @@ export const aiAssistantChat = createServerFn({ method: "POST" })
         })
         .select("id")
         .single();
+
       if (error) throw new Error(error.message);
       conversationId = newConv.id;
       isNewConversation = true;
     } else {
-      // Verify ownership
       const { data: conv } = await context.supabase
         .from("ai_conversations")
         .select("id, user_id")
         .eq("id", conversationId)
         .eq("user_id", context.userId)
         .maybeSingle();
+
       if (!conv) throw new Error("Conversation not found");
     }
 
-    // 2. Save user message
+    // Save user message
     const { error: msgErr } = await context.supabase.from("ai_messages").insert({
       conversation_id: conversationId,
       role: "user",
@@ -851,7 +1313,7 @@ export const aiAssistantChat = createServerFn({ method: "POST" })
     });
     if (msgErr) throw new Error(msgErr.message);
 
-    // 3. Retrieve conversation history (last 10 messages for context)
+    // Retrieve conversation history
     const { data: history } = await context.supabase
       .from("ai_messages")
       .select("role, content, created_at")
@@ -860,24 +1322,24 @@ export const aiAssistantChat = createServerFn({ method: "POST" })
       .limit(20);
 
     const historyText = (history ?? [])
-      .slice(-12) // last 12 messages = 6 turns
+      .slice(-12)
       .map((m: any) => `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`)
       .join("\n\n");
 
-    // 4. Build RAG context from user data
+    // Build RAG context
     const userContext = await buildUserContext(context.supabase, context.userId, data.role);
 
-    // 5. Generate response
+    // Generate response
     const fullPrompt = `## Conversation History\n${historyText}\n\n## User Context (use this to personalise your answer)\n${userContext}\n\n## Current Question\n${data.message}`;
 
     const response = await aiGenerateText(
       fullPrompt,
-      ASSISTANT_SYSTEM,
+      PROMPTS.AI_ASSISTANT.system,
       undefined,
       "career-assistant",
     );
 
-    // 6. Save assistant response
+    // Save assistant response
     const { error: aiMsgErr } = await context.supabase.from("ai_messages").insert({
       conversation_id: conversationId,
       role: "assistant",

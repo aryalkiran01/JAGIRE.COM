@@ -250,7 +250,7 @@ export const courseRecommenderSchema = z.object({
         url: z.string().default(""),
         level: z.string().default("intermediate"),
         skills_gained: stringArray,
-        estimated_hours: z.string().default(""),
+        estimated_hours: z.union([z.string(), z.number()]).transform(String).default(""),
         why: z.string(),
       }),
     )

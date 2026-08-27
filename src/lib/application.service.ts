@@ -51,17 +51,15 @@ async function notifyOnce(
     .limit(1);
   if (lookupError) throw lookupError;
   if (existing?.length) return;
-  const { error } = await supabaseAdmin
-    .from("notifications")
-    .insert({
-      user_id: userId,
-      type,
-      title,
-      message,
-      data: { application_id: applicationId, job_id: jobId },
-      link: "/applications",
-      is_read: false,
-    });
+  const { error } = await supabaseAdmin.from("notifications").insert({
+    user_id: userId,
+    type,
+    title,
+    message,
+    data: { application_id: applicationId, job_id: jobId },
+    link: "/applications",
+    is_read: false,
+  });
   if (error) throw error;
 }
 

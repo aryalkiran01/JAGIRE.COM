@@ -2,17 +2,16 @@
 import { z } from "zod";
 import { AIProvider, AIRequest, AIEmbeddingRequest, AIEmbeddingResponse, AITask } from "./types";
 import { GeminiProvider } from "./gemini-provider";
-import { OpenRouterProvider } from "./openrouter-provider";
+// import { OpenRouterProvider } from "./openrouter-provider";
 import { OllamaProvider } from "./ollama-provider";
 import { isTransient, isFatal } from "./errors";
 import { AITransientError } from "./types";
 
-const MAX_RETRIES = 2;
+const MAX_RETRIES = 1;
 const BACKOFF_BASE_MS = 500;
 const VALIDATION_RETRY_LIMIT = 1;
 const CACHE_TTL_MS = 5 * 60 * 1000;
 const MAX_CACHE_ENTRIES = 200;
-const OLLAMA_FAST_FAIL_TIMEOUT_MS = 3_000;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -39,18 +38,18 @@ function getConfiguredProviderOrder(): AIProvider[] {
     case "gemini":
     default:
       if (process.env.GEMINI_API_KEY) list.push(new GeminiProvider());
-      if (process.env.OPENROUTER_API_KEY) list.push(new OpenRouterProvider());
+      // if (process.env.OPENROUTER_API_KEY) list.push(new OpenRouterProvider());
       if (process.env.OLLAMA_HOST) list.push(new OllamaProvider());
       break;
-    case "openrouter":
-      if (process.env.OPENROUTER_API_KEY) list.push(new OpenRouterProvider());
-      if (process.env.GEMINI_API_KEY) list.push(new GeminiProvider());
-      if (process.env.OLLAMA_HOST) list.push(new OllamaProvider());
-      break;
+    // case "openrouter":
+    //   if (process.env.OPENROUTER_API_KEY) list.push(new OpenRouterProvider());
+    //   if (process.env.GEMINI_API_KEY) list.push(new GeminiProvider());
+    //   if (process.env.OLLAMA_HOST) list.push(new OllamaProvider());
+    //   break;
     case "ollama":
       list.push(new OllamaProvider());
       if (process.env.GEMINI_API_KEY) list.push(new GeminiProvider());
-      if (process.env.OPENROUTER_API_KEY) list.push(new OpenRouterProvider());
+      // if (process.env.OPENROUTER_API_KEY) list.push(new OpenRouterProvider());
       break;
   }
   return list;
@@ -430,10 +429,7 @@ class AIServiceImpl {
                 Promise.race([
                   fn(p),
                   new Promise<never>((_, reject) =>
-                    setTimeout(
-                      () => reject(new AITransientError("Ollama fast-fail timeout", 408)),
-                      OLLAMA_FAST_FAIL_TIMEOUT_MS,
-                    ),
+                    setTimeout(() => reject(new AITransientError("Ollama fast-fail timeout", 408))),
                   ),
                 ])
             : fn,

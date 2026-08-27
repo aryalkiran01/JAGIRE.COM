@@ -2,7 +2,7 @@ import { AIProvider, AIRequest } from "./types";
 import { classifyError, safeJsonParse } from "./errors";
 
 const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models";
-const DEFAULT_MODEL = "gemini-3.6-flash";
+const DEFAULT_MODEL = "gemini-3.5-flash-lite";
 const GEMINI_TIMEOUT_MS = 25_000;
 
 function apiKey(): string {
