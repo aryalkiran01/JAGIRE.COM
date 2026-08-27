@@ -33,9 +33,9 @@ function Applications() {
             company:companies(name)
           ),
           events:application_events(
-            event_type,
+            status,
             created_at,
-            message
+            note
           ),
           interview:interview_events(
             id,
@@ -129,15 +129,15 @@ function Applications() {
                           "
                         />
 
-                        <span className="font-medium capitalize">{event.event_type}</span>
+                        <span className="font-medium capitalize">{event.status}</span>
 
                         <span className="text-muted-foreground">
                           {" "}
                           — {new Date(event.created_at).toLocaleDateString()}
                         </span>
 
-                        {event.message && (
-                          <p className="text-muted-foreground mt-1">{event.message}</p>
+                        {event.note && (
+                          <p className="text-muted-foreground mt-1">{event.note}</p>
                         )}
                       </div>
                     ))}

@@ -28,7 +28,7 @@ export const Route = createFileRoute("/_authenticated/employer/jobs/$jobId")({
 interface Application {
   id: string;
   status: string;
-  created_at: string;
+  applied_at: string;
   applicant_id: string | null;
   rejection_remark: string | null;
   profile: {
@@ -89,7 +89,7 @@ function JobDetail() {
           `
           id,
           status,
-          created_at,
+          applied_at,
           applicant_id,
           rejection_remark,
           profile:profiles!applications_applicant_id_fkey (
@@ -101,7 +101,7 @@ function JobDetail() {
         `,
         )
         .eq("job_id", jobId)
-        .order("created_at", { ascending: false });
+        .order("applied_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as unknown as Application[];
     },
@@ -201,7 +201,7 @@ function JobDetail() {
                     <div className="font-medium">{app.profile?.full_name ?? "Unknown"}</div>
                     <div className="text-xs text-muted-foreground">
                       {app.profile?.email ?? "No email"} · Applied{" "}
-                      {new Date(app.created_at).toLocaleDateString()}
+                      {new Date(app.applied_at).toLocaleDateString()}
                     </div>
                     <Badge
                       className={`mt-1 ${STATUS_BADGE[app.status] ?? "bg-gray-100 text-gray-700"}`}
