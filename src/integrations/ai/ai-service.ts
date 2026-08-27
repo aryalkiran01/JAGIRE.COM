@@ -223,13 +223,17 @@ class AIServiceImpl {
     let lastError: unknown;
     for (let attempt = 0; attempt <= VALIDATION_RETRY_LIMIT; attempt++) {
       try {
+        // Bypass cache on retry so we get a fresh response from the provider
         const raw = await this.executeWithFallback(
           (p) => p.generateJson<T>(req),
-          "generateJsonValidated",
+          `generateJsonValidated:attempt${attempt}`,
           req,
+          attempt > 0, // skipCache on retry
         );
 
-        if (req.task === "resume-analysis" && typeof raw === "object" && raw !== null) {
+        const normalized = normalizeAiResponse(raw, req.task);
+
+        if (req.task === "resume-analysis" && typeof normalized === "object" && normalized !== null) {
           const result = raw as Record<string, any>;
 
           // Truncate arrays that exceed maximum lengths

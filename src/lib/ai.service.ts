@@ -220,12 +220,22 @@ export const scanResumeFromStorage = createServerFn({ method: "POST" })
     else if (resume.file_path) {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       const dl = await supabaseAdmin.storage.from("resumes").download(resume.file_path);
-      if (dl.error || !dl.data) throw new Error(dl.error?.message ?? "Failed to download resume");
+      if (dl.error || !dl.data) {
+        return aiFailure("FILE_DOWNLOAD_FAILED", "Could not download your resume file. Please re-upload it.");
+      }
       const buf = new Uint8Array(await dl.data.arrayBuffer());
 
       const name = (resume.file_name ?? "").toLowerCase();
       const isDocx = name.endsWith(".docx") || resume.mime_type?.includes("wordprocessingml");
       const isPdf = name.endsWith(".pdf") || resume.mime_type?.includes("pdf");
+      const isText = name.endsWith(".txt") || name.endsWith(".md") || resume.mime_type?.includes("text");
+
+      if (!isDocx && !isPdf && !isText) {
+        return aiFailure(
+          "UNSUPPORTED_FILE_TYPE",
+          "Unsupported file type. Please upload a PDF, DOCX, or text file.",
+        );
+      }
 
       try {
         if (isDocx) {
@@ -238,19 +248,12 @@ export const scanResumeFromStorage = createServerFn({ method: "POST" })
           // Method 1: pdf-parse
           try {
             const pdfParseModule = await import("pdf-parse");
-
             const pdfParse = pdfParseModule.default ?? pdfParseModule;
-
             const pdfData = await pdfParse(Buffer.from(buf));
-
             text = pdfData.text ?? "";
-
             extractedSuccessfully = text.trim().length >= 50;
-
             if (!extractedSuccessfully) {
-              console.warn(
-                `pdf-parse extracted only ${text.trim().length} characters, trying unpdf...`,
-              );
+              console.warn(`pdf-parse extracted only ${text.trim().length} chars, trying unpdf...`);
             }
           } catch (err) {
             console.warn("pdf-parse failed:", err);
@@ -264,35 +267,62 @@ export const scanResumeFromStorage = createServerFn({ method: "POST" })
               const out = await extractText(pdf, { mergePages: true });
               text = Array.isArray(out.text) ? out.text.join("\n") : (out.text as string);
               extractedSuccessfully = text?.trim().length >= 50;
-
-              if (!extractedSuccessfully) {
-                console.warn(`unpdf extracted only ${text?.trim().length || 0} characters`);
-              }
             } catch (unpdfError) {
               console.warn("unpdf failed:", unpdfError);
             }
           }
 
-          // Method 3: raw text extraction as last resort
+          // Method 3: OCR fallback for scanned PDFs (server-side)
           if (!extractedSuccessfully) {
-            console.warn("Both PDF parsers failed. Attempting raw text extraction...");
+            console.warn("Text extraction failed. Attempting OCR for scanned PDF...");
+            try {
+              const tesseract = await import("tesseract.js");
+              const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+              const pdfDoc = await pdfjs.getDocument({ data: buf }).promise;
+              const ocrText: string[] = [];
+              const maxPages = Math.min(pdfDoc.numPages, 3);
+              for (let pageNum = 1; pageNum <= maxPages; pageNum++) {
+                const page = await pdfDoc.getPage(pageNum);
+                const viewport = page.getViewport({ scale: 1.5 });
+                // Use OffscreenCanvas for server-side rendering
+                const canvas = typeof OffscreenCanvas !== "undefined"
+                  ? new OffscreenCanvas(viewport.width, viewport.height)
+                  : null;
+                if (!canvas) break;
+                const ctx = canvas.getContext("2d");
+                if (!ctx) continue;
+                await page.render({ canvasContext: ctx as any, viewport } as any).promise;
+                const imageData = ctx.getImageData(0, 0, viewport.width, viewport.height);
+                const { data: ocrData } = await tesseract.recognize(
+                  imageData as any,
+                  "eng",
+                );
+                if (ocrData?.text?.trim()) ocrText.push(ocrData.text.trim());
+              }
+              text = ocrText.join("\n\n");
+              extractedSuccessfully = text.trim().length >= 50;
+              if (extractedSuccessfully) {
+                console.log(`OCR extracted ${text.trim().length} chars`);
+              }
+            } catch (ocrError) {
+              console.warn("OCR fallback failed:", ocrError);
+            }
+          }
+
+          // Method 4: raw text extraction as last resort
+          if (!extractedSuccessfully) {
             const rawText = new TextDecoder().decode(buf);
             const readableParts = rawText.match(/[a-zA-Z0-9\s.,!?@#&*()\-–—:;'"/\\]{4,}/g) || [];
             text = readableParts.join(" ").replace(/\s+/g, " ").trim();
-
-            if (text.length < 50) {
-              throw new Error(
-                "Could not extract enough text from the PDF file. " +
-                  "Please ensure your PDF contains selectable text, not scanned images. " +
-                  "Try uploading a DOCX version instead.",
-              );
-            }
           }
         } else {
           text = new TextDecoder().decode(buf);
         }
       } catch (e) {
-        throw new Error(`Failed to parse resume: ${(e as Error).message}`);
+        return aiFailure(
+          "FILE_PARSE_FAILED",
+          "Could not extract text from your resume file. Please try a different format (PDF or DOCX).",
+        );
       }
     } else {
       throw new Error("No resume data or file found");
