@@ -160,7 +160,7 @@ export function AIAssistantWidget() {
       setConversationId(result.conversationId);
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: result.response, ts: new Date().toISOString() },
+        { role: "assistant", content: result.response ?? "", ts: new Date().toISOString() },
       ]);
       qc.invalidateQueries({ queryKey: ["ai-conversations"] });
     },

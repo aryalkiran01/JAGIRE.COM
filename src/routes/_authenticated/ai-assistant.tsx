@@ -351,7 +351,7 @@ function AIAssistantPage() {
       if (result.response) {
         setMessages((prev) => [
           ...prev,
-          { role: "assistant", content: result.response, ts: new Date().toISOString() },
+          { role: "assistant", content: result.response ?? "", ts: new Date().toISOString() },
         ]);
       } else {
         setMessages((prev) => [

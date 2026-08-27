@@ -119,7 +119,7 @@ function CareerCoachPage() {
           {
             role: "assistant",
             content:
-              response.error?.message ??
+              (response.success ? undefined : response.error?.message) ??
               "AI analysis is temporarily unavailable. Please try again.",
             ts: new Date().toISOString(),
           },

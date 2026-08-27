@@ -25,11 +25,14 @@ function Career() {
     setErrorMsg(null);
     try {
       const res = await run({ data: undefined });
-      if (res.success && res.data) {
+      if (!res.success) {
+        setData(null);
+        setErrorMsg(res.error?.message ?? "Unable to generate career recommendations right now.");
+      } else if (res.data) {
         setData(res.data);
       } else {
         setData(null);
-        setErrorMsg(res.error?.message ?? "Unable to generate career recommendations right now.");
+        setErrorMsg("Unable to generate career recommendations right now.");
       }
     } catch (err) {
       setErrorMsg((err as Error).message ?? "Unable to generate career recommendations right now.");
@@ -76,12 +79,12 @@ function Career() {
               <CardContent className="p-6">
                 <h2 className="font-bold text-xl mb-3">Career paths</h2>
                 <div className="space-y-4">
-                  {data.career_paths.map((p, i) => (
+                  {data.career_paths.map((p: Recs["career_paths"][number], i: number) => (
                     <div key={i} className="border-l-2 border-primary pl-4">
                       <div className="font-semibold">{p.title}</div>
                       <div className="text-sm text-muted-foreground mb-2">{p.why}</div>
                       <ul className="text-sm list-disc pl-5">
-                        {p.next_steps.map((s, j) => (
+                        {p.next_steps.map((s: string, j: number) => (
                           <li key={j}>{s}</li>
                         ))}
                       </ul>
@@ -96,7 +99,7 @@ function Career() {
               <CardContent className="p-6">
                 <h2 className="font-bold text-xl mb-3">Skill gaps to close</h2>
                 <div className="flex flex-wrap gap-2">
-                  {data.skill_gaps.map((s, i) => (
+                  {data.skill_gaps.map((s: Recs["skill_gaps"][number], i: number) => (
                     <Badge key={i} variant="secondary">
                       {s}
                     </Badge>
@@ -110,12 +113,14 @@ function Career() {
               <CardContent className="p-6">
                 <h2 className="font-bold text-xl mb-3">Recommended certifications</h2>
                 <ul className="space-y-2">
-                  {data.recommended_certifications.map((c, i) => (
-                    <li key={i} className="flex justify-between text-sm">
-                      <span className="font-medium">{c.name}</span>
-                      <span className="text-muted-foreground">{c.provider}</span>
-                    </li>
-                  ))}
+                  {data.recommended_certifications.map(
+                    (c: Recs["recommended_certifications"][number], i: number) => (
+                      <li key={i} className="flex justify-between text-sm">
+                        <span className="font-medium">{c.name}</span>
+                        <span className="text-muted-foreground">{c.provider}</span>
+                      </li>
+                    ),
+                  )}
                 </ul>
               </CardContent>
             </Card>
@@ -125,9 +130,11 @@ function Career() {
               <CardContent className="p-6">
                 <h2 className="font-bold text-xl mb-3">Search keywords</h2>
                 <div className="flex flex-wrap gap-2">
-                  {data.suggested_search_keywords.map((k, i) => (
-                    <Badge key={i}>{k}</Badge>
-                  ))}
+                  {data.suggested_search_keywords.map(
+                    (k: Recs["suggested_search_keywords"][number], i: number) => (
+                      <Badge key={i}>{k}</Badge>
+                    ),
+                  )}
                 </div>
               </CardContent>
             </Card>

@@ -81,7 +81,9 @@ function clamp(n: unknown): number {
   return Math.max(0, Math.min(100, Math.round(Number(n) || 0)));
 }
 
-function aiSuccess<T>(data: T, provider: string): AIResult<T> {
+// Server functions must return serializable values. AI schemas can otherwise
+// cause the generic payload to be inferred as `unknown`.
+function aiSuccess(data: any, provider: string): AIResult<any> {
   return { success: true, data, provider };
 }
 
@@ -932,12 +934,13 @@ export const aiAssistantChat = createServerFn({ method: "POST" })
 
     const aiResult = await aiGenerateTextResult(fullPrompt, ASSISTANT_SYSTEM, "career-assistant");
 
-    if (!aiResult.success || !aiResult.data) {
+    if (!aiResult.success || typeof aiResult.data !== "string" || !aiResult.data) {
+      const aiError = !aiResult.success && "error" in aiResult ? aiResult.error : undefined;
       return {
         conversationId,
         response: null as string | null,
         isNewConversation,
-        error: aiResult.error ?? {
+        error: aiError ?? {
           code: "AI_CHAT_FAILED",
           message: "AI assistant is temporarily unavailable. Please try again.",
         },
