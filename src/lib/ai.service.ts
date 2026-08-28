@@ -4,6 +4,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth.middleware";
 import { aiGenerateJsonValidated, aiGenerateTextResult } from "@/integrations/ai/ai-service";
 import { requirePremium } from "@/lib/premium.server";
+import { extractResumeText, ResumeScanError } from "@/lib/resume-extraction";
 import {
   resumeAnalysisSchema,
   fullResumeScanSchema,
@@ -225,111 +226,29 @@ export const scanResumeFromStorage = createServerFn({ method: "POST" })
       }
       const buf = new Uint8Array(await dl.data.arrayBuffer());
 
-      const name = (resume.file_name ?? "").toLowerCase();
-      const isDocx = name.endsWith(".docx") || resume.mime_type?.includes("wordprocessingml");
-      const isPdf = name.endsWith(".pdf") || resume.mime_type?.includes("pdf");
-      const isText = name.endsWith(".txt") || name.endsWith(".md") || resume.mime_type?.includes("text");
-
-      if (!isDocx && !isPdf && !isText) {
-        return aiFailure(
-          "UNSUPPORTED_FILE_TYPE",
-          "Unsupported file type. Please upload a PDF, DOCX, or text file.",
-        );
-      }
-
       try {
-        if (isDocx) {
-          const mammoth = await import("mammoth");
-          const res = await mammoth.extractRawText({ buffer: Buffer.from(buf) });
-          text = res.value ?? "";
-        } else if (isPdf) {
-          let extractedSuccessfully = false;
-
-          // Method 1: pdf-parse
-          try {
-            const pdfParseModule = await import("pdf-parse");
-            const pdfParse = pdfParseModule.default ?? pdfParseModule;
-            const pdfData = await pdfParse(Buffer.from(buf));
-            text = pdfData.text ?? "";
-            extractedSuccessfully = text.trim().length >= 50;
-            if (!extractedSuccessfully) {
-              console.warn(`pdf-parse extracted only ${text.trim().length} chars, trying unpdf...`);
-            }
-          } catch (err) {
-            console.warn("pdf-parse failed:", err);
-          }
-
-          // Method 2: unpdf fallback
-          if (!extractedSuccessfully) {
-            try {
-              const { extractText, getDocumentProxy } = await import("unpdf");
-              const pdf = await getDocumentProxy(buf);
-              const out = await extractText(pdf, { mergePages: true });
-              text = Array.isArray(out.text) ? out.text.join("\n") : (out.text as string);
-              extractedSuccessfully = text?.trim().length >= 50;
-            } catch (unpdfError) {
-              console.warn("unpdf failed:", unpdfError);
-            }
-          }
-
-          // Method 3: OCR fallback for scanned PDFs (server-side)
-          if (!extractedSuccessfully) {
-            console.warn("Text extraction failed. Attempting OCR for scanned PDF...");
-            try {
-              const tesseract = await import("tesseract.js");
-              const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
-              const pdfDoc = await pdfjs.getDocument({ data: buf }).promise;
-              const ocrText: string[] = [];
-              const maxPages = Math.min(pdfDoc.numPages, 3);
-              for (let pageNum = 1; pageNum <= maxPages; pageNum++) {
-                const page = await pdfDoc.getPage(pageNum);
-                const viewport = page.getViewport({ scale: 1.5 });
-                // Use OffscreenCanvas for server-side rendering
-                const canvas = typeof OffscreenCanvas !== "undefined"
-                  ? new OffscreenCanvas(viewport.width, viewport.height)
-                  : null;
-                if (!canvas) break;
-                const ctx = canvas.getContext("2d");
-                if (!ctx) continue;
-                await page.render({ canvasContext: ctx as any, viewport } as any).promise;
-                const imageData = ctx.getImageData(0, 0, viewport.width, viewport.height);
-                const { data: ocrData } = await tesseract.recognize(
-                  imageData as any,
-                  "eng",
-                );
-                if (ocrData?.text?.trim()) ocrText.push(ocrData.text.trim());
-              }
-              text = ocrText.join("\n\n");
-              extractedSuccessfully = text.trim().length >= 50;
-              if (extractedSuccessfully) {
-                console.log(`OCR extracted ${text.trim().length} chars`);
-              }
-            } catch (ocrError) {
-              console.warn("OCR fallback failed:", ocrError);
-            }
-          }
-
-          // Method 4: raw text extraction as last resort
-          if (!extractedSuccessfully) {
-            const rawText = new TextDecoder().decode(buf);
-            const readableParts = rawText.match(/[a-zA-Z0-9\s.,!?@#&*()\-–—:;'"/\\]{4,}/g) || [];
-            text = readableParts.join(" ").replace(/\s+/g, " ").trim();
-          }
-        } else {
-          text = new TextDecoder().decode(buf);
+        const result = await extractResumeText(buf, resume.file_name ?? "", resume.mime_type);
+        text = result.text;
+      } catch (err) {
+        if (err instanceof ResumeScanError) {
+          return aiFailure(err.code, err.message);
         }
-      } catch (e) {
         return aiFailure(
           "FILE_PARSE_FAILED",
           "Could not extract text from your resume file. Please try a different format (PDF or DOCX).",
         );
       }
     } else {
-      throw new Error("No resume data or file found");
+      return aiFailure("FILE_PARSE_FAILED", "No resume data or file found. Please upload a resume file.");
     }
 
     text = text.replace(/\s+/g, " ").trim();
-    if (text.length < 50) throw new Error("Could not extract enough text from the resume file");
+    if (text.length < 50) {
+      return aiFailure(
+        "INSUFFICIENT_TEXT",
+        "Could not extract enough text from the resume file. If this is a scanned PDF, try uploading a text-based PDF or DOCX instead.",
+      );
+    }
     if (text.length > 8000) text = text.slice(0, 8000);
 
     try {
