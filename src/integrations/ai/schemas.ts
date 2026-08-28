@@ -1,14 +1,14 @@
 import { z } from "zod";
 
 export const resumeAnalysisSchema = z.object({
-  overall_score: z.number(),
-  ats_score: z.number(),
-  grammar_score: z.number(),
-  formatting_score: z.number(),
-  keyword_score: z.number(),
-  professionalism_score: z.number(),
+  overall_score: z.coerce.number().catch(0),
+  ats_score: z.coerce.number().catch(0),
+  grammar_score: z.coerce.number().catch(0),
+  formatting_score: z.coerce.number().catch(0),
+  keyword_score: z.coerce.number().catch(0),
+  professionalism_score: z.coerce.number().catch(0),
   suggestions: z.array(z.string()).max(8).default([]),
-  summary: z.string(),
+  summary: z.string().default(""),
   extracted_skills: z.array(z.string()).max(20).default([]),
 });
 
@@ -42,17 +42,22 @@ export const careerRecommendationsSchema = z.object({
     .optional()
     .default([]),
   salary_prediction: z
-    .object({ low: z.number(), mid: z.number(), high: z.number(), currency: z.string() })
+    .object({
+      low: z.coerce.number().catch(0),
+      mid: z.coerce.number().catch(0),
+      high: z.coerce.number().catch(0),
+      currency: z.string().default("NPR"),
+    })
     .optional()
     .nullable()
     .default(null),
   resume_improvements: z.array(z.string()).optional().default([]),
   interview_prep_plan: z
     .object({
-      thirty_days: z.array(z.string()),
-      sixty_days: z.array(z.string()),
-      ninety_days: z.array(z.string()),
-      one_eighty_days: z.array(z.string()),
+      thirty_days: z.array(z.string()).default([]),
+      sixty_days: z.array(z.string()).default([]),
+      ninety_days: z.array(z.string()).default([]),
+      one_eighty_days: z.array(z.string()).default([]),
     })
     .optional()
     .nullable()
@@ -66,7 +71,7 @@ export const linkedinImportSchema = z.object({
   about: z.string().optional().default(""),
   location: z.string().nullable().optional(),
   current_position: z.string().nullable().optional(),
-  experience_years: z.number().optional().default(0),
+  experience_years: z.coerce.number().optional().default(0),
   skills: z.array(z.string()).max(20).optional().default([]),
 });
 
@@ -106,26 +111,26 @@ export const candidateRankingSchema = z.object({
   candidates: z.array(
     z.object({
       candidate_id: z.string(),
-      rank: z.number(),
-      score: z.number(),
-      reasons: z.array(z.string()),
+      rank: z.coerce.number().catch(0),
+      score: z.coerce.number().catch(0),
+      reasons: z.array(z.string()).default([]),
     }),
-  ),
+  ).default([]),
 });
 
 export const jobMatchingSchema = z.object({
   matches: z.array(
     z.object({
       job_id: z.string(),
-      score: z.number(),
-      reasons: z.array(z.string()),
+      score: z.coerce.number().catch(0),
+      reasons: z.array(z.string()).default([]),
     }),
-  ),
+  ).default([]),
 });
 
 export const hiringRecommendationSchema = z.object({
   recommendation: z.string(),
-  confidence: z.number(),
+  confidence: z.coerce.number().catch(0),
   reasoning: z.string(),
   risk_factors: z.array(z.string()).optional().default([]),
 });
@@ -142,8 +147,8 @@ export const companyCandidateAnalysisSchema = z.object({
     .array(
       z.object({
         candidate_id: z.string(),
-        fit_score: z.number(),
-        notes: z.string(),
+        fit_score: z.coerce.number().catch(0),
+        notes: z.string().default(""),
       }),
     )
     .optional()
@@ -154,55 +159,56 @@ export const companyCandidateAnalysisSchema = z.object({
 // Merges resume scoring, career roadmap, strengths/weaknesses, and
 // improvement suggestions so only ONE Ollama call is needed per upload.
 export const fullResumeScanSchema = z.object({
-  // scoring
-  overall_score: z.number(),
-  ats_score: z.number(),
-  grammar_score: z.number(),
-  formatting_score: z.number(),
-  keyword_score: z.number(),
-  professionalism_score: z.number(),
-  // quick wins
+  overall_score: z.coerce.number().catch(0),
+  ats_score: z.coerce.number().catch(0),
+  grammar_score: z.coerce.number().catch(0),
+  formatting_score: z.coerce.number().catch(0),
+  keyword_score: z.coerce.number().catch(0),
+  professionalism_score: z.coerce.number().catch(0),
   suggestions: z.array(z.string()).max(8).default([]),
-  summary: z.string(),
+  summary: z.string().default(""),
   extracted_skills: z.array(z.string()).max(20).default([]),
-  // analysis
   strengths: z.array(z.string()).max(5).default([]),
   weaknesses: z.array(z.string()).max(5).default([]),
   missing_skills: z.array(z.string()).max(10).default([]),
   keywords: z.array(z.string()).max(15).default([]),
-  // career roadmap
   career_paths: z
-    .array(z.object({ title: z.string(), why: z.string(), next_steps: z.array(z.string()) }))
+    .array(z.object({ title: z.string().default(""), why: z.string().default(""), next_steps: z.array(z.string()).default([]) }))
     .max(4)
     .default([]),
   skill_gaps: z.array(z.string()).max(8).default([]),
   recommended_certifications: z
-    .array(z.object({ name: z.string(), provider: z.string() }))
+    .array(z.object({ name: z.string().default(""), provider: z.string().default("") }))
     .max(5)
     .default([]),
   suggested_projects: z
-    .array(z.object({ title: z.string(), description: z.string() }))
+    .array(z.object({ title: z.string().default(""), description: z.string().default("") }))
     .max(4)
     .default([]),
   recommended_jobs: z
-    .array(z.object({ title: z.string(), why: z.string() }))
+    .array(z.object({ title: z.string().default(""), why: z.string().default("") }))
     .max(5)
     .default([]),
   companies_hiring: z
-    .array(z.object({ name: z.string(), sector: z.string() }))
+    .array(z.object({ name: z.string().default(""), sector: z.string().default("") }))
     .max(5)
     .default([]),
   salary_prediction: z
-    .object({ low: z.number(), mid: z.number(), high: z.number(), currency: z.string() })
+    .object({
+      low: z.coerce.number().catch(0),
+      mid: z.coerce.number().catch(0),
+      high: z.coerce.number().catch(0),
+      currency: z.string().default("NPR"),
+    })
     .nullable()
     .default(null),
   resume_improvements: z.array(z.string()).max(8).default([]),
   interview_prep_plan: z
     .object({
-      thirty_days: z.array(z.string()),
-      sixty_days: z.array(z.string()),
-      ninety_days: z.array(z.string()),
-      one_eighty_days: z.array(z.string()),
+      thirty_days: z.array(z.string()).default([]),
+      sixty_days: z.array(z.string()).default([]),
+      ninety_days: z.array(z.string()).default([]),
+      one_eighty_days: z.array(z.string()).default([]),
     })
     .nullable()
     .default(null),

@@ -138,6 +138,60 @@ function setCached(key: string, value: unknown): void {
   responseCache.set(key, { value, expires: Date.now() + CACHE_TTL_MS });
 }
 
+function coerceNumber(val: unknown): number | undefined {
+  if (typeof val === "number" && !isNaN(val)) return val;
+  if (typeof val === "string") {
+    const n = Number(val.replace(/[^0-9.\-]/g, ""));
+    return isNaN(n) ? undefined : n;
+  }
+  return undefined;
+}
+
+function coerceStringArray(val: unknown, max?: number): string[] | undefined {
+  if (Array.isArray(val)) {
+    const arr = val.filter((s) => typeof s === "string" && s.trim());
+    return max ? arr.slice(0, max) : arr;
+  }
+  if (typeof val === "string" && val.trim()) {
+    const arr = val.split(/[,•;\n]|\d+\.\s*/).map((s) => s.trim()).filter(Boolean);
+    return max ? arr.slice(0, max) : arr;
+  }
+  return undefined;
+}
+
+function normalizeRawResponse(raw: unknown): void {
+  if (typeof raw !== "object" || raw === null) return;
+  const obj = raw as Record<string, any>;
+  for (const key of Object.keys(obj)) {
+    const val = obj[key];
+    if (val === null || val === undefined) continue;
+    if (typeof val === "number") continue;
+    if (typeof val === "string") {
+      const trimmed = val.trim();
+      if (/^-?\d+(\.\d+)?$/.test(trimmed)) {
+        const n = Number(trimmed);
+        if (!isNaN(n)) obj[key] = n;
+      }
+      continue;
+    }
+    if (Array.isArray(val)) {
+      const coerced = val.map((item) => {
+        if (item === null || item === undefined) return item;
+        if (typeof item === "object") {
+          normalizeRawResponse(item);
+          return item;
+        }
+        return item;
+      });
+      obj[key] = coerced;
+      continue;
+    }
+    if (typeof val === "object") {
+      normalizeRawResponse(val);
+    }
+  }
+}
+
 class AIServiceImpl {
   private providers: AIProvider[];
   private providerIndex = 0;
@@ -223,13 +277,15 @@ class AIServiceImpl {
     let lastError: unknown;
     for (let attempt = 0; attempt <= VALIDATION_RETRY_LIMIT; attempt++) {
       try {
-        // Bypass cache on retry so we get a fresh response from the provider
+        const skipCache = attempt > 0;
         const raw = await this.executeWithFallback(
           (p) => p.generateJson<T>(req),
           `generateJsonValidated:attempt${attempt}`,
           req,
-          attempt > 0, // skipCache on retry
+          skipCache,
         );
+
+        normalizeRawResponse(raw);
 
         if (req.task === "resume-analysis" && typeof raw === "object" && raw !== null) {
           const result = raw as Record<string, any>;
@@ -454,9 +510,16 @@ class AIServiceImpl {
     fn: (p: AIProvider) => Promise<T>,
     label: string,
     req: AIRequest,
+    skipCache = false,
   ): Promise<{ result: T; providerName: string }> {
     if (this.providers.length === 0) {
       throw new Error("No AI providers configured");
+    }
+
+    const key = cacheKey(req);
+    if (!skipCache) {
+      const cached = getCached(key);
+      if (cached !== undefined) return { result: cached as T, providerName: "cache" };
     }
 
     let lastError: unknown;
@@ -467,6 +530,7 @@ class AIServiceImpl {
       try {
         const result = await retryWithBackoff(provider, fn, `${label}:${provider.name}`);
         this.providerIndex = idx;
+        setCached(key, result);
         return { result, providerName: provider.name };
       } catch (err) {
         lastError = err;

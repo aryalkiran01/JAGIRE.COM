@@ -2,7 +2,7 @@ import { z } from "zod";
 
 // ── Shared building blocks ──────────────────────────────────────────────────
 
-const score = z.number().min(0).max(100);
+const score = z.coerce.number().min(0).max(100).catch(0);
 const stringArray = z.array(z.string()).default([]);
 const string = z.string().default("");
 
@@ -28,7 +28,7 @@ export const resumeScreeningSchema = z.object({
     .array(
       z.object({
         candidate_name: string,
-        status: z.enum(["qualified", "borderline", "unqualified"]),
+        status: z.enum(["qualified", "borderline", "unqualified"]).catch("borderline"),
         score: score,
         reasons: stringArray,
       }),
@@ -42,7 +42,7 @@ export const resumeRankingSchema = z.object({
     .array(
       z.object({
         candidate_name: string,
-        rank: z.number().int().min(1),
+        rank: z.coerce.number().int().min(1).catch(1),
         fit_score: score,
         justification: string,
       }),
@@ -57,7 +57,7 @@ export const smartShortlistingSchema = z.object({
       z.object({
         candidate_name: string,
         rationale: string,
-        priority: z.enum(["high", "medium", "low"]),
+        priority: z.enum(["high", "medium", "low"]).catch("medium"),
       }),
     )
     .default([]),
@@ -77,7 +77,7 @@ export const candidateRankingSchema = z.object({
     .array(
       z.object({
         candidate_name: string,
-        rank: z.number().int().min(1),
+        rank: z.coerce.number().int().min(1).catch(1),
         strengths: stringArray,
         concerns: stringArray,
         overall_score: score,
@@ -96,7 +96,7 @@ export const candidateSummarySchema = z.object({
 });
 
 export const hiringRecommendationSchema = z.object({
-  recommendation: z.enum(["HIRE", "NO-HIRE", "HOLD"]),
+  recommendation: z.enum(["HIRE", "NO-HIRE", "HOLD"]).catch("HOLD"),
   confidence: score,
   reasoning: string,
   risk_factors: stringArray,
@@ -104,7 +104,7 @@ export const hiringRecommendationSchema = z.object({
 });
 
 export const candidateSuccessPredictionSchema = z.object({
-  prediction: z.enum(["Low", "Medium", "High"]),
+  prediction: z.enum(["Low", "Medium", "High"]).catch("Medium"),
   confidence: score,
   contributing_factors: stringArray,
   rationale: string,
@@ -129,7 +129,7 @@ export const duplicateCandidateDetectionSchema = z.object({
       }),
     )
     .default([]),
-  unique_count: z.number().int().min(0).default(0),
+  unique_count: z.coerce.number().int().min(0).default(0),
   summary: string,
 });
 
@@ -140,7 +140,7 @@ export const skillGapAnalysisSchema = z.object({
         skill: string,
         current_level: string,
         target_level: string,
-        priority: z.enum(["high", "medium", "low"]),
+        priority: z.enum(["high", "medium", "low"]).catch("medium"),
         learning_path: stringArray,
       }),
     )
@@ -153,8 +153,8 @@ export const interviewQuestionGeneratorSchema = z.object({
     .array(
       z.object({
         question: string,
-        category: z.enum(["technical", "behavioral", "situational"]),
-        difficulty: z.enum(["easy", "medium", "hard"]),
+        category: z.enum(["technical", "behavioral", "situational"]).catch("technical"),
+        difficulty: z.enum(["easy", "medium", "hard"]).catch("medium"),
         guidance: string,
       }),
     )
@@ -212,7 +212,7 @@ export const meetingSchedulerSchema = z.object({
       z.object({
         date: string,
         time: string,
-        duration_minutes: z.number().int().min(15).default(30),
+        duration_minutes: z.coerce.number().int().min(15).default(30),
       }),
     )
     .default([]),
@@ -224,7 +224,7 @@ export const onboardingAssistantSchema = z.object({
   first_week_plan: z
     .array(
       z.object({
-        day: z.number().int().min(1).max(5),
+        day: z.coerce.number().int().min(1).max(5).catch(1),
         tasks: stringArray,
         owner: string,
         resources: stringArray,
@@ -241,7 +241,7 @@ export const officeDashboardSchema = z.object({
       z.object({
         area: string,
         action: string,
-        priority: z.enum(["high", "medium", "low"]),
+        priority: z.enum(["high", "medium", "low"]).catch("medium"),
       }),
     )
     .default([]),
@@ -269,7 +269,7 @@ export const workflowBuilderSchema = z.object({
         name: string,
         trigger: string,
         owner: string,
-        sla_hours: z.number().int().min(1).default(48),
+        sla_hours: z.coerce.number().int().min(1).default(48),
         actions: stringArray,
       }),
     )
@@ -296,10 +296,10 @@ export const workforcePlanningSchema = z.object({
     .array(
       z.object({
         role: string,
-        current_count: z.number().int().min(0).default(0),
-        target_count: z.number().int().min(0).default(0),
-        gap: z.number().int().default(0),
-        priority: z.enum(["high", "medium", "low"]),
+        current_count: z.coerce.number().int().min(0).default(0),
+        target_count: z.coerce.number().int().min(0).default(0),
+        gap: z.coerce.number().int().default(0),
+        priority: z.enum(["high", "medium", "low"]).catch("medium"),
       }),
     )
     .default([]),
@@ -343,7 +343,7 @@ export const talentIntelligenceSchema = z.object({
     .array(
       z.object({
         area: string,
-        coverage: z.enum(["strong", "adequate", "weak"]),
+        coverage: z.enum(["strong", "adequate", "weak"]).catch("adequate"),
         notes: string,
       }),
     )

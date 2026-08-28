@@ -1,15 +1,15 @@
 import { z } from "zod";
 
-const score = z.number().min(0).max(100);
+const score = z.coerce.number().min(0).max(100).catch(0);
 const stringArray = z.array(z.string()).default([]);
-const priority = z.enum(["high", "medium", "low"]);
+const priority = z.enum(["high", "medium", "low"]).catch("medium");
 
 // ── Resume & Profile ──────────────────────────────────────────────────────────
 
 export const coverLetterGeneratorSchema = z.object({
   cover_letter: z.string(),
   tone: z.string().default("professional"),
-  word_count: z.number().optional().default(0),
+  word_count: z.coerce.number().optional().default(0),
   key_strengths_highlighted: stringArray,
 });
 
@@ -83,10 +83,15 @@ export const jobSearchStrategySchema = z.object({
 
 export const salaryAnalyzerSchema = z.object({
   market_range: z
-    .object({ low: z.number(), mid: z.number(), high: z.number(), currency: z.string() })
+    .object({
+      low: z.coerce.number().catch(0),
+      mid: z.coerce.number().catch(0),
+      high: z.coerce.number().catch(0),
+      currency: z.string().default("NPR"),
+    })
     .nullable()
     .default(null),
-  your_market_value: z.number().optional(),
+  your_market_value: z.coerce.number().optional(),
   negotiation_leverage: stringArray,
   benchmark_comparisons: z
     .array(z.object({ role: z.string(), avg_salary: z.number(), location: z.string() }))
@@ -123,9 +128,9 @@ export const interviewPrepSchema = z.object({
     .array(
       z.object({
         question: z.string(),
-        category: z.enum(["technical", "behavioral", "situational"]),
-        difficulty: z.enum(["easy", "medium", "hard"]),
-        guidance: z.string(),
+        category: z.enum(["technical", "behavioral", "situational"]).catch("technical"),
+        difficulty: z.enum(["easy", "medium", "hard"]).catch("medium"),
+        guidance: z.string().default(""),
       }),
     )
     .default([]),
@@ -228,7 +233,7 @@ export const goalPlannerSchema = z.object({
     .array(
       z.object({
         goal: z.string(),
-        category: z.enum(["career", "skill", "networking", "personal"]),
+        category: z.enum(["career", "skill", "networking", "personal"]).catch("career"),
         timeline: z.string(),
         milestones: stringArray,
         success_metrics: stringArray,
@@ -284,7 +289,7 @@ export const projectIdeaGeneratorSchema = z.object({
         title: z.string(),
         description: z.string(),
         skills_demonstrated: stringArray,
-        difficulty: z.enum(["beginner", "intermediate", "advanced"]),
+        difficulty: z.enum(["beginner", "intermediate", "advanced"]).catch("intermediate"),
         estimated_time: z.string().default(""),
         tech_stack: stringArray,
       }),
