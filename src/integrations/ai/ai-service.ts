@@ -231,9 +231,7 @@ class AIServiceImpl {
           attempt > 0, // skipCache on retry
         );
 
-        const normalized = normalizeAiResponse(raw, req.task);
-
-        if (req.task === "resume-analysis" && typeof normalized === "object" && normalized !== null) {
+        if (req.task === "resume-analysis" && typeof raw === "object" && raw !== null) {
           const result = raw as Record<string, any>;
 
           // Truncate arrays that exceed maximum lengths
