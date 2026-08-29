@@ -1,14 +1,21 @@
 import { z } from "zod";
 
+// ── Shared building blocks ──────────────────────────────────────────────────
+// z.coerce.number() alone fails on formatted strings like "85%" or "Rs. 50,000".
+// We use .catch(0) so that any parse failure falls back to 0 instead of throwing.
+const score = z.coerce.number().catch(0);
+const stringArray = z.array(z.string()).default([]);
+const str = z.string().default("");
+
 export const resumeAnalysisSchema = z.object({
-  overall_score: z.coerce.number().catch(0),
-  ats_score: z.coerce.number().catch(0),
-  grammar_score: z.coerce.number().catch(0),
-  formatting_score: z.coerce.number().catch(0),
-  keyword_score: z.coerce.number().catch(0),
-  professionalism_score: z.coerce.number().catch(0),
+  overall_score: score,
+  ats_score: score,
+  grammar_score: score,
+  formatting_score: score,
+  keyword_score: score,
+  professionalism_score: score,
   suggestions: z.array(z.string()).max(8).default([]),
-  summary: z.string().default(""),
+  summary: str,
   extracted_skills: z.array(z.string()).max(20).default([]),
 });
 
@@ -16,207 +23,208 @@ export const careerRecommendationsSchema = z.object({
   career_paths: z
     .array(
       z.object({
-        title: z.string(),
-        why: z.string(),
-        next_steps: z.array(z.string()),
+        title: str,
+        why: str,
+        next_steps: stringArray,
       }),
     )
-    .optional()
     .default([]),
-  skill_gaps: z.array(z.string()).optional().default([]),
-  missing_skills: z.array(z.string()).optional().default([]),
+  skill_gaps: stringArray,
+  missing_skills: stringArray,
   recommended_certifications: z
-    .array(z.object({ name: z.string(), provider: z.string() }))
-    .optional()
+    .array(z.object({ name: str, provider: str }))
     .default([]),
   suggested_projects: z
-    .array(z.object({ title: z.string(), description: z.string() }))
-    .optional()
+    .array(z.object({ title: str, description: str }))
     .default([]),
   recommended_jobs: z
-    .array(z.object({ title: z.string(), why: z.string() }))
-    .optional()
+    .array(z.object({ title: str, why: str }))
     .default([]),
   companies_hiring: z
-    .array(z.object({ name: z.string(), sector: z.string() }))
-    .optional()
+    .array(z.object({ name: str, sector: str }))
     .default([]),
   salary_prediction: z
     .object({
-      low: z.coerce.number().catch(0),
-      mid: z.coerce.number().catch(0),
-      high: z.coerce.number().catch(0),
-      currency: z.string().default("NPR"),
+      low: score,
+      mid: score,
+      high: score,
+      currency: str,
     })
-    .optional()
     .nullable()
     .default(null),
-  resume_improvements: z.array(z.string()).optional().default([]),
+  resume_improvements: stringArray,
   interview_prep_plan: z
     .object({
-      thirty_days: z.array(z.string()).default([]),
-      sixty_days: z.array(z.string()).default([]),
-      ninety_days: z.array(z.string()).default([]),
-      one_eighty_days: z.array(z.string()).default([]),
+      thirty_days: stringArray,
+      sixty_days: stringArray,
+      ninety_days: stringArray,
+      one_eighty_days: stringArray,
     })
-    .optional()
     .nullable()
     .default(null),
-  suggested_search_keywords: z.array(z.string()).optional().default([]),
+  suggested_search_keywords: stringArray,
 });
 
 export const linkedinImportSchema = z.object({
-  full_name: z.string().nullable().optional(),
-  headline: z.string().nullable().optional(),
-  about: z.string().optional().default(""),
-  location: z.string().nullable().optional(),
-  current_position: z.string().nullable().optional(),
-  experience_years: z.coerce.number().optional().default(0),
-  skills: z.array(z.string()).max(20).optional().default([]),
+  full_name: z.string().nullable().default(null),
+  headline: z.string().nullable().default(null),
+  about: str,
+  location: z.string().nullable().default(null),
+  current_position: z.string().nullable().default(null),
+  experience_years: z.coerce.number().catch(0),
+  skills: z.array(z.string()).max(20).default([]),
 });
 
-// Should look something like this:
 export const learningRecommendationsSchema = z.object({
   items: z
     .array(
       z.object({
-        kind: z.enum(["course", "video", "challenge", "interview"]),
-        title: z.string(),
-        provider: z.string(),
-        description: z.string(),
-        skills: z.array(z.string()),
-        url: z.string().optional().default(""),
+        kind: z.enum(["course", "video", "challenge", "interview"]).catch("course"),
+        title: str,
+        provider: str,
+        description: str,
+        skills: stringArray,
+        url: z.string().default(""),
       }),
     )
-    .min(1)
-    .max(8),
+    .default([]),
 });
 
 export const coverLetterSchema = z.object({
-  cover_letter: z.string(),
+  cover_letter: str,
 });
 
 export const interviewQuestionsSchema = z.object({
-  questions: z.array(
-    z.object({
-      question: z.string(),
-      category: z.string().optional().default("general"),
-      difficulty: z.string().optional().default("medium"),
-      sample_answer: z.string().optional().default(""),
-    }),
-  ),
+  questions: z
+    .array(
+      z.object({
+        question: str,
+        category: str,
+        difficulty: str,
+        sample_answer: z.string().default(""),
+      }),
+    )
+    .default([]),
 });
 
 export const candidateRankingSchema = z.object({
-  candidates: z.array(
-    z.object({
-      candidate_id: z.string(),
-      rank: z.coerce.number().catch(0),
-      score: z.coerce.number().catch(0),
-      reasons: z.array(z.string()).default([]),
-    }),
-  ).default([]),
+  candidates: z
+    .array(
+      z.object({
+        candidate_id: str,
+        rank: z.coerce.number().catch(0),
+        score: z.coerce.number().catch(0),
+        reasons: stringArray,
+      }),
+    )
+    .default([]),
 });
 
 export const jobMatchingSchema = z.object({
-  matches: z.array(
-    z.object({
-      job_id: z.string(),
-      score: z.coerce.number().catch(0),
-      reasons: z.array(z.string()).default([]),
-    }),
-  ).default([]),
+  matches: z
+    .array(
+      z.object({
+        job_id: str,
+        score: z.coerce.number().catch(0),
+        reasons: stringArray,
+      }),
+    )
+    .default([]),
 });
 
 export const hiringRecommendationSchema = z.object({
-  recommendation: z.string(),
+  recommendation: str,
   confidence: z.coerce.number().catch(0),
-  reasoning: z.string(),
-  risk_factors: z.array(z.string()).optional().default([]),
+  reasoning: str,
+  risk_factors: stringArray,
 });
 
 export const strengthWeaknessSchema = z.object({
-  strengths: z.array(z.string()),
-  weaknesses: z.array(z.string()),
-  summary: z.string().optional().default(""),
+  strengths: stringArray,
+  weaknesses: stringArray,
+  summary: str,
 });
 
 export const companyCandidateAnalysisSchema = z.object({
-  analysis: z.string(),
+  analysis: str,
   top_candidates: z
     .array(
       z.object({
-        candidate_id: z.string(),
+        candidate_id: str,
         fit_score: z.coerce.number().catch(0),
-        notes: z.string().default(""),
+        notes: str,
       }),
     )
-    .optional()
     .default([]),
 });
 
 // Combined single-call schema for scanResumeFromStorage.
-// Merges resume scoring, career roadmap, strengths/weaknesses, and
-// improvement suggestions so only ONE Ollama call is needed per upload.
 export const fullResumeScanSchema = z.object({
-  overall_score: z.coerce.number().catch(0),
-  ats_score: z.coerce.number().catch(0),
-  grammar_score: z.coerce.number().catch(0),
-  formatting_score: z.coerce.number().catch(0),
-  keyword_score: z.coerce.number().catch(0),
-  professionalism_score: z.coerce.number().catch(0),
+  overall_score: score,
+  ats_score: score,
+  grammar_score: score,
+  formatting_score: score,
+  keyword_score: score,
+  professionalism_score: score,
   suggestions: z.array(z.string()).max(8).default([]),
-  summary: z.string().default(""),
+  summary: str,
   extracted_skills: z.array(z.string()).max(20).default([]),
   strengths: z.array(z.string()).max(5).default([]),
   weaknesses: z.array(z.string()).max(5).default([]),
   missing_skills: z.array(z.string()).max(10).default([]),
   keywords: z.array(z.string()).max(15).default([]),
   career_paths: z
-    .array(z.object({ title: z.string().default(""), why: z.string().default(""), next_steps: z.array(z.string()).default([]) }))
+    .array(
+      z.object({
+        title: str,
+        why: str,
+        next_steps: stringArray,
+      }),
+    )
     .max(4)
     .default([]),
   skill_gaps: z.array(z.string()).max(8).default([]),
   recommended_certifications: z
-    .array(z.object({ name: z.string().default(""), provider: z.string().default("") }))
+    .array(z.object({ name: str, provider: str }))
     .max(5)
     .default([]),
   suggested_projects: z
-    .array(z.object({ title: z.string().default(""), description: z.string().default("") }))
+    .array(z.object({ title: str, description: str }))
     .max(4)
     .default([]),
   recommended_jobs: z
-    .array(z.object({ title: z.string().default(""), why: z.string().default("") }))
+    .array(z.object({ title: str, why: str }))
     .max(5)
     .default([]),
   companies_hiring: z
-    .array(z.object({ name: z.string().default(""), sector: z.string().default("") }))
+    .array(z.object({ name: str, sector: str }))
     .max(5)
     .default([]),
   salary_prediction: z
     .object({
-      low: z.coerce.number().catch(0),
-      mid: z.coerce.number().catch(0),
-      high: z.coerce.number().catch(0),
-      currency: z.string().default("NPR"),
+      low: score,
+      mid: score,
+      high: score,
+      currency: str,
     })
     .nullable()
     .default(null),
   resume_improvements: z.array(z.string()).max(8).default([]),
   interview_prep_plan: z
     .object({
-      thirty_days: z.array(z.string()).default([]),
-      sixty_days: z.array(z.string()).default([]),
-      ninety_days: z.array(z.string()).default([]),
-      one_eighty_days: z.array(z.string()).default([]),
+      thirty_days: stringArray,
+      sixty_days: stringArray,
+      ninety_days: stringArray,
+      one_eighty_days: stringArray,
     })
     .nullable()
     .default(null),
 });
 
 export type FullResumeScan = z.infer<typeof fullResumeScanSchema>;
+
 export const careerCoachResponseSchema = z.object({
-  advice: z.string(),
+  advice: str,
   recommended_skills: z.array(z.string()).max(8).default([]),
   action_plan: z.array(z.string()).max(6).default([]),
   improvement_suggestions: z.array(z.string()).max(6).default([]),

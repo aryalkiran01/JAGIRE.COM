@@ -1,15 +1,19 @@
 import { z } from "zod";
 
+// ── Shared building blocks ──────────────────────────────────────────────────
+// .catch(0) ensures formatted strings like "85%" or "Rs. 50,000" that fail
+// Number() coercion fall back to 0 instead of throwing and failing the whole response.
 const score = z.coerce.number().min(0).max(100).catch(0);
 const stringArray = z.array(z.string()).default([]);
+const str = z.string().default("");
 const priority = z.enum(["high", "medium", "low"]).catch("medium");
 
 // ── Resume & Profile ──────────────────────────────────────────────────────────
 
 export const coverLetterGeneratorSchema = z.object({
-  cover_letter: z.string(),
-  tone: z.string().default("professional"),
-  word_count: z.coerce.number().optional().default(0),
+  cover_letter: str,
+  tone: str,
+  word_count: z.coerce.number().catch(0),
   key_strengths_highlighted: stringArray,
 });
 
@@ -17,40 +21,42 @@ export const resumeOptimizerSchema = z.object({
   optimized_sections: z
     .array(
       z.object({
-        section: z.string(),
-        original: z.string(),
-        optimized: z.string(),
+        section: str,
+        original: str,
+        optimized: str,
         improvements: stringArray,
       }),
     )
     .default([]),
-  overall_recommendation: z.string(),
+  overall_recommendation: str,
   ats_optimization_score: score,
 });
 
 export const linkedinOptimizerSchema = z.object({
   headline_suggestions: stringArray,
-  about_suggestions: z.array(z.object({ original: z.string(), optimized: z.string() })).default([]),
+  about_suggestions: z
+    .array(z.object({ original: str, optimized: str }))
+    .default([]),
   skills_to_add: stringArray,
   experience_improvements: z
-    .array(z.object({ role: z.string(), suggestion: z.string() }))
+    .array(z.object({ role: str, suggestion: str }))
     .default([]),
   profile_completeness_score: score,
 });
 
 export const personalBrandSchema = z.object({
-  brand_statement: z.string(),
+  brand_statement: str,
   key_differentiators: stringArray,
-  elevator_pitch: z.string(),
+  elevator_pitch: str,
   online_presence_tips: stringArray,
   content_strategy: stringArray,
 });
 
 export const bioGeneratorSchema = z.object({
-  short_bio: z.string(),
-  medium_bio: z.string(),
-  long_bio: z.string(),
-  tone: z.string().default("professional"),
+  short_bio: str,
+  medium_bio: str,
+  long_bio: str,
+  tone: str,
   keywords: stringArray,
 });
 
@@ -60,23 +66,25 @@ export const jobMatchAnalyzerSchema = z.object({
   matches: z
     .array(
       z.object({
-        job_title: z.string(),
-        company: z.string().default(""),
+        job_title: str,
+        company: str,
         match_score: score,
         matching_skills: stringArray,
         missing_skills: stringArray,
-        recommendation: z.string(),
+        recommendation: str,
       }),
     )
     .default([]),
-  summary: z.string(),
+  summary: str,
 });
 
 export const jobSearchStrategySchema = z.object({
   target_roles: stringArray,
   search_keywords: stringArray,
   boolean_search_strings: stringArray,
-  sourcing_channels: z.array(z.object({ channel: z.string(), strategy: z.string() })).default([]),
+  sourcing_channels: z
+    .array(z.object({ channel: str, strategy: str }))
+    .default([]),
   networking_tips: stringArray,
   weekly_action_plan: stringArray,
 });
@@ -87,37 +95,43 @@ export const salaryAnalyzerSchema = z.object({
       low: z.coerce.number().catch(0),
       mid: z.coerce.number().catch(0),
       high: z.coerce.number().catch(0),
-      currency: z.string().default("NPR"),
+      currency: str,
     })
     .nullable()
     .default(null),
-  your_market_value: z.coerce.number().optional(),
+  your_market_value: z.coerce.number().catch(0),
   negotiation_leverage: stringArray,
   benchmark_comparisons: z
-    .array(z.object({ role: z.string(), avg_salary: z.number(), location: z.string() }))
+    .array(
+      z.object({
+        role: str,
+        avg_salary: z.coerce.number().catch(0),
+        location: str,
+      }),
+    )
     .default([]),
-  negotiation_script: z.string(),
+  negotiation_script: str,
 });
 
 export const offerEvaluatorSchema = z.object({
   overall_score: score,
-  salary_rating: z.string(),
-  benefits_rating: z.string(),
-  growth_rating: z.string(),
-  work_life_balance_rating: z.string(),
+  salary_rating: str,
+  benefits_rating: str,
+  growth_rating: str,
+  work_life_balance_rating: str,
   pros: stringArray,
   cons: stringArray,
   negotiation_points: stringArray,
-  recommendation: z.string(),
+  recommendation: str,
 });
 
 export const relocationAdvisorSchema = z.object({
   cost_of_living_comparison: z
-    .array(z.object({ category: z.string(), current: z.string(), target: z.string() }))
+    .array(z.object({ category: str, current: str, target: str }))
     .default([]),
-  salary_adjustment: z.string(),
+  salary_adjustment: str,
   lifestyle_factors: stringArray,
-  job_market_outlook: z.string(),
+  job_market_outlook: str,
   recommendations: stringArray,
 });
 
@@ -127,10 +141,10 @@ export const interviewPrepSchema = z.object({
   likely_questions: z
     .array(
       z.object({
-        question: z.string(),
+        question: str,
         category: z.enum(["technical", "behavioral", "situational"]).catch("technical"),
         difficulty: z.enum(["easy", "medium", "hard"]).catch("medium"),
-        guidance: z.string().default(""),
+        guidance: str,
       }),
     )
     .default([]),
@@ -146,10 +160,10 @@ export const mockInterviewFeedbackSchema = z.object({
   specific_feedback: z
     .array(
       z.object({
-        question: z.string(),
-        your_answer_summary: z.string(),
-        feedback: z.string(),
-        improved_answer: z.string(),
+        question: str,
+        your_answer_summary: str,
+        feedback: str,
+        improved_answer: str,
       }),
     )
     .default([]),
@@ -160,11 +174,11 @@ export const behavioralQuestionPrepSchema = z.object({
   star_stories: z
     .array(
       z.object({
-        question: z.string(),
-        situation: z.string(),
-        task: z.string(),
-        action: z.string(),
-        result: z.string(),
+        question: str,
+        situation: str,
+        task: str,
+        action: str,
+        result: str,
       }),
     )
     .default([]),
@@ -174,67 +188,71 @@ export const behavioralQuestionPrepSchema = z.object({
 export const technicalInterviewPrepSchema = z.object({
   topics_to_review: stringArray,
   practice_problems: z
-    .array(z.object({ topic: z.string(), problem: z.string(), approach: z.string() }))
+    .array(z.object({ topic: str, problem: str, approach: str }))
     .default([]),
   key_concepts: stringArray,
-  resources: z.array(z.object({ name: z.string(), url: z.string().default("") })).default([]),
+  resources: z.array(z.object({ name: str, url: str })).default([]),
 });
 
 // ── Career Development ────────────────────────────────────────────────────────
 
 export const skillRoadmapSchema = z.object({
-  current_assessment: z.string(),
+  current_assessment: str,
   target_skills: z
     .array(
       z.object({
-        skill: z.string(),
-        current_level: z.string(),
-        target_level: z.string(),
+        skill: str,
+        current_level: str,
+        target_level: str,
         priority,
         learning_resources: stringArray,
-        estimated_time: z.string(),
+        estimated_time: str,
       }),
     )
     .default([]),
   milestones: z
-    .array(z.object({ milestone: z.string(), target_date: z.string(), criteria: stringArray }))
+    .array(z.object({ milestone: str, target_date: str, criteria: stringArray }))
     .default([]),
-  summary: z.string(),
+  summary: str,
 });
 
 export const careerTransitionPlannerSchema = z.object({
-  transition_feasibility: z.string(),
+  transition_feasibility: str,
   transferable_skills: stringArray,
   skills_to_acquire: stringArray,
   transition_timeline: z
     .array(
       z.object({
-        phase: z.string(),
-        duration: z.string(),
+        phase: str,
+        duration: str,
         actions: stringArray,
       }),
     )
     .default([]),
-  recommended_roles: z.array(z.object({ title: z.string(), why: z.string() })).default([]),
+  recommended_roles: z
+    .array(z.object({ title: str, why: str }))
+    .default([]),
   risks: stringArray,
 });
 
 export const mentorshipMatcherSchema = z.object({
   mentor_criteria: stringArray,
   suggested_mentor_types: z
-    .array(z.object({ type: z.string(), why: z.string(), where_to_find: z.string() }))
+    .array(z.object({ type: str, why: str, where_to_find: str }))
     .default([]),
   networking_strategy: stringArray,
-  outreach_templates: z.array(z.object({ scenario: z.string(), template: z.string() })).default([]),
+  outreach_templates: z
+    .array(z.object({ scenario: str, template: str }))
+    .default([]),
 });
 
 export const goalPlannerSchema = z.object({
   goals: z
     .array(
       z.object({
-        goal: z.string(),
+        goal: str,
         category: z.enum(["career", "skill", "networking", "personal"]).catch("career"),
-        timeline: z.string(),
+        timeline: str,
         milestones: stringArray,
         success_metrics: stringArray,
       }),
@@ -250,62 +268,62 @@ export const courseRecommenderSchema = z.object({
   courses: z
     .array(
       z.object({
-        title: z.string(),
-        provider: z.string().default(""),
-        url: z.string().default(""),
-        level: z.string().default("intermediate"),
+        title: str,
+        provider: str,
+        url: str,
+        level: str,
         skills_gained: stringArray,
-        estimated_hours: z.string().default(""),
-        why: z.string(),
+        estimated_hours: str,
+        why: str,
       }),
     )
     .default([]),
   learning_path: stringArray,
-  summary: z.string(),
+  summary: str,
 });
 
 export const certificationAdvisorSchema = z.object({
   recommended_certifications: z
     .array(
       z.object({
-        name: z.string(),
-        provider: z.string(),
-        level: z.string(),
-        cost_estimate: z.string().default(""),
-        prep_time: z.string().default(""),
-        career_impact: z.string(),
-        prerequisite: z.string().default(""),
+        name: str,
+        provider: str,
+        level: str,
+        cost_estimate: str,
+        prep_time: str,
+        career_impact: str,
+        prerequisite: str,
       }),
     )
     .default([]),
   priority_order: stringArray,
-  summary: z.string(),
+  summary: str,
 });
 
 export const projectIdeaGeneratorSchema = z.object({
   projects: z
     .array(
       z.object({
-        title: z.string(),
-        description: z.string(),
+        title: str,
+        description: str,
         skills_demonstrated: stringArray,
         difficulty: z.enum(["beginner", "intermediate", "advanced"]).catch("intermediate"),
-        estimated_time: z.string().default(""),
+        estimated_time: str,
         tech_stack: stringArray,
       }),
     )
     .default([]),
-  summary: z.string(),
+  summary: str,
 });
 
 export const portfolioOptimizerSchema = z.object({
-  portfolio_assessment: z.string(),
+  portfolio_assessment: str,
   improvements: z
     .array(
       z.object({
-        section: z.string(),
-        current_state: z.string(),
-        recommendation: z.string(),
+        section: str,
+        current_state: str,
+        recommendation: str,
       }),
     )
     .default([]),
