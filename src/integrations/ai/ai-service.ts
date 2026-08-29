@@ -159,6 +159,73 @@ function coerceStringArray(val: unknown, max?: number): string[] | undefined {
   return undefined;
 }
 
+function tryParseFormattedNumber(s: string): number | undefined {
+  const trimmed = s.trim();
+  if (!trimmed) return undefined;
+
+  // Pure number: "85", "85.5", "-3"
+  if (/^-?\d+(\.\d+)?$/.test(trimmed)) {
+    const n = Number(trimmed);
+    return isNaN(n) ? undefined : n;
+  }
+
+  // Percentage: "85%", "85.5%"
+  const pctMatch = trimmed.match(/^(-?\d+(?:\.\d+)?)\s*%$/);
+  if (pctMatch) {
+    const n = Number(pctMatch[1]);
+    return isNaN(n) ? undefined : n;
+  }
+
+  // Fraction/score: "85/100", "85 / 100"
+  const fracMatch = trimmed.match(/^(-?\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)$/);
+  if (fracMatch) {
+    const num = Number(fracMatch[1]);
+    const denom = Number(fracMatch[2]);
+    if (!isNaN(num) && !isNaN(denom) && denom !== 0) {
+      return denom === 100 ? num : Math.round((num / denom) * 100);
+    }
+    return undefined;
+  }
+
+  // "X out of Y": "85 out of 100"
+  const outOfMatch = trimmed.match(/^(-?\d+(?:\.\d+)?)\s+out\s+of\s+(\d+(?:\.\d+)?)$/i);
+  if (outOfMatch) {
+    const num = Number(outOfMatch[1]);
+    const denom = Number(outOfMatch[2]);
+    if (!isNaN(num) && !isNaN(denom) && denom !== 0) {
+      return denom === 100 ? num : Math.round((num / denom) * 100);
+    }
+    return undefined;
+  }
+
+  // Currency-prefixed: "Rs. 50,000", "NPR 50,000", "$ 1,200", "USD 1200"
+  const currencyMatch = trimmed.match(
+    /^(?:rs\.?|npr|usd|\$|eur|gbp|inr|jpy|kr)\s*(-?\d[\d,]*(?:\.\d+)?)\s*$/i,
+  );
+  if (currencyMatch) {
+    const n = Number(currencyMatch[1].replace(/,/g, ""));
+    return isNaN(n) ? undefined : n;
+  }
+
+  // Comma-separated number: "50,000", "1,200.50"
+  const commaMatch = trimmed.match(/^-?\d{1,3}(?:,\d{3})+(?:\.\d+)?$/);
+  if (commaMatch) {
+    const n = Number(trimmed.replace(/,/g, ""));
+    return isNaN(n) ? undefined : n;
+  }
+
+  // Number with suffix: "85 score", "85 points", "score: 85"
+  const suffixMatch = trimmed.match(
+    /^(?:score|points?)?:?\s*(-?\d+(?:\.\d+)?)\s*(?:score|points?)?$/i,
+  );
+  if (suffixMatch) {
+    const n = Number(suffixMatch[1]);
+    return isNaN(n) ? undefined : n;
+  }
+
+  return undefined;
+}
+
 function normalizeRawResponse(raw: unknown): void {
   if (typeof raw !== "object" || raw === null) return;
   const obj = raw as Record<string, any>;
@@ -167,11 +234,8 @@ function normalizeRawResponse(raw: unknown): void {
     if (val === null || val === undefined) continue;
     if (typeof val === "number") continue;
     if (typeof val === "string") {
-      const trimmed = val.trim();
-      if (/^-?\d+(\.\d+)?$/.test(trimmed)) {
-        const n = Number(trimmed);
-        if (!isNaN(n)) obj[key] = n;
-      }
+      const parsed = tryParseFormattedNumber(val);
+      if (parsed !== undefined) obj[key] = parsed;
       continue;
     }
     if (Array.isArray(val)) {
