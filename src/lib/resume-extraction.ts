@@ -11,7 +11,7 @@ export class ResumeScanError extends Error {
   constructor(
     public readonly code: ResumeErrorCode,
     message: string,
-  public readonly cause?: unknown,
+    public readonly cause?: unknown,
   ) {
     super(message);
     this.name = "ResumeScanError";
@@ -60,10 +60,24 @@ function looksLikeResumeText(text: string): boolean {
   if (text.length < MIN_TEXT_LENGTH) return false;
   const lower = text.toLowerCase();
   const resumeKeywords = [
-    "experience", "education", "skills", "summary", "objective",
-    "employment", "qualification", "career", "professional",
-    "university", "college", "degree", "certificate", "internship",
-    "project", "achievement", "responsibility", "contact",
+    "experience",
+    "education",
+    "skills",
+    "summary",
+    "objective",
+    "employment",
+    "qualification",
+    "career",
+    "professional",
+    "university",
+    "college",
+    "degree",
+    "certificate",
+    "internship",
+    "project",
+    "achievement",
+    "responsibility",
+    "contact",
   ];
   let hits = 0;
   for (const kw of resumeKeywords) {

@@ -222,7 +222,10 @@ export const scanResumeFromStorage = createServerFn({ method: "POST" })
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       const dl = await supabaseAdmin.storage.from("resumes").download(resume.file_path);
       if (dl.error || !dl.data) {
-        return aiFailure("FILE_DOWNLOAD_FAILED", "Could not download your resume file. Please re-upload it.");
+        return aiFailure(
+          "FILE_DOWNLOAD_FAILED",
+          "Could not download your resume file. Please re-upload it.",
+        );
       }
       const buf = new Uint8Array(await dl.data.arrayBuffer());
 
@@ -239,7 +242,10 @@ export const scanResumeFromStorage = createServerFn({ method: "POST" })
         );
       }
     } else {
-      return aiFailure("FILE_PARSE_FAILED", "No resume data or file found. Please upload a resume file.");
+      return aiFailure(
+        "FILE_PARSE_FAILED",
+        "No resume data or file found. Please upload a resume file.",
+      );
     }
 
     text = text.replace(/\s+/g, " ").trim();

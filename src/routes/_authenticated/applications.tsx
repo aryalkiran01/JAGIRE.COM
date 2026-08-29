@@ -136,9 +136,7 @@ function Applications() {
                           — {new Date(event.created_at).toLocaleDateString()}
                         </span>
 
-                        {event.note && (
-                          <p className="text-muted-foreground mt-1">{event.note}</p>
-                        )}
+                        {event.note && <p className="text-muted-foreground mt-1">{event.note}</p>}
                       </div>
                     ))}
                 </div>

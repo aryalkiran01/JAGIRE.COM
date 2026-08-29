@@ -153,7 +153,10 @@ function coerceStringArray(val: unknown, max?: number): string[] | undefined {
     return max ? arr.slice(0, max) : arr;
   }
   if (typeof val === "string" && val.trim()) {
-    const arr = val.split(/[,•;\n]|\d+\.\s*/).map((s) => s.trim()).filter(Boolean);
+    const arr = val
+      .split(/[,•;\n]|\d+\.\s*/)
+      .map((s) => s.trim())
+      .filter(Boolean);
     return max ? arr.slice(0, max) : arr;
   }
   return undefined;

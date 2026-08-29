@@ -108,24 +108,28 @@ export const interviewQuestionsSchema = z.object({
 });
 
 export const candidateRankingSchema = z.object({
-  candidates: z.array(
-    z.object({
-      candidate_id: z.string(),
-      rank: z.coerce.number().catch(0),
-      score: z.coerce.number().catch(0),
-      reasons: z.array(z.string()).default([]),
-    }),
-  ).default([]),
+  candidates: z
+    .array(
+      z.object({
+        candidate_id: z.string(),
+        rank: z.coerce.number().catch(0),
+        score: z.coerce.number().catch(0),
+        reasons: z.array(z.string()).default([]),
+      }),
+    )
+    .default([]),
 });
 
 export const jobMatchingSchema = z.object({
-  matches: z.array(
-    z.object({
-      job_id: z.string(),
-      score: z.coerce.number().catch(0),
-      reasons: z.array(z.string()).default([]),
-    }),
-  ).default([]),
+  matches: z
+    .array(
+      z.object({
+        job_id: z.string(),
+        score: z.coerce.number().catch(0),
+        reasons: z.array(z.string()).default([]),
+      }),
+    )
+    .default([]),
 });
 
 export const hiringRecommendationSchema = z.object({
@@ -173,7 +177,13 @@ export const fullResumeScanSchema = z.object({
   missing_skills: z.array(z.string()).max(10).default([]),
   keywords: z.array(z.string()).max(15).default([]),
   career_paths: z
-    .array(z.object({ title: z.string().default(""), why: z.string().default(""), next_steps: z.array(z.string()).default([]) }))
+    .array(
+      z.object({
+        title: z.string().default(""),
+        why: z.string().default(""),
+        next_steps: z.array(z.string()).default([]),
+      }),
+    )
     .max(4)
     .default([]),
   skill_gaps: z.array(z.string()).max(8).default([]),

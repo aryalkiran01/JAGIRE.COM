@@ -145,63 +145,63 @@ All routes use TanStack Router file-based routing. `routeTree.gen.ts` is auto-ge
 
 ### Public Routes (no auth)
 
-| Path                        | File                                          | Description                                                       |
-| --------------------------- | --------------------------------------------- | ----------------------------------------------------------------- |
-| `/`                         | `src/routes/index.tsx`                        | Landing page (hero, featured jobs, categories, testimonials, CTA) |
-| `/about`                    | `src/routes/about.tsx`                        | About page                                                        |
-| `/auth`                     | `src/routes/auth.tsx`                         | Sign in / Sign up tabs + Google OAuth                             |
-| `/contact`                  | `src/routes/contact.tsx`                     | Contact form                                                      |
-| `/forgot-password`          | `src/routes/forgot-password.tsx`              | Request reset email                                               |
-| `/reset-password`           | `src/routes/reset-password.tsx`               | Set new password                                                  |
-| `/pricing`                  | `src/routes/pricing.tsx`                      | AI Recruitment & HR OS pricing (Job Seeker / Employer toggle)    |
-| `/checkout/$plan`           | `src/routes/checkout/$plan.tsx`               | eSewa payment (starter/pro)                                       |
-| `/payment-success`          | `src/routes/payment-success.tsx`             | Payment confirmation                                              |
-| `/payment-failure`          | `src/routes/payment-failure.tsx`             | Payment failure                                                   |
-| `/support`                  | `src/routes/support.tsx`                     | Support ticket system                                             |
-| `/blog`                     | `src/routes/blog/index.tsx`                  | Public blog listing                                               |
-| `/blog/$slug`               | `src/routes/blog/$slug.tsx`                  | Individual blog post                                              |
-| `/companies`                | `src/routes/companies/index.tsx`             | Company directory                                                 |
-| `/companies/$slug`          | `src/routes/companies/$slug.tsx`             | Company profile + reviews + jobs                                  |
-| `/jobs`                     | `src/routes/jobs/index.tsx`                  | Job listings with filters                                         |
-| `/jobs/$jobId`              | `src/routes/jobs/$jobId.tsx`                 | Job detail + apply dialog                                         |
-| `/google-calendar/callback` | `src/routes/google-calendar/callback.tsx`    | OAuth callback (posts to opener)                                  |
+| Path                        | File                                      | Description                                                       |
+| --------------------------- | ----------------------------------------- | ----------------------------------------------------------------- |
+| `/`                         | `src/routes/index.tsx`                    | Landing page (hero, featured jobs, categories, testimonials, CTA) |
+| `/about`                    | `src/routes/about.tsx`                    | About page                                                        |
+| `/auth`                     | `src/routes/auth.tsx`                     | Sign in / Sign up tabs + Google OAuth                             |
+| `/contact`                  | `src/routes/contact.tsx`                  | Contact form                                                      |
+| `/forgot-password`          | `src/routes/forgot-password.tsx`          | Request reset email                                               |
+| `/reset-password`           | `src/routes/reset-password.tsx`           | Set new password                                                  |
+| `/pricing`                  | `src/routes/pricing.tsx`                  | AI Recruitment & HR OS pricing (Job Seeker / Employer toggle)     |
+| `/checkout/$plan`           | `src/routes/checkout/$plan.tsx`           | eSewa payment (starter/pro)                                       |
+| `/payment-success`          | `src/routes/payment-success.tsx`          | Payment confirmation                                              |
+| `/payment-failure`          | `src/routes/payment-failure.tsx`          | Payment failure                                                   |
+| `/support`                  | `src/routes/support.tsx`                  | Support ticket system                                             |
+| `/blog`                     | `src/routes/blog/index.tsx`               | Public blog listing                                               |
+| `/blog/$slug`               | `src/routes/blog/$slug.tsx`               | Individual blog post                                              |
+| `/companies`                | `src/routes/companies/index.tsx`          | Company directory                                                 |
+| `/companies/$slug`          | `src/routes/companies/$slug.tsx`          | Company profile + reviews + jobs                                  |
+| `/jobs`                     | `src/routes/jobs/index.tsx`               | Job listings with filters                                         |
+| `/jobs/$jobId`              | `src/routes/jobs/$jobId.tsx`              | Job detail + apply dialog                                         |
+| `/google-calendar/callback` | `src/routes/google-calendar/callback.tsx` | OAuth callback (posts to opener)                                  |
 
 ### Authenticated Routes (`src/routes/_authenticated.tsx` — auth guard)
 
-| Path              | File                                           | Description                                   |
-| ----------------- | ---------------------------------------------- | --------------------------------------------- |
-| `/dashboard`      | `src/routes/_authenticated/dashboard.tsx`      | Job seeker dashboard (stats, recent apps)     |
-| `/applications`   | `src/routes/_authenticated/applications.tsx`   | Application tracking with timeline            |
-| `/admin`          | `src/routes/_authenticated/admin.tsx`          | Admin panel (users, jobs, companies, tickets) |
-| `/assessments`    | `src/routes/_authenticated/assessments.tsx`    | Take/create assessments                       |
-| `/blog-editor`    | `src/routes/_authenticated/blog-editor.tsx`    | Author blog management                        |
-| `/career`         | `src/routes/_authenticated/career.tsx`         | AI career recommendations                     |
-| `/career-coach`   | `src/routes/_authenticated/career-coach.tsx`   | AI Career Coach (structured advice chat)      |
-| `/ai-assistant`   | `src/routes/_authenticated/ai-assistant.tsx`   | Full-page AI Assistant chat with RAG          |
-| `/ai/$featureSlug`| `src/routes/_authenticated/ai/$featureSlug.tsx` | Dynamic job-seeker AI feature pages          |
-| `/enterprise`     | `src/routes/_authenticated/enterprise.tsx`     | Enterprise HR (departments, audit, API keys)  |
-| `/feed`           | `src/routes/_authenticated/feed.tsx`           | Community feed (posts, likes, comments)       |
-| `/interviews`    | `src/routes/_authenticated/interviews.tsx`     | Interview list (upcoming/past)                |
-| `/learn`          | `src/routes/_authenticated/learn.tsx`          | AI learning center + badges                   |
-| `/messages`       | `src/routes/_authenticated/messages.tsx`       | Real-time 1:1 messaging                       |
-| `/notifications`  | `src/routes/_authenticated/notifications.tsx`  | Notifications list                            |
-| `/profile`        | `src/routes/_authenticated/profile.tsx`        | Profile editor + GitHub/LinkedIn import       |
-| `/referrals`      | `src/routes/_authenticated/referrals.tsx`     | Referral program                              |
-| `/resume-builder` | `src/routes/_authenticated/resume-builder.tsx` | Resume builder + PDF export                   |
-| `/resume-scanner` | `src/routes/_authenticated/resume-scanner.tsx` | AI resume scanner + job matches               |
-| `/saved`          | `src/routes/_authenticated/saved.tsx`         | Saved jobs                                    |
+| Path               | File                                            | Description                                   |
+| ------------------ | ----------------------------------------------- | --------------------------------------------- |
+| `/dashboard`       | `src/routes/_authenticated/dashboard.tsx`       | Job seeker dashboard (stats, recent apps)     |
+| `/applications`    | `src/routes/_authenticated/applications.tsx`    | Application tracking with timeline            |
+| `/admin`           | `src/routes/_authenticated/admin.tsx`           | Admin panel (users, jobs, companies, tickets) |
+| `/assessments`     | `src/routes/_authenticated/assessments.tsx`     | Take/create assessments                       |
+| `/blog-editor`     | `src/routes/_authenticated/blog-editor.tsx`     | Author blog management                        |
+| `/career`          | `src/routes/_authenticated/career.tsx`          | AI career recommendations                     |
+| `/career-coach`    | `src/routes/_authenticated/career-coach.tsx`    | AI Career Coach (structured advice chat)      |
+| `/ai-assistant`    | `src/routes/_authenticated/ai-assistant.tsx`    | Full-page AI Assistant chat with RAG          |
+| `/ai/$featureSlug` | `src/routes/_authenticated/ai/$featureSlug.tsx` | Dynamic job-seeker AI feature pages           |
+| `/enterprise`      | `src/routes/_authenticated/enterprise.tsx`      | Enterprise HR (departments, audit, API keys)  |
+| `/feed`            | `src/routes/_authenticated/feed.tsx`            | Community feed (posts, likes, comments)       |
+| `/interviews`      | `src/routes/_authenticated/interviews.tsx`      | Interview list (upcoming/past)                |
+| `/learn`           | `src/routes/_authenticated/learn.tsx`           | AI learning center + badges                   |
+| `/messages`        | `src/routes/_authenticated/messages.tsx`        | Real-time 1:1 messaging                       |
+| `/notifications`   | `src/routes/_authenticated/notifications.tsx`   | Notifications list                            |
+| `/profile`         | `src/routes/_authenticated/profile.tsx`         | Profile editor + GitHub/LinkedIn import       |
+| `/referrals`       | `src/routes/_authenticated/referrals.tsx`       | Referral program                              |
+| `/resume-builder`  | `src/routes/_authenticated/resume-builder.tsx`  | Resume builder + PDF export                   |
+| `/resume-scanner`  | `src/routes/_authenticated/resume-scanner.tsx`  | AI resume scanner + job matches               |
+| `/saved`           | `src/routes/_authenticated/saved.tsx`           | Saved jobs                                    |
 
 ### Employer Routes (`src/routes/_authenticated/employer.tsx` — employer/admin guard)
 
-| Path                              | File                                                        | Description                                   |
-| --------------------------------- | ----------------------------------------------------------- | --------------------------------------------- |
-| `/employer`                       | `src/routes/_authenticated/employer/index.tsx`               | Employer dashboard (stats, job list)          |
-| `/employer/company`               | `src/routes/_authenticated/employer/company.tsx`            | Create/edit company profile                   |
-| `/employer/interviews`            | `src/routes/_authenticated/employer/interviews.tsx`         | Manage interviews                             |
-| `/employer/knowledge-base`        | `src/routes/_authenticated/employer/knowledge-base.tsx`     | RAG knowledge base management                 |
-| `/employer/ai/$featureSlug`       | `src/routes/_authenticated/employer/ai/$featureSlug.tsx`    | Dynamic employer AI feature pages             |
-| `/employer/jobs/new`              | `src/routes/_authenticated/employer/jobs/new.tsx`          | Post a new job                                |
-| `/employer/jobs/$jobId`           | `src/routes/_authenticated/employer/jobs/$jobId.tsx`        | View applicants + status + schedule interview |
+| Path                        | File                                                     | Description                                   |
+| --------------------------- | -------------------------------------------------------- | --------------------------------------------- |
+| `/employer`                 | `src/routes/_authenticated/employer/index.tsx`           | Employer dashboard (stats, job list)          |
+| `/employer/company`         | `src/routes/_authenticated/employer/company.tsx`         | Create/edit company profile                   |
+| `/employer/interviews`      | `src/routes/_authenticated/employer/interviews.tsx`      | Manage interviews                             |
+| `/employer/knowledge-base`  | `src/routes/_authenticated/employer/knowledge-base.tsx`  | RAG knowledge base management                 |
+| `/employer/ai/$featureSlug` | `src/routes/_authenticated/employer/ai/$featureSlug.tsx` | Dynamic employer AI feature pages             |
+| `/employer/jobs/new`        | `src/routes/_authenticated/employer/jobs/new.tsx`        | Post a new job                                |
+| `/employer/jobs/$jobId`     | `src/routes/_authenticated/employer/jobs/$jobId.tsx`     | View applicants + status + schedule interview |
 
 ### Root Layout
 
@@ -341,6 +341,7 @@ A full ChatGPT-style AI career companion with RAG (Retrieval-Augmented Generatio
 **Files**: `src/routes/_authenticated/ai/$featureSlug.tsx`, `src/lib/jobseeker-ai.server.ts` (`runJobSeekerAiFeature`), `src/lib/jobseeker-ai-features.ts`
 
 15 AI-powered job-seeker features accessible via dynamic routes (`/ai/{featureSlug}`):
+
 - Cover letter generation, interview question practice, salary prediction, resume improvement suggestions
 - Skill gap analysis, job search keywords, career path recommendations
 - Each feature has a dedicated Zod schema in `jobseeker-ai-schemas.ts` for validated JSON output
@@ -350,6 +351,7 @@ A full ChatGPT-style AI career companion with RAG (Retrieval-Augmented Generatio
 **Files**: `src/routes/_authenticated/employer/ai/$featureSlug.tsx`, `src/lib/employer-ai.server.ts` (`runEmployerAiFeature`), `src/lib/employer-ai-features.ts`
 
 30 AI-powered employer features accessible via dynamic routes (`/employer/ai/{featureSlug}`):
+
 - Candidate ranking, resume screening, hiring recommendations, interview question generation
 - Job description optimization, workforce planning, recruitment automation
 - Each feature has a dedicated Zod schema in `employer-ai-schemas.ts` for validated JSON output
@@ -480,6 +482,7 @@ A full ChatGPT-style AI career companion with RAG (Retrieval-Augmented Generatio
 ### 26. Salary Currency (NPR)
 
 All salary displays across the app use Nepalese Rupees (NPR / Rs.) format:
+
 - Job cards: `Rs. 50,000+`
 - Job detail: `Rs. 50,000 – Rs. 80,000`
 - Database default: `salary_currency` defaults to `'NPR'`
@@ -558,6 +561,7 @@ All salary displays across the app use Nepalese Rupees (NPR / Rs.) format:
 ### RLS (Row Level Security)
 
 All tables have RLS enabled with ownership-based policies:
+
 - Users can only CRUD their own data (resumes, profiles, posts, etc.)
 - Public data (jobs, companies, blogs, posts) readable by all authenticated users
 - Admin role (`has_role(auth.uid(), 'admin')`) gets elevated access
@@ -570,31 +574,31 @@ All tables have RLS enabled with ownership-based policies:
 
 Migrations are in `supabase/migrations/`. Key migrations:
 
-| Migration                                                                        | Purpose                                                |
-| -------------------------------------------------------------------------------- | ------------------------------------------------------ |
-| `20260714_*` (3 files)                                                           | Initial schema: profiles, roles, companies, jobs       |
-| `20260715_*` (2 files)                                                           | Applications, interviews, notifications, chats        |
-| `20260716_*`                                                                     | Messages, posts, feed                                  |
-| `20260717_*`                                                                     | Blog, assessments                                      |
-| `20260718_*` (2 files)                                                            | Reviews, saved jobs, categories                        |
-| `20260719_*` (3 files)                                                            | Referrals, follows, activity logs                      |
-| `20260721_*` (3 files)                                                           | App user connections, referral triggers                |
-| `20260724_jagire_features_batch`                                                 | Batch feature additions                                |
-| `20260725_ai_assistant_conversations`                                            | AI assistant conversation tables                       |
-| `20260725_security_premium_payments_rls_fixes`                                   | RLS + payment security fixes                           |
-| `20260725_fix_all_rls_issues`                                                    | Comprehensive RLS fix                                  |
-| `20260725_admin_subscription_management`                                          | Admin subscription management                           |
-| `20260727_expand_subscription_plan_types`                                         | Expanded plan types                                    |
-| `20260801_create_knowledge_base_rag`                                              | Knowledge base + RAG tables                            |
-| `20260801_fix_embedding_dimensions`                                              | Embedding dimension fix                                |
-| `20260801_create_kb_search_functions`                                             | KB semantic search functions                           |
-| `20260801_create_enterprise_features`                                             | Enterprise: departments, audit, API keys              |
-| `20260801_fix_admin_users_view_security`                                          | Admin users view security                              |
-| `20260812_add_rejection_remark_and_fix_counts`                                    | Rejection remarks + count fixes                        |
-| `20260812_fix_jagire_application_interview_flows`                                 | Application + interview flow fixes                     |
-| `20260813_block_employers_from_applying`                                          | Prevent employers from applying to jobs               |
-| `20260825_create_ai_tables_and_fix_profile`                                      | AI tables + profile fixes                              |
-| `20260827_fix_applications_rejection_remark`                                      | Rejection remark fix                                   |
+| Migration                                         | Purpose                                          |
+| ------------------------------------------------- | ------------------------------------------------ |
+| `20260714_*` (3 files)                            | Initial schema: profiles, roles, companies, jobs |
+| `20260715_*` (2 files)                            | Applications, interviews, notifications, chats   |
+| `20260716_*`                                      | Messages, posts, feed                            |
+| `20260717_*`                                      | Blog, assessments                                |
+| `20260718_*` (2 files)                            | Reviews, saved jobs, categories                  |
+| `20260719_*` (3 files)                            | Referrals, follows, activity logs                |
+| `20260721_*` (3 files)                            | App user connections, referral triggers          |
+| `20260724_jagire_features_batch`                  | Batch feature additions                          |
+| `20260725_ai_assistant_conversations`             | AI assistant conversation tables                 |
+| `20260725_security_premium_payments_rls_fixes`    | RLS + payment security fixes                     |
+| `20260725_fix_all_rls_issues`                     | Comprehensive RLS fix                            |
+| `20260725_admin_subscription_management`          | Admin subscription management                    |
+| `20260727_expand_subscription_plan_types`         | Expanded plan types                              |
+| `20260801_create_knowledge_base_rag`              | Knowledge base + RAG tables                      |
+| `20260801_fix_embedding_dimensions`               | Embedding dimension fix                          |
+| `20260801_create_kb_search_functions`             | KB semantic search functions                     |
+| `20260801_create_enterprise_features`             | Enterprise: departments, audit, API keys         |
+| `20260801_fix_admin_users_view_security`          | Admin users view security                        |
+| `20260812_add_rejection_remark_and_fix_counts`    | Rejection remarks + count fixes                  |
+| `20260812_fix_jagire_application_interview_flows` | Application + interview flow fixes               |
+| `20260813_block_employers_from_applying`          | Prevent employers from applying to jobs          |
+| `20260825_create_ai_tables_and_fix_profile`       | AI tables + profile fixes                        |
+| `20260827_fix_applications_rejection_remark`      | Rejection remark fix                             |
 
 ---
 
@@ -607,6 +611,7 @@ Migrations are in `supabase/migrations/`. Key migrations:
 **Endpoint**: `POST /functions/send-email`
 
 **Request body**:
+
 ```json
 {
   "to": "user@example.com",
@@ -641,23 +646,23 @@ All server functions use `createServerFn` from TanStack Start with `requireSupab
 | `scoreResume`             | POST   | `{ resumeId, text }`                  | Score breakdown + suggestions             |
 | `scanResumeFromStorage`   | POST   | `{ resumeId }`                        | Scores + career roadmap + job matches     |
 | `careerRecommendations`   | POST   | —                                     | Career paths, skill gaps, certs, keywords |
-| `learningRecommendations` | POST   | —                                     | Learning resources                         |
+| `learningRecommendations` | POST   | —                                     | Learning resources                        |
 | `importFromGitHub`        | POST   | `{ username }`                        | Projects + skills imported                |
 | `importFromLinkedInText`  | POST   | `{ text, url? }`                      | Profile fields imported                   |
-| `careerCoach`             | POST   | `{ question, sessionId? }`           | Structured career advice (JSON)           |
+| `careerCoach`             | POST   | `{ question, sessionId? }`            | Structured career advice (JSON)           |
 | `aiAssistantChat`         | POST   | `{ message, conversationId?, role? }` | Markdown response + conversation memory   |
 
 ### `src/lib/jobseeker-ai.server.ts`
 
-| Function                | Method | Input                          | Output                              |
-| ----------------------- | ------ | ------------------------------ | ----------------------------------- |
-| `runJobSeekerAiFeature` | POST   | `{ featureSlug, input }`      | Validated JSON per feature schema   |
+| Function                | Method | Input                    | Output                            |
+| ----------------------- | ------ | ------------------------ | --------------------------------- |
+| `runJobSeekerAiFeature` | POST   | `{ featureSlug, input }` | Validated JSON per feature schema |
 
 ### `src/lib/employer-ai.server.ts`
 
-| Function               | Method | Input                          | Output                              |
-| ---------------------- | ------ | ------------------------------ | ----------------------------------- |
-| `runEmployerAiFeature` | POST   | `{ featureSlug, input }`      | Validated JSON per feature schema   |
+| Function               | Method | Input                    | Output                            |
+| ---------------------- | ------ | ------------------------ | --------------------------------- |
+| `runEmployerAiFeature` | POST   | `{ featureSlug, input }` | Validated JSON per feature schema |
 
 ### `src/lib/google-calendar.service.ts`
 
@@ -673,54 +678,54 @@ All server functions use `createServerFn` from TanStack Start with `requireSupab
 
 ### `src/lib/application-status.server.ts`
 
-| Function                  | Method | Input                                                          | Output |
-| ------------------------- | ------ | -------------------------------------------------------------- | ------ |
-| `updateApplicationStatus` | POST   | `{ applicationId, newStatus, note? }`                          | `{ ok }` |
+| Function                  | Method | Input                                 | Output   |
+| ------------------------- | ------ | ------------------------------------- | -------- |
+| `updateApplicationStatus` | POST   | `{ applicationId, newStatus, note? }` | `{ ok }` |
 
 ### `src/lib/application.service.ts`
 
-| Function              | Method | Input                          | Output |
-| --------------------- | ------ | ------------------------------ | ------ |
-| `shortlistApplication`| POST   | `{ applicationId }`             | `{ ok }` |
-| `rejectApplication`   | POST   | `{ applicationId, remark? }`   | `{ ok }` |
-| `deleteJobAsAdmin`    | POST   | `{ jobId }`                    | `{ ok }` |
+| Function               | Method | Input                        | Output   |
+| ---------------------- | ------ | ---------------------------- | -------- |
+| `shortlistApplication` | POST   | `{ applicationId }`          | `{ ok }` |
+| `rejectApplication`    | POST   | `{ applicationId, remark? }` | `{ ok }` |
+| `deleteJobAsAdmin`     | POST   | `{ jobId }`                  | `{ ok }` |
 
 ### `src/lib/admin.server.ts`
 
-| Function              | Method | Input                          | Output |
-| --------------------- | ------ | ------------------------------ | ------ |
-| `adminDeleteJob`      | POST   | `{ jobId }`                    | `{ ok }` |
-| `adminDeletePost`     | POST   | `{ postId }`                   | `{ ok }` |
-| `adminDeleteComment`  | POST   | `{ commentId }`                | `{ ok }` |
-| `adminDeleteBlogComment` | POST | `{ commentId }`                | `{ ok }` |
+| Function                 | Method | Input           | Output   |
+| ------------------------ | ------ | --------------- | -------- |
+| `adminDeleteJob`         | POST   | `{ jobId }`     | `{ ok }` |
+| `adminDeletePost`        | POST   | `{ postId }`    | `{ ok }` |
+| `adminDeleteComment`     | POST   | `{ commentId }` | `{ ok }` |
+| `adminDeleteBlogComment` | POST   | `{ commentId }` | `{ ok }` |
 
 ### `src/lib/enterprise.server.ts`
 
-| Function           | Method | Input                    | Output          |
-| ------------------ | ------ | ----------------------- | --------------- |
-| `listDepartments`  | GET    | —                       | Department list |
-| `createDepartment` | POST   | `{ name }`              | `{ ok }`        |
-| `deleteDepartment` | POST   | `{ id }`                | `{ ok }`        |
-| `listAuditLogs`    | GET    | —                       | Audit log list  |
-| `listApiKeys`      | GET    | —                       | API key list    |
-| `createApiKey`     | POST   | `{ name }`              | `{ key }`       |
-| `revokeApiKey`     | POST   | `{ id }`                | `{ ok }`        |
+| Function           | Method | Input      | Output          |
+| ------------------ | ------ | ---------- | --------------- |
+| `listDepartments`  | GET    | —          | Department list |
+| `createDepartment` | POST   | `{ name }` | `{ ok }`        |
+| `deleteDepartment` | POST   | `{ id }`   | `{ ok }`        |
+| `listAuditLogs`    | GET    | —          | Audit log list  |
+| `listApiKeys`      | GET    | —          | API key list    |
+| `createApiKey`     | POST   | `{ name }` | `{ key }`       |
+| `revokeApiKey`     | POST   | `{ id }`   | `{ ok }`        |
 
 ### `src/lib/knowledge-base.server.ts`
 
-| Function                 | Method | Input                          | Output                    |
-| ------------------------ | ------ | ------------------------------ | ------------------------- |
-| `uploadKnowledgeDocument`| POST   | `{ fileName, content }`        | `{ ok, documentId }`      |
-| `listKnowledgeDocuments` | GET    | —                              | Document list             |
-| `deleteKnowledgeDocument` | POST  | `{ documentId }`               | `{ ok }`                  |
-| `searchKnowledgeBase`    | POST   | `{ query }`                    | Search results            |
-| `getRagContext`          | POST   | `{ query }`                    | RAG context for AI        |
+| Function                  | Method | Input                   | Output               |
+| ------------------------- | ------ | ----------------------- | -------------------- |
+| `uploadKnowledgeDocument` | POST   | `{ fileName, content }` | `{ ok, documentId }` |
+| `listKnowledgeDocuments`  | GET    | —                       | Document list        |
+| `deleteKnowledgeDocument` | POST   | `{ documentId }`        | `{ ok }`             |
+| `searchKnowledgeBase`     | POST   | `{ query }`             | Search results       |
+| `getRagContext`           | POST   | `{ query }`             | RAG context for AI   |
 
 ### `src/lib/esewa.server.ts`
 
-| Function           | Method | Input              | Output                     |
-| ------------------ | ------ | ------------------ | -------------------------- |
-| `createEsewaPayment` | POST | `{ planId }`       | `{ paymentUrl, uuid }`    |
+| Function             | Method | Input        | Output                 |
+| -------------------- | ------ | ------------ | ---------------------- |
+| `createEsewaPayment` | POST   | `{ planId }` | `{ paymentUrl, uuid }` |
 
 ---
 
@@ -730,11 +735,11 @@ All server functions use `createServerFn` from TanStack Start with `requireSupab
 
 The AI service (`src/integrations/ai/ai-service.ts`) implements a multi-provider fallback chain:
 
-| `AI_PROVIDER`  | 1st        | 2nd                     | 3rd                     |
-| -------------- | ---------- | ----------------------- | ----------------------- |
-| `ollama`       | Ollama     | Gemini (if key set)     | OpenRouter (if key set) |
-| `gemini`       | Gemini     | OpenRouter (if key set) | Ollama                  |
-| `openrouter`   | OpenRouter | Gemini (if key set)     | Ollama                  |
+| `AI_PROVIDER` | 1st        | 2nd                     | 3rd                     |
+| ------------- | ---------- | ----------------------- | ----------------------- |
+| `ollama`      | Ollama     | Gemini (if key set)     | OpenRouter (if key set) |
+| `gemini`      | Gemini     | OpenRouter (if key set) | Ollama                  |
+| `openrouter`  | OpenRouter | Gemini (if key set)     | Ollama                  |
 
 ### Validation Pipeline
 
@@ -747,11 +752,11 @@ All AI JSON responses go through a validation pipeline:
 
 ### Model Assignment
 
-| Model               | Purpose                              | Tasks                               |
-| ------------------- | ------------------------------------ | ----------------------------------- |
-| `qwen3`             | Main conversation model             | `career-assistant`, `career-coach`  |
-| `mxbai-embed-large` | Semantic search / embeddings         | `embedding`                         |
-| `llama3.2`          | Fast analysis & extraction           | `resume-analysis`, `job-matching`   |
+| Model               | Purpose                      | Tasks                              |
+| ------------------- | ---------------------------- | ---------------------------------- |
+| `qwen3`             | Main conversation model      | `career-assistant`, `career-coach` |
+| `mxbai-embed-large` | Semantic search / embeddings | `embedding`                        |
+| `llama3.2`          | Fast analysis & extraction   | `resume-analysis`, `job-matching`  |
 
 Task-to-model mapping is in `src/integrations/ai/ollama-models.ts`. See `docs/OLLAMA_AI.md` for full setup instructions.
 
@@ -773,23 +778,23 @@ Task-to-model mapping is in `src/integrations/ai/ollama-models.ts`. See `docs/OL
 
 ## Environment Variables
 
-| Variable                         | Purpose                                        |
-| -------------------------------- | ---------------------------------------------- |
-| `SUPABASE_URL`                   | Supabase project URL                           |
-| `SUPABASE_ANON_KEY`              | Supabase anon/public key                       |
-| `SUPABASE_SERVICE_ROLE_KEY`      | Supabase service role key (server only)        |
-| `GOOGLE_OAUTH_CLIENT_ID`         | Google OAuth client ID for Calendar            |
-| `GOOGLE_OAUTH_CLIENT_SECRET`     | Google OAuth client secret                     |
-| `RESEND_API_KEY`                 | Resend API key for emails                      |
-| `GEMINI_API_KEY`                 | Google Gemini AI API key                       |
-| `OPENROUTER_API_KEY`             | OpenRouter AI API key (fallback)              |
-| `OLLAMA_HOST`                    | Ollama host URL (default: localhost)           |
-| `AI_PROVIDER`                    | Provider order: `ollama`/`gemini`/`openrouter` |
-| `OLLAMA_CHAT_MODEL`              | Ollama chat model (default: qwen3)             |
-| `OLLAMA_FAST_MODEL`              | Ollama fast model (default: llama3.2)          |
+| Variable                         | Purpose                                             |
+| -------------------------------- | --------------------------------------------------- |
+| `SUPABASE_URL`                   | Supabase project URL                                |
+| `SUPABASE_ANON_KEY`              | Supabase anon/public key                            |
+| `SUPABASE_SERVICE_ROLE_KEY`      | Supabase service role key (server only)             |
+| `GOOGLE_OAUTH_CLIENT_ID`         | Google OAuth client ID for Calendar                 |
+| `GOOGLE_OAUTH_CLIENT_SECRET`     | Google OAuth client secret                          |
+| `RESEND_API_KEY`                 | Resend API key for emails                           |
+| `GEMINI_API_KEY`                 | Google Gemini AI API key                            |
+| `OPENROUTER_API_KEY`             | OpenRouter AI API key (fallback)                    |
+| `OLLAMA_HOST`                    | Ollama host URL (default: localhost)                |
+| `AI_PROVIDER`                    | Provider order: `ollama`/`gemini`/`openrouter`      |
+| `OLLAMA_CHAT_MODEL`              | Ollama chat model (default: qwen3)                  |
+| `OLLAMA_FAST_MODEL`              | Ollama fast model (default: llama3.2)               |
 | `OLLAMA_EMBEDDING_MODEL`         | Ollama embedding model (default: mxbai-embed-large) |
-| `VITE_ADMIN_EMAIL`               | Admin email for contact/support notifications  |
-| `APP_USER_CONNECTION_KEY_SECRET`| AES-256-GCM key for OAuth token encryption     |
+| `VITE_ADMIN_EMAIL`               | Admin email for contact/support notifications       |
+| `APP_USER_CONNECTION_KEY_SECRET` | AES-256-GCM key for OAuth token encryption          |
 
 ---
 
