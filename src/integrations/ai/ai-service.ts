@@ -459,7 +459,6 @@ class AIServiceImpl {
             }
           }
 
-          // ✅ FIX: Convert summary from array to string if the AI returns it as an array
           if (Array.isArray(result.summary)) {
             result.summary =
               result.summary

@@ -230,7 +230,11 @@ export const scanResumeFromStorage = createServerFn({ method: "POST" })
       const buf = new Uint8Array(await dl.data.arrayBuffer());
 
       try {
-        const result = await extractResumeText(buf, resume.file_name ?? "", resume.mime_type);
+        const result = await extractResumeText(
+          buf,
+          resume.file_name ?? "",
+          resume.mime_type ?? undefined,
+        );
         text = result.text;
       } catch (err) {
         if (err instanceof ResumeScanError) {
@@ -292,7 +296,7 @@ export const scanResumeFromStorage = createServerFn({ method: "POST" })
           strengths: scan.strengths ?? [],
           weaknesses: scan.weaknesses ?? [],
           keywords: scan.keywords ?? [],
-        },
+        } as any,
       };
 
       const { error } = await context.supabase
