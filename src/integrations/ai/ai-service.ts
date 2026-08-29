@@ -351,6 +351,63 @@ class AIServiceImpl {
 
         normalizeRawResponse(raw);
 
+        // Universal pre-processing: runs for every task before task-specific fixes.
+        // Handles three common LLM mistakes that break Zod validation:
+        //   1. Arrays returned as comma/newline-separated strings
+        //   2. Arrays with far more items than any schema expects
+        //   3. Object fields returned as JSON strings
+        if (typeof raw === "object" && raw !== null) {
+          const obj = raw as Record<string, any>;
+          for (const key of Object.keys(obj)) {
+            const val = obj[key];
+            if (val === null || val === undefined) continue;
+
+            // Parse stringified JSON objects/arrays into real ones
+            if (typeof val === "string" && val.trim().startsWith("[") && val.trim().endsWith("]")) {
+              try {
+                const parsed = JSON.parse(val);
+                if (Array.isArray(parsed)) {
+                  obj[key] = parsed;
+                  continue;
+                }
+              } catch {
+                /* not valid JSON, fall through to split logic */
+              }
+            }
+            if (typeof val === "string" && val.trim().startsWith("{") && val.trim().endsWith("}")) {
+              try {
+                const parsed = JSON.parse(val);
+                if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
+                  obj[key] = parsed;
+                  continue;
+                }
+              } catch {
+                /* not valid JSON, leave as string */
+              }
+            }
+
+            // Split comma/newline-separated strings into arrays
+            if (typeof val === "string" && val.length > 2) {
+              const looksDelimited = /[,•;\n]|\d+\.\s/.test(val);
+              const hasMultipleWords = val.split(/[,•;\n]|\d+\.\s/).filter((s) => s.trim()).length > 1;
+              if (looksDelimited && hasMultipleWords) {
+                const arr = val
+                  .split(/[,•;\n]|\d+\.\s*/)
+                  .map((s) => s.trim())
+                  .filter(Boolean);
+                if (arr.length > 1) {
+                  obj[key] = arr;
+                }
+              }
+            }
+
+            // Truncate overly long arrays to a sane cap
+            if (Array.isArray(val) && val.length > 25) {
+              obj[key] = val.slice(0, 25);
+            }
+          }
+        }
+
         if (req.task === "resume-analysis" && typeof raw === "object" && raw !== null) {
           const result = raw as Record<string, any>;
 
