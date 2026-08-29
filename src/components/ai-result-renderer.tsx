@@ -184,6 +184,12 @@ const renderers: Record<string, FieldRenderer> = {
   tone: (v) => (typeof v === "string" && v ? <Badge variant="outline">{v}</Badge> : null),
   coverage: (v) => (typeof v === "string" ? <StatusBadge status={v} /> : null),
 
+  // FIX: Added provider renderer (shows as outline badge)
+  provider: (v) => (typeof v === "string" ? <Badge variant="outline">{v}</Badge> : null),
+
+  // FIX: Added skill renderer (shows as secondary badge)
+  skill: (v) => (typeof v === "string" ? <Badge variant="secondary">{v}</Badge> : null),
+
   // Job seeker AI fields
   cover_letter: (v) =>
     typeof v === "string" ? (
@@ -575,6 +581,9 @@ const ARRAY_CARD_CONFIG: Record<string, { title: string; icon: LucideIcon }> = {
   skill_coverage: { title: "Skill Coverage", icon: Target },
   duplicates: { title: "Duplicates", icon: AlertTriangle },
   gaps: { title: "Skill Gaps", icon: Target },
+
+  // FIX: Added rollout_plan to array card config
+  rollout_plan: { title: "Rollout Plan", icon: Calendar },
 };
 
 function ObjectArrayCard({

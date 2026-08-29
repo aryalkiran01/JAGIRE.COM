@@ -3,7 +3,10 @@ import { z } from "zod";
 // ── Shared building blocks ──────────────────────────────────────────────────
 // z.coerce.number() alone fails on formatted strings like "85%" or "Rs. 50,000".
 // We use .catch(0) so that any parse failure falls back to 0 instead of throwing.
-const score = z.coerce.number().min(0).max(100).catch(0);
+const score = z.coerce
+  .number()
+  .catch(0)
+  .transform((n) => Math.max(0, Math.min(100, Math.round(n))));
 const stringArray = z.array(z.string()).default([]);
 const str = z.string().default("");
 

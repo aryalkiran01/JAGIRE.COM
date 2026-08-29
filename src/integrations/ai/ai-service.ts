@@ -345,7 +345,7 @@ class AIServiceImpl {
     for (let attempt = 0; attempt <= VALIDATION_RETRY_LIMIT; attempt++) {
       try {
         const skipCache = attempt > 0;
-        const raw = await this.executeWithFallback(
+        const { result: raw } = await this.executeWithFallback(
           (p) => p.generateJson<T>(req),
           `generateJsonValidated:attempt${attempt}`,
           req,
@@ -431,7 +431,6 @@ class AIServiceImpl {
             recommended_jobs: 5,
             companies_hiring: 5,
           };
-
           for (const [field, max] of Object.entries(maxLengths)) {
             if (Array.isArray(result[field]) && result[field].length > max) {
               result[field] = result[field].slice(0, max);
@@ -458,6 +457,15 @@ class AIServiceImpl {
                 .filter(Boolean)
                 .slice(0, maxLengths[field] || 20);
             }
+          }
+
+          // ✅ FIX: Convert summary from array to string if the AI returns it as an array
+          if (Array.isArray(result.summary)) {
+            result.summary =
+              result.summary
+                .filter((item: any) => typeof item === "string" && item.trim())
+                .join(" ")
+                .trim() || "Resume analysis summary";
           }
 
           // Fix salary_prediction
