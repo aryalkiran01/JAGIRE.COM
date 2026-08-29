@@ -303,6 +303,213 @@ const renderers: Record<string, FieldRenderer> = {
       </div>
     );
   },
+
+  // ── Generic / shared scalar fields used across many schemas ──────────────
+  title: (v) => (typeof v === "string" ? <p className="text-sm font-semibold">{v}</p> : null),
+  name: (v) => (typeof v === "string" ? <p className="text-sm font-semibold">{v}</p> : null),
+  role: (v) => (typeof v === "string" ? <p className="text-sm font-semibold">{v}</p> : null),
+  candidate_name: (v) =>
+    typeof v === "string" ? <p className="text-sm font-semibold">{v}</p> : null,
+  company: (v) =>
+    typeof v === "string" ? <p className="text-xs text-muted-foreground">{v}</p> : null,
+  job_title: (v) => (typeof v === "string" ? <p className="text-sm font-semibold">{v}</p> : null),
+  question: (v) => (typeof v === "string" ? <p className="text-sm font-medium">{v}</p> : null),
+  guidance: (v) =>
+    typeof v === "string" ? <p className="text-xs text-muted-foreground">{v}</p> : null,
+  sample_answer: (v) => (typeof v === "string" ? <p className="text-xs italic">{v}</p> : null),
+  description: (v) =>
+    typeof v === "string" ? <p className="text-sm text-muted-foreground">{v}</p> : null,
+  why: (v) => (typeof v === "string" ? <p className="text-xs text-muted-foreground">{v}</p> : null),
+  goal: (v) => (typeof v === "string" ? <p className="text-sm font-medium">{v}</p> : null),
+  milestone: (v) => (typeof v === "string" ? <p className="text-sm font-medium">{v}</p> : null),
+  phase: (v) => (typeof v === "string" ? <p className="text-sm font-semibold">{v}</p> : null),
+  stage: (v) => (typeof v === "string" ? <p className="text-sm font-medium">{v}</p> : null),
+  issue: (v) => (typeof v === "string" ? <p className="text-sm">{v}</p> : null),
+  impact: (v) =>
+    typeof v === "string" ? <p className="text-xs text-muted-foreground">Impact: {v}</p> : null,
+  task: (v) => (typeof v === "string" ? <p className="text-sm font-medium">{v}</p> : null),
+  trigger: (v) =>
+    typeof v === "string" ? <p className="text-xs text-muted-foreground">Trigger: {v}</p> : null,
+  owner: (v) =>
+    typeof v === "string" ? <p className="text-xs text-muted-foreground">Owner: {v}</p> : null,
+  area: (v) => (typeof v === "string" ? <p className="text-sm font-medium">{v}</p> : null),
+  section: (v) => (typeof v === "string" ? <p className="text-sm font-medium">{v}</p> : null),
+  aspect: (v) => (typeof v === "string" ? <p className="text-sm font-medium">{v}</p> : null),
+  scenario: (v) => (typeof v === "string" ? <p className="text-sm font-medium">{v}</p> : null),
+  template: (v) =>
+    typeof v === "string" ? <p className="text-sm whitespace-pre-wrap">{v}</p> : null,
+  original: (v) =>
+    typeof v === "string" ? <p className="text-xs text-muted-foreground line-through">{v}</p> : null,
+  optimized: (v) => (typeof v === "string" ? <p className="text-sm">{v}</p> : null),
+  suggestion: (v) => (typeof v === "string" ? <p className="text-xs">{v}</p> : null),
+  current: (v) =>
+    typeof v === "string" ? <p className="text-xs text-muted-foreground">{v}</p> : null,
+  target: (v) =>
+    typeof v === "string" ? <p className="text-xs text-muted-foreground">{v}</p> : null,
+  current_state: (v) =>
+    typeof v === "string" ? <p className="text-xs text-muted-foreground">Current: {v}</p> : null,
+  current_level: (v) =>
+    typeof v === "string" ? <p className="text-xs">Current: {v}</p> : null,
+  target_level: (v) => (typeof v === "string" ? <p className="text-xs">Target: {v}</p> : null),
+  recommendation_field: (v) => (typeof v === "string" ? <p className="text-sm">{v}</p> : null),
+  implementation: (v) => (typeof v === "string" ? <p className="text-sm">{v}</p> : null),
+  use_case: (v) => (typeof v === "string" ? <p className="text-sm">{v}</p> : null),
+  hosting: (v) =>
+    typeof v === "string" ? <p className="text-xs text-muted-foreground">Hosting: {v}</p> : null,
+  fine_tuning: (v) =>
+    typeof v === "string" ? (
+      <p className="text-xs text-muted-foreground">Fine-tuning: {v}</p>
+    ) : null,
+  governance: (v) =>
+    typeof v === "string" ? (
+      <p className="text-xs text-muted-foreground">Governance: {v}</p>
+    ) : null,
+  model: (v) => (typeof v === "string" ? <p className="text-sm font-medium">{v}</p> : null),
+  metric: (v) => (typeof v === "string" ? <p className="text-sm font-medium">{v}</p> : null),
+  source: (v) => (typeof v === "string" ? <p className="text-xs font-medium">{v}</p> : null),
+  relevance: (v) => (typeof v === "string" ? <Badge variant="outline">{v}</Badge> : null),
+  notes: (v) =>
+    typeof v === "string" ? <p className="text-sm text-muted-foreground">{v}</p> : null,
+  concern: (v) =>
+    typeof v === "string" ? <p className="text-sm text-muted-foreground">{v}</p> : null,
+  concerns: (v) => (isStringArray(v) ? <StringList items={v} icon={AlertTriangle} /> : null),
+  justification: (v) =>
+    typeof v === "string" ? <p className="text-sm text-muted-foreground">{v}</p> : null,
+  reason: (v) =>
+    typeof v === "string" ? <p className="text-sm text-muted-foreground">{v}</p> : null,
+  rationale: (v) =>
+    typeof v === "string" ? <p className="text-sm text-muted-foreground">{v}</p> : null,
+  feedback: (v) => (typeof v === "string" ? <p className="text-sm">{v}</p> : null),
+  improved_answer: (v) => (typeof v === "string" ? <p className="text-xs italic">{v}</p> : null),
+  your_answer_summary: (v) =>
+    typeof v === "string" ? (
+      <p className="text-xs text-muted-foreground">Your answer: {v}</p>
+    ) : null,
+  situation: (v) => (typeof v === "string" ? <p className="text-xs">Situation: {v}</p> : null),
+  action: (v) => (typeof v === "string" ? <p className="text-xs">Action: {v}</p> : null),
+  result: (v) => (typeof v === "string" ? <p className="text-xs">Result: {v}</p> : null),
+  approach: (v) =>
+    typeof v === "string" ? <p className="text-xs text-muted-foreground">{v}</p> : null,
+  problem: (v) => (typeof v === "string" ? <p className="text-sm">{v}</p> : null),
+  where_to_find: (v) =>
+    typeof v === "string" ? (
+      <p className="text-xs text-muted-foreground">Where to find: {v}</p>
+    ) : null,
+  type: (v) => (typeof v === "string" ? <p className="text-sm font-medium">{v}</p> : null),
+  likely_duplicate_of: (v) =>
+    typeof v === "string" ? (
+      <p className="text-xs text-muted-foreground">Duplicate of: {v}</p>
+    ) : null,
+  category: (v) => (typeof v === "string" && v ? <Badge variant="outline">{v}</Badge> : null),
+  difficulty: (v) => (typeof v === "string" ? <Badge variant="secondary">{v}</Badge> : null),
+  level: (v) => (typeof v === "string" ? <Badge variant="secondary">{v}</Badge> : null),
+  timeline: (v) =>
+    typeof v === "string" ? (
+      <p className="text-xs text-muted-foreground">Timeline: {v}</p>
+    ) : null,
+  target_date: (v) =>
+    typeof v === "string" ? <p className="text-xs text-muted-foreground">Target: {v}</p> : null,
+  duration: (v) =>
+    typeof v === "string" ? (
+      <p className="text-xs text-muted-foreground">Duration: {v}</p>
+    ) : null,
+  day: (v) => (typeof v === "number" ? <p className="text-sm font-semibold">Day {v}</p> : null),
+  date: (v) => (typeof v === "string" ? <p className="text-xs text-muted-foreground">{v}</p> : null),
+  time: (v) => (typeof v === "string" ? <p className="text-xs text-muted-foreground">{v}</p> : null),
+  duration_minutes: (v) =>
+    typeof v === "number" ? <p className="text-xs text-muted-foreground">{v} min</p> : null,
+  estimated_time: (v) =>
+    typeof v === "string" ? (
+      <p className="text-xs text-muted-foreground">Estimated time: {v}</p>
+    ) : null,
+  estimated_hours: (v) =>
+    typeof v === "string" ? <p className="text-xs text-muted-foreground">{v}</p> : null,
+  cost_estimate: (v) =>
+    typeof v === "string" ? (
+      <p className="text-xs text-muted-foreground">Cost: {v}</p>
+    ) : null,
+  prep_time: (v) =>
+    typeof v === "string" ? <p className="text-xs text-muted-foreground">Prep time: {v}</p> : null,
+  career_impact: (v) => (typeof v === "string" ? <p className="text-sm">{v}</p> : null),
+  prerequisite: (v) =>
+    typeof v === "string" ? (
+      <p className="text-xs text-muted-foreground">Prerequisite: {v}</p>
+    ) : null,
+  current_process: (v) =>
+    typeof v === "string" ? <p className="text-xs text-muted-foreground">{v}</p> : null,
+  automation_suggestion: (v) => (typeof v === "string" ? <p className="text-sm">{v}</p> : null),
+  expected_impact: (v) =>
+    typeof v === "string" ? (
+      <p className="text-xs text-muted-foreground">Impact: {v}</p>
+    ) : null,
+  current_count: (v) =>
+    typeof v === "number" ? (
+      <p className="text-xs text-muted-foreground">Current: {v}</p>
+    ) : null,
+  target_count: (v) =>
+    typeof v === "number" ? (
+      <p className="text-xs text-muted-foreground">Target: {v}</p>
+    ) : null,
+  gap: (v) => (typeof v === "number" ? <p className="text-xs font-medium">Gap: {v}</p> : null),
+  avg_salary: (v) =>
+    typeof v === "number" ? <p className="text-xs">Avg: Rs. {v.toLocaleString()}</p> : null,
+  location: (v) =>
+    typeof v === "string" ? <p className="text-xs text-muted-foreground">{v}</p> : null,
+  url: (v) =>
+    typeof v === "string" && v ? (
+      <a
+        href={v}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-xs text-primary underline"
+      >
+        {v}
+      </a>
+    ) : null,
+  sla_hours: (v) =>
+    typeof v === "number" ? <p className="text-xs text-muted-foreground">SLA: {v}h</p> : null,
+
+  // ── Additional string-array fields ───────────────────────────────────────
+  success_metrics: (v) => (isStringArray(v) ? <StringList items={v} icon={Target} /> : null),
+  key_drivers: (v) => (isStringArray(v) ? <StringList items={v} icon={TrendingUp} /> : null),
+  tasks: (v) => (isStringArray(v) ? <StringList items={v} icon={CheckCircle2} /> : null),
+  actions: (v) => (isStringArray(v) ? <StringList items={v} icon={Lightbulb} /> : null),
+  criteria: (v) => (isStringArray(v) ? <StringList items={v} icon={CheckCircle2} /> : null),
+  resources: (v) => (isStringArray(v) ? <StringList items={v} icon={FileText} /> : null),
+  learning_resources: (v) =>
+    isStringArray(v) ? <StringList items={v} icon={GraduationCap} /> : null,
+  skills_gained: (v) => (isStringArray(v) ? <StringList items={v} icon={Target} /> : null),
+  skills_demonstrated: (v) =>
+    isStringArray(v) ? <StringList items={v} icon={Target} /> : null,
+  tech_stack: (v) => (isStringArray(v) ? <StringList items={v} icon={Code2} /> : null),
+  next_steps: (v) => (isStringArray(v) ? <StringList items={v} icon={CheckCircle2} /> : null),
+  milestones: (v) => (isStringArray(v) ? <StringList items={v} icon={Calendar} /> : null),
+  activities: (v) => (isStringArray(v) ? <StringList items={v} icon={Lightbulb} /> : null),
+
+  // ── Additional score fields ──────────────────────────────────────────────
+  fit_score: (v) => (typeof v === "number" ? <ScoreBar label="Fit Score" value={v} /> : null),
+  rank: (v) => (typeof v === "number" ? <Badge variant="default">#{v}</Badge> : null),
+  score: (v) => (typeof v === "number" ? <ScoreBar label="Score" value={v} /> : null),
+  overall_score: (v) =>
+    typeof v === "number" ? <ScoreBar label="Overall Score" value={v} /> : null,
+
+  // ── Salary prediction object (resume scanner roadmap) ────────────────────
+  salary_prediction: (v) => {
+    if (typeof v !== "object" || v === null || Array.isArray(v)) return null;
+    const r = v as Record<string, unknown>;
+    const low = typeof r.low === "number" ? r.low.toLocaleString() : "?";
+    const mid = typeof r.mid === "number" ? r.mid.toLocaleString() : "?";
+    const high = typeof r.high === "number" ? r.high.toLocaleString() : "?";
+    const currency = typeof r.currency === "string" ? r.currency : "";
+    return (
+      <div className="rounded-lg border p-3 bg-muted/30">
+        <div className="text-sm font-semibold mb-1">Salary Prediction</div>
+        <div className="text-sm text-muted-foreground">
+          {currency} {low} – {mid} – {high}
+        </div>
+      </div>
+    );
+  },
 };
 
 export function AiResultRenderer({ data }: { data: Record<string, unknown> }) {
