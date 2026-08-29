@@ -230,7 +230,11 @@ export const scanResumeFromStorage = createServerFn({ method: "POST" })
       const buf = new Uint8Array(await dl.data.arrayBuffer());
 
       try {
-        const result = await extractResumeText(buf, resume.file_name ?? "", resume.mime_type);
+        const result = await extractResumeText(
+          buf,
+          resume.file_name ?? "",
+          resume.mime_type ?? undefined,
+        );
         text = result.text;
       } catch (err) {
         if (err instanceof ResumeScanError) {
@@ -278,21 +282,23 @@ export const scanResumeFromStorage = createServerFn({ method: "POST" })
           skills: scan.extracted_skills ?? [],
           raw_text: text.slice(0, 5000),
         },
-        career_roadmap: {
-          career_paths: scan.career_paths ?? [],
-          skill_gaps: scan.skill_gaps ?? [],
-          missing_skills: scan.missing_skills ?? [],
-          recommended_certifications: scan.recommended_certifications ?? [],
-          suggested_projects: scan.suggested_projects ?? [],
-          recommended_jobs: scan.recommended_jobs ?? [],
-          companies_hiring: scan.companies_hiring ?? [],
-          salary_prediction: scan.salary_prediction ?? null,
-          resume_improvements: scan.resume_improvements ?? [],
-          interview_prep_plan: scan.interview_prep_plan ?? null,
-          strengths: scan.strengths ?? [],
-          weaknesses: scan.weaknesses ?? [],
-          keywords: scan.keywords ?? [],
-        },
+        career_roadmap: JSON.parse(
+          JSON.stringify({
+            career_paths: scan.career_paths ?? [],
+            skill_gaps: scan.skill_gaps ?? [],
+            missing_skills: scan.missing_skills ?? [],
+            recommended_certifications: scan.recommended_certifications ?? [],
+            suggested_projects: scan.suggested_projects ?? [],
+            recommended_jobs: scan.recommended_jobs ?? [],
+            companies_hiring: scan.companies_hiring ?? [],
+            salary_prediction: scan.salary_prediction ?? null,
+            resume_improvements: scan.resume_improvements ?? [],
+            interview_prep_plan: scan.interview_prep_plan ?? null,
+            strengths: scan.strengths ?? [],
+            weaknesses: scan.weaknesses ?? [],
+            keywords: scan.keywords ?? [],
+          }),
+        ),
       };
 
       const { error } = await context.supabase

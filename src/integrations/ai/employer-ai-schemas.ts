@@ -1,10 +1,11 @@
 import { z } from "zod";
 
 // ── Shared building blocks ──────────────────────────────────────────────────
-
+// .catch(0) ensures formatted strings like "85%" or "Rs. 50,000" that fail
+// Number() coercion fall back to 0 instead of throwing and failing the whole response.
 const score = z.coerce.number().min(0).max(100).catch(0);
 const stringArray = z.array(z.string()).default([]);
-const string = z.string().default("");
+const str = z.string().default("");
 
 // ── Recruitment AI schemas ──────────────────────────────────────────────────
 
@@ -12,51 +13,51 @@ export const candidateMatchSchema = z.object({
   matches: z
     .array(
       z.object({
-        candidate_name: string,
+        candidate_name: str,
         match_score: score,
         matching_strengths: stringArray,
         gaps: stringArray,
-        recommendation: string,
+        recommendation: str,
       }),
     )
     .default([]),
-  summary: string,
+  summary: str,
 });
 
 export const resumeScreeningSchema = z.object({
   results: z
     .array(
       z.object({
-        candidate_name: string,
+        candidate_name: str,
         status: z.enum(["qualified", "borderline", "unqualified"]).catch("borderline"),
         score: score,
         reasons: stringArray,
       }),
     )
     .default([]),
-  summary: string,
+  summary: str,
 });
 
 export const resumeRankingSchema = z.object({
   ranking: z
     .array(
       z.object({
-        candidate_name: string,
+        candidate_name: str,
         rank: z.coerce.number().int().min(1).catch(1),
         fit_score: score,
-        justification: string,
+        justification: str,
       }),
     )
     .default([]),
-  summary: string,
+  summary: str,
 });
 
 export const smartShortlistingSchema = z.object({
   shortlisted: z
     .array(
       z.object({
-        candidate_name: string,
-        rationale: string,
+        candidate_name: str,
+        rationale: str,
         priority: z.enum(["high", "medium", "low"]).catch("medium"),
       }),
     )
@@ -64,19 +65,19 @@ export const smartShortlistingSchema = z.object({
   not_shortlisted: z
     .array(
       z.object({
-        candidate_name: string,
-        reason: string,
+        candidate_name: str,
+        reason: str,
       }),
     )
     .default([]),
-  summary: string,
+  summary: str,
 });
 
 export const candidateRankingSchema = z.object({
   ranking: z
     .array(
       z.object({
-        candidate_name: string,
+        candidate_name: str,
         rank: z.coerce.number().int().min(1).catch(1),
         strengths: stringArray,
         concerns: stringArray,
@@ -84,11 +85,11 @@ export const candidateRankingSchema = z.object({
       }),
     )
     .default([]),
-  summary: string,
+  summary: str,
 });
 
 export const candidateSummarySchema = z.object({
-  summary: string,
+  summary: str,
   top_skills: stringArray,
   experience_highlights: stringArray,
   red_flags: stringArray,
@@ -98,84 +99,84 @@ export const candidateSummarySchema = z.object({
 export const hiringRecommendationSchema = z.object({
   recommendation: z.enum(["HIRE", "NO-HIRE", "HOLD"]).catch("HOLD"),
   confidence: score,
-  reasoning: string,
+  reasoning: str,
   risk_factors: stringArray,
-  suggested_role: string.optional().default(""),
+  suggested_role: str,
 });
 
 export const candidateSuccessPredictionSchema = z.object({
   prediction: z.enum(["Low", "Medium", "High"]).catch("Medium"),
   confidence: score,
   contributing_factors: stringArray,
-  rationale: string,
+  rationale: str,
 });
 
 export const talentSearchSchema = z.object({
-  ideal_candidate_profile: string,
+  ideal_candidate_profile: str,
   search_keywords: stringArray,
   boolean_strings: stringArray,
   sourcing_channels: stringArray,
-  summary: string,
+  summary: str,
 });
 
 export const duplicateCandidateDetectionSchema = z.object({
   duplicates: z
     .array(
       z.object({
-        candidate_name: string,
-        likely_duplicate_of: string,
+        candidate_name: str,
+        likely_duplicate_of: str,
         confidence: score,
         matching_fields: stringArray,
       }),
     )
     .default([]),
-  unique_count: z.coerce.number().int().min(0).default(0),
-  summary: string,
+  unique_count: z.coerce.number().int().min(0).catch(0),
+  summary: str,
 });
 
 export const skillGapAnalysisSchema = z.object({
   gaps: z
     .array(
       z.object({
-        skill: string,
-        current_level: string,
-        target_level: string,
+        skill: str,
+        current_level: str,
+        target_level: str,
         priority: z.enum(["high", "medium", "low"]).catch("medium"),
         learning_path: stringArray,
       }),
     )
     .default([]),
-  summary: string,
+  summary: str,
 });
 
 export const interviewQuestionGeneratorSchema = z.object({
   questions: z
     .array(
       z.object({
-        question: string,
+        question: str,
         category: z.enum(["technical", "behavioral", "situational"]).catch("technical"),
         difficulty: z.enum(["easy", "medium", "hard"]).catch("medium"),
-        guidance: string,
+        guidance: str,
       }),
     )
     .default([]),
-  summary: string,
+  summary: str,
 });
 
 // ── Job AI schemas ──────────────────────────────────────────────────────────
 
 export const jobDescriptionWriterSchema = z.object({
-  title: string,
-  summary: string,
+  title: str,
+  summary: str,
   responsibilities: stringArray,
   requirements: stringArray,
   preferred_qualifications: stringArray,
   benefits: stringArray,
-  full_description: string,
+  full_description: str,
 });
 
 export const jobDescriptionOptimizerSchema = z.object({
-  optimized_description: string,
+  optimized_description: str,
   changes_made: stringArray,
   clarity_score: score,
   inclusivity_score: score,
@@ -187,36 +188,36 @@ export const hiringAnalyticsSchema = z.object({
   bottlenecks: z
     .array(
       z.object({
-        stage: string,
-        issue: string,
-        impact: string,
+        stage: str,
+        issue: str,
+        impact: str,
       }),
     )
     .default([]),
-  time_to_hire_trend: string,
+  time_to_hire_trend: str,
   recommendations: stringArray,
-  summary: string,
+  summary: str,
 });
 
 // ── HR & Office AI schemas ──────────────────────────────────────────────────
 
 export const emailAssistantSchema = z.object({
-  subject: string,
-  body: string,
-  tone: string.optional().default("professional"),
+  subject: str,
+  body: str,
+  tone: str,
 });
 
 export const meetingSchedulerSchema = z.object({
   proposed_slots: z
     .array(
       z.object({
-        date: string,
-        time: string,
-        duration_minutes: z.coerce.number().int().min(15).default(30),
+        date: str,
+        time: str,
+        duration_minutes: z.coerce.number().int().min(15).catch(30),
       }),
     )
     .default([]),
-  invite_text: string,
+  invite_text: str,
   workflow: stringArray,
 });
 
@@ -226,12 +227,12 @@ export const onboardingAssistantSchema = z.object({
       z.object({
         day: z.coerce.number().int().min(1).max(5).catch(1),
         tasks: stringArray,
-        owner: string,
+        owner: str,
         resources: stringArray,
       }),
     )
     .default([]),
-  summary: string,
+  summary: str,
 });
 
 export const officeDashboardSchema = z.object({
@@ -239,72 +240,72 @@ export const officeDashboardSchema = z.object({
   actions: z
     .array(
       z.object({
-        area: string,
-        action: string,
+        area: str,
+        action: str,
         priority: z.enum(["high", "medium", "low"]).catch("medium"),
       }),
     )
     .default([]),
-  summary: string,
+  summary: str,
 });
 
 export const recruitmentAutomationSchema = z.object({
   opportunities: z
     .array(
       z.object({
-        task: string,
-        current_process: string,
-        automation_suggestion: string,
-        expected_impact: string,
+        task: str,
+        current_process: str,
+        automation_suggestion: str,
+        expected_impact: str,
       }),
     )
     .default([]),
-  summary: string,
+  summary: str,
 });
 
 export const workflowBuilderSchema = z.object({
   stages: z
     .array(
       z.object({
-        name: string,
-        trigger: string,
-        owner: string,
-        sla_hours: z.coerce.number().int().min(1).default(48),
+        name: str,
+        trigger: str,
+        owner: str,
+        sla_hours: z.coerce.number().int().min(1).catch(48),
         actions: stringArray,
       }),
     )
     .default([]),
-  summary: string,
+  summary: str,
 });
 
 export const predictiveHiringAnalyticsSchema = z.object({
   forecasts: z
     .array(
       z.object({
-        metric: string,
-        prediction: string,
+        metric: str,
+        prediction: str,
         confidence: score,
         key_drivers: stringArray,
       }),
     )
     .default([]),
-  summary: string,
+  summary: str,
 });
 
 export const workforcePlanningSchema = z.object({
   headcount_plan: z
     .array(
       z.object({
-        role: string,
-        current_count: z.coerce.number().int().min(0).default(0),
-        target_count: z.coerce.number().int().min(0).default(0),
-        gap: z.coerce.number().int().default(0),
+        role: str,
+        current_count: z.coerce.number().int().min(0).catch(0),
+        target_count: z.coerce.number().int().min(0).catch(0),
+        gap: z.coerce.number().int().catch(0),
         priority: z.enum(["high", "medium", "low"]).catch("medium"),
       }),
     )
     .default([]),
   hiring_priorities: stringArray,
-  summary: string,
+  summary: str,
 });
 
 // ── Enterprise AI schemas ───────────────────────────────────────────────────
@@ -313,24 +314,24 @@ export const privateAiModelsSchema = z.object({
   recommendations: z
     .array(
       z.object({
-        model: string,
-        use_case: string,
-        hosting: string,
-        fine_tuning: string,
-        governance: string,
+        model: str,
+        use_case: str,
+        hosting: str,
+        fine_tuning: str,
+        governance: str,
       }),
     )
     .default([]),
-  summary: string,
+  summary: str,
 });
 
 export const companyKnowledgeAiSchema = z.object({
-  answer: string,
+  answer: str,
   sources: z
     .array(
       z.object({
-        source: string,
-        relevance: string,
+        source: str,
+        relevance: str,
       }),
     )
     .default([]),
@@ -338,45 +339,45 @@ export const companyKnowledgeAiSchema = z.object({
 });
 
 export const talentIntelligenceSchema = z.object({
-  bench_strength: string,
+  bench_strength: str,
   skill_coverage: z
     .array(
       z.object({
-        area: string,
+        area: str,
         coverage: z.enum(["strong", "adequate", "weak"]).catch("adequate"),
-        notes: string,
+        notes: str,
       }),
     )
     .default([]),
   risks: stringArray,
-  summary: string,
+  summary: str,
 });
 
 export const whiteLabelAssistantSchema = z.object({
   recommendations: z
     .array(
       z.object({
-        aspect: string,
-        recommendation: string,
-        implementation: string,
+        aspect: str,
+        recommendation: str,
+        implementation: str,
       }),
     )
     .default([]),
-  summary: string,
+  summary: str,
 });
 
 export const dedicatedAiSuccessManagerSchema = z.object({
   rollout_plan: z
     .array(
       z.object({
-        milestone: string,
-        timeline: string,
+        milestone: str,
+        timeline: str,
         activities: stringArray,
         success_metrics: stringArray,
       }),
     )
     .default([]),
-  summary: string,
+  summary: str,
 });
 
 // ── Type exports ─────────────────────────────────────────────────────────────

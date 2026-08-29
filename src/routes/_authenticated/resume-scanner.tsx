@@ -121,7 +121,10 @@ function ResumeScanner() {
           toast.success("Analysis complete! Career roadmap generated.");
         } else {
           setMatches([]);
-          toast.error(result.error?.message ?? "Unable to complete the resume scan right now.");
+          const message = !result.success
+            ? result.error?.message
+            : "Unable to complete the resume scan right now.";
+          toast.error(message ?? "Unable to complete the resume scan right now.");
         }
         qc.invalidateQueries({ queryKey: ["my-resume-full"] });
         qc.invalidateQueries({ queryKey: ["my-resume"] });
@@ -176,7 +179,10 @@ function ResumeScanner() {
         toast.success("Re-analyzed! Career roadmap updated.");
       } else {
         setMatches([]);
-        toast.error(result.error?.message ?? "Unable to complete the re-analysis right now.");
+        const message = !result.success
+          ? result.error?.message
+          : "Unable to complete the re-analysis right now.";
+        toast.error(message ?? "Unable to complete the re-analysis right now.");
       }
       qc.invalidateQueries({ queryKey: ["my-resume-full"] });
       qc.invalidateQueries({ queryKey: ["my-resume"] });

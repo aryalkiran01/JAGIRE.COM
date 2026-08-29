@@ -48,13 +48,19 @@ async function callChat(req: AIRequest, json: boolean): Promise<string> {
   } satisfies ChatRequest;
 
   let response;
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), OLLAMA_TIMEOUT_MS);
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
   try {
-    response = await ollama.chat(chatRequest, { signal: controller.signal });
+    response = await Promise.race([
+      ollama.chat(chatRequest),
+      new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(() => {
+          reject(Object.assign(new Error("Ollama request timed out"), { name: "AbortError" }));
+        }, OLLAMA_TIMEOUT_MS);
+      }),
+    ]);
   } catch (e) {
     const err = e as Error;
-    if (err.name === "AbortError" || controller.signal.aborted) {
+    if (err.name === "AbortError") {
       throw classifyError(408, "Ollama request timed out", e);
     }
     const msg = err.message ?? "Ollama request failed";
@@ -70,7 +76,7 @@ async function callChat(req: AIRequest, json: boolean): Promise<string> {
     }
     throw classifyError(undefined, msg, e);
   } finally {
-    clearTimeout(timer);
+    if (timeoutId) clearTimeout(timeoutId);
   }
 
   const out = response?.message?.content;
@@ -96,16 +102,27 @@ export class OllamaProvider implements AIProvider {
   async generateEmbedding(req: AIEmbeddingRequest): Promise<AIEmbeddingResponse> {
     const model = String(req.model ?? resolveOllamaModel("embedding"));
     const ollama = getClient();
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), OLLAMA_TIMEOUT_MS);
+
     try {
-      const res = await ollama.embeddings(
-        { model, prompt: req.input },
-        { signal: controller.signal },
-      );
+      const res = await Promise.race([
+        ollama.embeddings({ model, prompt: req.input }),
+        new Promise<never>((_, reject) => {
+          setTimeout(() => {
+            reject(
+              Object.assign(new Error("Ollama embedding request timed out"), {
+                name: "AbortError",
+              }),
+            );
+          }, OLLAMA_TIMEOUT_MS);
+        }),
+      ]);
       return { embedding: res.embedding, provider: this.name, model };
     } catch (e) {
-      const msg = (e as Error).message ?? "Ollama embedding failed";
+      const err = e as Error;
+      if (err.name === "AbortError") {
+        throw classifyError(408, "Ollama embedding request timed out", e);
+      }
+      const msg = err.message ?? "Ollama embedding failed";
       if (/model.*not.*found/i.test(msg)) {
         throw classifyError(
           404,
@@ -113,9 +130,14 @@ export class OllamaProvider implements AIProvider {
           e,
         );
       }
+      if (/connection refused|ECONNREFUSED|fetch failed/i.test(msg)) {
+        throw classifyError(
+          503,
+          `Ollama is not running at ${host()}. Start it with: ollama serve`,
+          e,
+        );
+      }
       throw classifyError(undefined, msg, e);
-    } finally {
-      clearTimeout(timer);
     }
   }
 }
