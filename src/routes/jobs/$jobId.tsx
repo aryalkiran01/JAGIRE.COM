@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { SiteHeader } from "@/components/layout/site-header";
@@ -17,9 +17,10 @@ import {
   Bookmark,
   Loader as Loader2,
   MessageSquare,
+  Eye,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ApplyJobDialog } from "@/components/apply-job-dialog";
 
 export const Route = createFileRoute("/jobs/$jobId")({
@@ -36,7 +37,24 @@ function JobDetail() {
   const { jobId } = Route.useParams();
   const { user, role } = useAuth();
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const [saving, setSaving] = useState(false);
+
+  // Increment view count when page loads
+  useEffect(() => {
+    if (!jobId) return;
+
+    const incrementViews = async () => {
+      try {
+        await supabase.rpc("increment_job_views", { job_id: jobId });
+        await qc.invalidateQueries({ queryKey: ["job", jobId] });
+      } catch (err) {
+        console.error("Failed to increment views:", err);
+      }
+    };
+
+    void incrementViews();
+  }, [jobId, qc]);
 
   const { data: job, isLoading } = useQuery({
     queryKey: ["job", jobId],
@@ -225,8 +243,12 @@ function JobDetail() {
                   <Clock className="h-3 w-3" /> Posted{" "}
                   {new Date(job.created_at).toLocaleDateString()}
                 </div>
-                <div className="mt-1">
-                  {job.applications_count} applicants · {job.views_count} views
+                <div className="mt-1 flex items-center gap-3">
+                  <span className="flex items-center gap-1">
+                    <Eye className="h-3 w-3" />
+                    {job.views_count ?? 0} views
+                  </span>
+                  <span>{job.applications_count ?? 0} applicants</span>
                 </div>
               </div>
             </CardContent>

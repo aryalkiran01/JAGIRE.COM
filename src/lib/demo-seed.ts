@@ -103,6 +103,33 @@ const DEMO_REVIEWS = [
 ];
 
 export async function seedDemoData(userId: string) {
+  console.log("Checking for existing companies for user:", userId);
+
+  // Check if user already has companies
+  const { data: existingUserCompanies } = await supabase
+    .from("companies")
+    .select("id")
+    .eq("owner_id", userId);
+
+  // If user already has companies with jobs, skip
+  if (existingUserCompanies && existingUserCompanies.length > 0) {
+    const companyIds = existingUserCompanies.map((c) => c.id);
+    const { data: existingJobs } = await supabase
+      .from("jobs")
+      .select("id")
+      .in("company_id", companyIds);
+
+    if (existingJobs && existingJobs.length > 0) {
+      console.log("User already has companies and jobs. Skipping seed.");
+      return {
+        skipped: true,
+        message: "You already have companies and jobs",
+        companies: existingUserCompanies.length,
+        jobs: existingJobs.length,
+      };
+    }
+  }
+
   // Ensure a company owned by this user
   const existing = await supabase
     .from("companies")
@@ -131,6 +158,22 @@ export async function seedDemoData(userId: string) {
     companyId = ins.data.id;
   }
 
+  // Check existing jobs for this company
+  const { data: existingJobs } = await supabase
+    .from("jobs")
+    .select("id")
+    .eq("company_id", companyId);
+
+  if (existingJobs && existingJobs.length > 0) {
+    console.log("Jobs already exist. Skipping.");
+    return {
+      skipped: true,
+      message: "Jobs already exist",
+      companies: 1,
+      jobs: existingJobs.length,
+    };
+  }
+
   // Insert demo jobs
   const jobsPayload = DEMO_JOBS.map((j) => ({
     ...j,
@@ -154,5 +197,9 @@ export async function seedDemoData(userId: string) {
     { onConflict: "company_id,reviewer_id" },
   );
 
-  return { companyId, jobs: DEMO_JOBS.length };
+  return {
+    skipped: false,
+    companies: 1,
+    jobs: DEMO_JOBS.length,
+  };
 }

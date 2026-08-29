@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link, useSearch } from "@tanstack/react-router";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -18,8 +18,14 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { useState } from "react";
+import { Loader as Loader2, Building2 } from "lucide-react";
 
-export const Route = createFileRoute("/_authenticated/employer/jobs/new")({ component: NewJob });
+export const Route = createFileRoute("/_authenticated/employer/jobs/new")({
+  component: NewJob,
+  validateSearch: (s: Record<string, unknown>) => ({
+    companyId: typeof s.companyId === "string" ? s.companyId : undefined,
+  }),
+});
 
 function slugify(s: string) {
   return (
@@ -35,12 +41,31 @@ function slugify(s: string) {
 function NewJob() {
   const { user } = useAuth();
   const nav = useNavigate();
-  const { data: company } = useQuery({
-    queryKey: ["my-company", user?.id],
+  const search = useSearch({ from: "/_authenticated/employer/jobs/new" });
+
+  // Fetch ALL companies for this user
+  const { data: companies, isLoading: companiesLoading } = useQuery({
+    queryKey: ["my-companies", user?.id],
     enabled: !!user,
-    queryFn: async () =>
-      (await supabase.from("companies").select("id").eq("owner_id", user!.id).maybeSingle()).data,
+    staleTime: 0,
+    refetchOnMount: "always",
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("companies")
+        .select("id, name")
+        .eq("owner_id", user!.id)
+        .order("created_at", { ascending: false });
+      return data ?? [];
+    },
   });
+
+  // Selected company from search params or first company
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(
+    search.companyId || null,
+  );
+
+  const company = companies?.find((c) => c.id === selectedCompanyId) || companies?.[0];
+
   const [f, setF] = useState<any>({
     title: "",
     description: "",
@@ -58,7 +83,10 @@ function NewJob() {
 
   const create = useMutation({
     mutationFn: async () => {
-      if (!company) throw new Error("Create your company first");
+      if (!company?.id) {
+        throw new Error("Create your company first");
+      }
+
       const payload = {
         company_id: company.id,
         posted_by: user!.id,
@@ -86,6 +114,9 @@ function NewJob() {
           .filter(Boolean),
         status: "active" as const,
       };
+
+      console.log("Creating job with payload:", payload);
+
       const { data, error } = await supabase.from("jobs").insert(payload).select("id").single();
       if (error) throw error;
       return data;
@@ -97,9 +128,64 @@ function NewJob() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  // Show loading state
+  if (companiesLoading) {
+    return (
+      <div className="container mx-auto px-4 py-16 flex justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Show "no company" state
+  if (!companies || companies.length === 0) {
+    return (
+      <div className="container mx-auto px-4 py-16 max-w-lg">
+        <Card>
+          <CardContent className="p-8 text-center">
+            <Building2 className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
+            <h2 className="text-xl font-bold mb-2">Create your company first</h2>
+            <p className="text-muted-foreground mb-4">
+              You need a company profile before posting jobs.
+            </p>
+            <Button asChild className="gradient-brand text-primary-foreground">
+              <Link to="/employer/company">Create company</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-3xl">
-      <h1 className="text-3xl font-bold mb-6">Post a job</h1>
+      <h1 className="text-3xl font-bold mb-2">Post a job</h1>
+      <p className="text-muted-foreground mb-6">
+        Posting as <span className="font-medium text-foreground">{company?.name}</span>
+      </p>
+
+      {/* Company selector if multiple companies */}
+      {companies.length > 1 && (
+        <Card className="mb-4">
+          <CardContent className="p-4">
+            <Label>Select company</Label>
+            <Select value={company?.id || ""} onValueChange={(v) => setSelectedCompanyId(v)}>
+              <SelectTrigger className="mt-1">
+                <Building2 className="h-4 w-4 mr-2" />
+                <SelectValue placeholder="Select company" />
+              </SelectTrigger>
+              <SelectContent>
+                {companies.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardContent className="p-6 space-y-4">
           <div>
@@ -213,6 +299,7 @@ function NewJob() {
             disabled={!f.title || !f.description || create.isPending}
             className="gradient-brand text-primary-foreground"
           >
+            {create.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
             Publish job
           </Button>
         </CardContent>

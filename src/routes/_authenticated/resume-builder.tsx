@@ -1,888 +1,673 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState, useCallback, useRef, useMemo } from "react";
-import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { createFileRoute } from "@tanstack/react-router";
+import { useState, useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import { Badge } from "@/components/ui/badge";
-import { SkeletonCard } from "@/components/ui/skeleton-loader";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import {
-  Sparkles,
-  Upload,
-  Loader2,
-  Briefcase,
-  TrendingUp,
-  Award,
-  Building2,
-  DollarSign,
-  Target,
-  Rocket,
-  FileDown,
-  Lightbulb,
-  ScanText,
-  FileText,
-  CheckCircle2,
-  AlertCircle,
-  XCircle,
-  FileUp,
-  RefreshCw,
-  Download,
-  ChevronRight,
-  type LucideIcon,
-} from "lucide-react";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { Trash2, Plus, FileText, Download, Sparkles } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
+import { pdf } from "@react-pdf/renderer";
+
 import { scanResumeFromStorage } from "@/lib/ai.service";
-import { cn } from "@/lib/utils";
+import { ResumePDF } from "./-ResumePdf"; // We'll create this component
 
 export const Route = createFileRoute("/_authenticated/resume-builder")({
-  component: ResumeScanner,
-  head: () => ({ meta: [{ title: "AI Resume Scanner — Jagire" }] }),
+  component: ResumeBuilder,
 });
 
-// ── Types ───────────────────────────────────────────────────────────────────
-
-type Roadmap = {
-  career_paths?: Array<{ title: string; why: string; next_steps: string[] }>;
-  skill_gaps?: string[];
-  missing_skills?: string[];
-  recommended_certifications?: Array<{ name: string; provider: string }>;
-  suggested_projects?: Array<{ title: string; description: string }>;
-  recommended_jobs?: Array<{ title: string; why: string }>;
-  companies_hiring?: Array<{ name: string; sector: string }>;
-  salary_prediction?: { low: number; mid: number; high: number; currency: string } | null;
-  resume_improvements?: string[];
-  interview_prep_plan?: {
-    thirty_days: string[];
-    sixty_days: string[];
-    ninety_days: string[];
-    one_eighty_days: string[];
-  } | null;
-};
-
+/* ---------- data types ---------- */
+type Section = { title: string; items: string[] };
 type ResumeData = {
-  id: string;
-  file_name?: string;
-  file_size?: number;
-  overall_score?: number;
-  ats_score?: number;
-  grammar_score?: number;
-  formatting_score?: number;
-  keyword_score?: number;
-  professionalism_score?: number;
-  suggestions?: string[];
-  parsed_data?: Record<string, any>;
-  resume_data?: any;
-  career_roadmap?: Roadmap;
+  full_name: string;
+  headline: string;
+  email: string;
+  phone: string;
+  summary: string;
+  experience: Section;
+  education: Section;
+  skills: Section;
+  projects: Section;
 };
 
-type JobMatch = {
-  id: string;
-  title: string;
-  company: string | null;
-  score: number;
+const empty: ResumeData = {
+  full_name: "",
+  headline: "",
+  email: "",
+  phone: "",
+  summary: "",
+  experience: { title: "Experience", items: [""] },
+  education: { title: "Education", items: [""] },
+  skills: { title: "Skills", items: [""] },
+  projects: { title: "Projects", items: [""] },
 };
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-const VALID_FILE_TYPES = [
-  "application/pdf",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-];
-
-// ── Helper Functions ────────────────────────────────────────────────────────
-
-function getScoreColor(value: number | null | undefined): string {
-  if (value == null) return "text-muted-foreground";
-  if (value >= 80) return "text-green-500";
-  if (value >= 60) return "text-amber-500";
-  return "text-red-500";
+/* ---------- parsing helpers ---------- */
+function parseExperience(item: string) {
+  const lines = item
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l);
+  const title = lines[0] || "";
+  const subtitle =
+    lines[1] && !lines[1].startsWith("•") && !lines[1].startsWith("-") && !lines[1].startsWith("*")
+      ? lines[1]
+      : "";
+  const bulletStart = subtitle ? 2 : 1;
+  let bullets = lines
+    .slice(bulletStart)
+    .map((l) => l.replace(/^[•\-*]\s*/, "").trim())
+    .filter((l) => l);
+  bullets = bullets.slice(0, 4);
+  return { title, subtitle, bullets };
 }
 
-function getScoreIcon(value: number | null | undefined): LucideIcon {
-  if (value == null) return AlertCircle;
-  if (value >= 80) return CheckCircle2;
-  if (value >= 60) return AlertCircle;
-  return XCircle;
+function parseProject(item: string) {
+  const lines = item
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l);
+  const title = lines[0] || "";
+  const subtitle =
+    lines[1] && !lines[1].startsWith("•") && !lines[1].startsWith("-") && !lines[1].startsWith("*")
+      ? lines[1]
+      : "";
+  const bulletStart = subtitle ? 2 : 1;
+  let bullets = lines
+    .slice(bulletStart)
+    .map((l) => l.replace(/^[•\-*]\s*/, "").trim())
+    .filter((l) => l);
+  bullets = bullets.slice(0, 3);
+  return { title, subtitle, bullets };
 }
 
-function getScoreMessage(value: number): string {
-  if (value >= 80) return "Excellent! Your resume is well-optimized for ATS systems.";
-  if (value >= 60) return "Good foundation. A few improvements could boost your visibility.";
-  return "Needs work. Focus on the recommendations below to improve.";
+function parseEducation(item: string) {
+  const lines = item
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l);
+  const title = lines[0] || "";
+  const subtitle = lines[1] || "";
+  const details = lines.slice(2).join(" ");
+  return { title, subtitle, details };
 }
 
-function validateFile(file: File): string | null {
-  if (file.size > MAX_FILE_SIZE) {
-    return "File must be under 10MB";
-  }
-  if (!VALID_FILE_TYPES.includes(file.type) && !file.name.match(/\.(pdf|docx)$/i)) {
-    return "Only PDF or DOCX files are supported";
-  }
-  return null;
+function truncateWords(text: string, max: number): string {
+  const words = text.trim().split(/\s+/);
+  if (words.length <= max) return text;
+  return words.slice(0, max).join(" ") + "…";
 }
 
-// ── Score Ring Component ────────────────────────────────────────────────────
-
-function ScoreRing({ value }: { value: number }) {
-  const radius = 40;
-  const circumference = 2 * Math.PI * radius;
-  const offset = circumference - (value / 100) * circumference;
-  const color = value >= 80 ? "text-green-500" : value >= 60 ? "text-amber-500" : "text-red-500";
-
-  return (
-    <div className="relative h-24 w-24 shrink-0">
-      <svg className="h-full w-full -rotate-90" viewBox="0 0 100 100">
-        <circle
-          cx="50"
-          cy="50"
-          r={radius}
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="8"
-          className="text-muted"
-        />
-        <circle
-          cx="50"
-          cy="50"
-          r={radius}
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="8"
-          strokeDasharray={circumference}
-          strokeDashoffset={offset}
-          strokeLinecap="round"
-          className={`${color} transition-all duration-1000`}
-        />
-      </svg>
-      <div className="absolute inset-0 flex items-center justify-center">
-        <span className={`text-2xl font-bold ${color}`}>{value}</span>
-      </div>
-    </div>
-  );
-}
-
-// ── Section Card Component ──────────────────────────────────────────────────
-
-function SectionCard({
-  icon: Icon,
-  title,
-  children,
-  className,
-  delay,
-}: {
-  icon: LucideIcon;
-  title: string;
-  children: React.ReactNode;
-  className?: string;
-  delay?: number;
-}) {
-  return (
-    <Card className={cn("glass animate-fade-in-up", className)}>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Icon className="h-5 w-5 text-primary" />
-          {title}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>{children}</CardContent>
-    </Card>
-  );
-}
-
-// ── Main Component ──────────────────────────────────────────────────────────
-
-function ResumeScanner() {
+function ResumeBuilder() {
   const { user } = useAuth();
   const qc = useQueryClient();
   const runScan = useServerFn(scanResumeFromStorage);
 
-  const [dragActive, setDragActive] = useState(false);
-  const [matches, setMatches] = useState<JobMatch[]>([]);
+  const [title, setTitle] = useState("My Resume");
+  const [data, setData] = useState<ResumeData>(empty);
+  const [currentId, setCurrentId] = useState<string | null>(null);
+  const [template, setTemplate] = useState<"classic" | "modern" | "minimal">("modern");
   const [isExporting, setIsExporting] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { data: resume, isLoading } = useQuery({
-    queryKey: ["my-resume-full", user?.id],
-    enabled: !!user,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("resumes")
-        .select("*")
-        .eq("user_id", user!.id)
-        .eq("is_default", true)
-        .maybeSingle();
-
-      if (error) throw error;
-      return data as ResumeData | null;
-    },
-  });
-
-  const scanMutation = useMutation({
-    mutationFn: async (resumeId: string) => {
-      return runScan({ data: { resumeId } });
-    },
-    onSuccess: (result) => {
-      setMatches(result.matches ?? []);
-      toast.success("Analysis complete! Career roadmap generated.");
-      qc.invalidateQueries({ queryKey: ["my-resume-full"] });
-      qc.invalidateQueries({ queryKey: ["my-resume"] });
-    },
-    onError: (error) => {
-      toast.error((error as Error).message);
-    },
-  });
-
-  const handleFile = useCallback(
-    async (file: File) => {
-      if (!user || !file) return;
-
-      const validationError = validateFile(file);
-      if (validationError) {
-        toast.error(validationError);
-        return;
-      }
-
-      const uploadToast = toast.loading("Uploading resume...");
-
-      try {
-        const path = `${user.id}/${Date.now()}-${file.name}`;
-        const up = await supabase.storage.from("resumes").upload(path, file, { upsert: true });
-        if (up.error) throw up.error;
-
-        await supabase.from("resumes").update({ is_default: false }).eq("user_id", user.id);
-
-        const ins = await supabase
-          .from("resumes")
-          .insert({
-            user_id: user.id,
-            file_name: file.name,
-            file_path: path,
-            file_size: file.size,
-            mime_type: file.type,
-            is_default: true,
-          })
-          .select()
-          .single();
-
-        if (ins.error) throw ins.error;
-
-        toast.success("Resume uploaded — analyzing...", { id: uploadToast });
-        await scanMutation.mutateAsync(ins.data.id);
-      } catch (err) {
-        toast.error((err as Error).message, { id: uploadToast });
-      }
-    },
-    [user, scanMutation],
-  );
-
-  const handleDrop = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault();
-      setDragActive(false);
-      const file = e.dataTransfer.files?.[0];
-      if (file) handleFile(file);
-    },
-    [handleFile],
-  );
-
-  const reAnalyze = useCallback(async () => {
-    if (!resume) {
-      toast.error("Upload a resume first");
+  async function scanResume() {
+    if (!currentId) {
+      toast.error("Save the resume first before scanning");
       return;
     }
-
     try {
-      let scanId = resume.id;
-
-      // If this resume has no stored text, try to find a builder-saved resume
-      const parsedData = resume.parsed_data as Record<string, any> | null;
-      const hasStoredText = parsedData?.raw_text || resume.resume_data;
-
-      if (!hasStoredText) {
-        const { data: builderResume } = await supabase
-          .from("resumes")
-          .select("id, resume_data, parsed_data")
-          .eq("user_id", user!.id)
-          .not("resume_data", "is", null)
-          .order("updated_at", { ascending: false })
-          .limit(1)
-          .single();
-
-        if (builderResume) {
-          toast.info("Using builder-saved resume data...");
-          scanId = builderResume.id;
-        }
+      toast.info("Scanning resume with AI...");
+      const result = await runScan({ data: { resumeId: currentId } });
+      if (result.success) {
+        toast.success(
+          "Resume scanned successfully! Check the Resume Scanner page for detailed results.",
+        );
+      } else {
+        toast.error(result.error?.message ?? "Unable to complete the resume scan right now.");
       }
-
-      await scanMutation.mutateAsync(scanId);
     } catch (err) {
-      toast.error((err as Error).message);
+      toast.error((err as Error).message ?? "Unable to complete the resume scan right now.");
     }
-  }, [resume, user, scanMutation]);
+  }
 
-  const exportRoadmapPDF = useCallback(async () => {
-    const roadmap = resume?.career_roadmap;
-    if (!roadmap) return;
+  /* ---------- PDF export with @react-pdf/renderer ---------- */
+  async function exportPdf() {
+    if (!data) return;
 
     setIsExporting(true);
-
     try {
-      const { jsPDF } = await import("jspdf");
-      const doc = new jsPDF();
-      let y = 20;
+      // Create a PDF document using @react-pdf/renderer
+      const pdfDoc = <ResumePDF data={data} title={title} template={template} />;
 
-      doc.setFontSize(20);
-      doc.text("Career Roadmap", 20, y);
-      y += 10;
+      // Generate the PDF as a blob
+      const blob = await pdf(pdfDoc).toBlob();
 
-      doc.setFontSize(10);
-      doc.text(`Generated: ${new Date().toLocaleDateString()}`, 20, y);
-      y += 10;
+      // Create download link
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${title || "resume"}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
 
-      const addSection = (title: string, lines: string[]) => {
-        if (y > 270) {
-          doc.addPage();
-          y = 20;
-        }
-        doc.setFontSize(14);
-        doc.text(title, 20, y);
-        y += 7;
-        doc.setFontSize(10);
-        for (const line of lines) {
-          if (y > 280) {
-            doc.addPage();
-            y = 20;
-          }
-          const split = doc.splitTextToSize(`• ${line}`, 170);
-          doc.text(split, 25, y);
-          y += split.length * 5 + 2;
-        }
-        y += 5;
-      };
-
-      if (roadmap.career_paths?.length)
-        addSection(
-          "Career Paths",
-          roadmap.career_paths.map((c) => `${c.title}: ${c.why}`),
-        );
-      if (roadmap.skill_gaps?.length) addSection("Skill Gaps", roadmap.skill_gaps);
-      if (roadmap.missing_skills?.length) addSection("Missing Skills", roadmap.missing_skills);
-      if (roadmap.recommended_certifications?.length)
-        addSection(
-          "Recommended Certifications",
-          roadmap.recommended_certifications.map((c) => `${c.name} (${c.provider})`),
-        );
-      if (roadmap.suggested_projects?.length)
-        addSection(
-          "Suggested Projects",
-          roadmap.suggested_projects.map((p) => `${p.title}: ${p.description}`),
-        );
-      if (roadmap.recommended_jobs?.length)
-        addSection(
-          "Recommended Jobs",
-          roadmap.recommended_jobs.map((j) => `${j.title}: ${j.why}`),
-        );
-      if (roadmap.companies_hiring?.length)
-        addSection(
-          "Companies Hiring",
-          roadmap.companies_hiring.map((c) => `${c.name} (${c.sector})`),
-        );
-      if (roadmap.salary_prediction)
-        addSection("Salary Prediction", [
-          `Low: ${roadmap.salary_prediction.low} ${roadmap.salary_prediction.currency}`,
-          `Mid: ${roadmap.salary_prediction.mid} ${roadmap.salary_prediction.currency}`,
-          `High: ${roadmap.salary_prediction.high} ${roadmap.salary_prediction.currency}`,
-        ]);
-      if (roadmap.resume_improvements?.length)
-        addSection("Resume Improvements", roadmap.resume_improvements);
-      if (roadmap.interview_prep_plan) {
-        addSection("30-Day Plan", roadmap.interview_prep_plan.thirty_days ?? []);
-        addSection("60-Day Plan", roadmap.interview_prep_plan.sixty_days ?? []);
-        addSection("90-Day Plan", roadmap.interview_prep_plan.ninety_days ?? []);
-        addSection("180-Day Plan", roadmap.interview_prep_plan.one_eighty_days ?? []);
-      }
-
-      doc.save("career-roadmap.pdf");
-      toast.success("Roadmap exported successfully");
+      toast.success("PDF exported successfully!");
     } catch (error) {
-      toast.error("Failed to export PDF");
+      console.error("PDF export error:", error);
+      toast.error("Failed to export PDF. Please try again.");
     } finally {
       setIsExporting(false);
     }
-  }, [resume]);
+  }
 
-  const scores = useMemo(() => {
-    if (!resume) return [];
+  /* ---------- load saved resumes ---------- */
+  const { data: resumes } = useQuery({
+    queryKey: ["builder-resumes", user?.id],
+    enabled: !!user,
+    queryFn: async () =>
+      (
+        await supabase
+          .from("resumes")
+          .select("id, title, updated_at, resume_data")
+          .eq("user_id", user!.id)
+          .not("resume_data", "is", null)
+          .order("updated_at", { ascending: false })
+      ).data ?? [],
+  });
 
-    return [
-      { label: "Overall", value: resume.overall_score, icon: Sparkles, color: "text-primary" },
-      { label: "ATS", value: resume.ats_score, icon: ScanText, color: "text-blue-500" },
-      {
-        label: "Grammar",
-        value: resume.grammar_score,
-        icon: CheckCircle2,
-        color: "text-green-500",
+  useEffect(() => {
+    if (user)
+      setData((d) => ({
+        ...d,
+        full_name: d.full_name || (user.user_metadata?.full_name ?? ""),
+        email: d.email || (user.email ?? ""),
+      }));
+  }, [user]);
+
+  /* ---------- save / load ---------- */
+  async function save() {
+    if (!user) return;
+
+    const plainText = [
+      data.full_name,
+      data.headline,
+      data.email,
+      data.phone,
+      data.summary,
+      ...data.experience.items.filter(Boolean),
+      ...data.education.items.filter(Boolean),
+      ...data.projects.items.filter(Boolean),
+      ...data.skills.items.filter(Boolean),
+    ].join("\n\n");
+
+    const payload = {
+      user_id: user.id,
+      title,
+      resume_data: data as any,
+      parsed_data: {
+        summary: data.summary,
+        skills: data.skills.items.filter(Boolean),
+        raw_text: plainText,
       },
-      { label: "Formatting", value: resume.formatting_score, icon: FileText, color: "text-accent" },
-      { label: "Keywords", value: resume.keyword_score, icon: Target, color: "text-orange-500" },
-      {
-        label: "Professionalism",
-        value: resume.professionalism_score,
-        icon: Award,
-        color: "text-purple-500",
-      },
-    ];
-  }, [resume]);
+    };
 
-  const suggestions = resume?.suggestions ?? [];
-  const roadmap = resume?.career_roadmap ?? null;
-  const isBusy = scanMutation.isPending;
+    let savedId: string | null = currentId ?? null;
+
+    const { error: defaultError } = await supabase
+      .from("resumes")
+      .update({ is_default: false })
+      .eq("user_id", user.id);
+
+    if (defaultError) {
+      return toast.error(defaultError.message);
+    }
+
+    if (currentId) {
+      const { error } = await supabase
+        .from("resumes")
+        .update({
+          ...payload,
+          is_default: true,
+        })
+        .eq("id", currentId);
+
+      if (error) return toast.error(error.message);
+    } else {
+      const { data: row, error } = await supabase
+        .from("resumes")
+        .insert({
+          ...payload,
+          is_default: true,
+        })
+        .select("id")
+        .single();
+
+      if (error) return toast.error(error.message);
+
+      setCurrentId(row.id);
+      savedId = row.id;
+    }
+
+    toast.success("Saved");
+    qc.invalidateQueries({ queryKey: ["builder-resumes"] });
+  }
+
+  function load(r: any) {
+    setCurrentId(r.id);
+    setTitle(r.title ?? "My Resume");
+    setData({ ...empty, ...(r.resume_data ?? {}) });
+  }
+
+  /* ---------- section helpers ---------- */
+  function updateSection(
+    key: "experience" | "education" | "skills" | "projects",
+    idx: number,
+    val: string,
+  ) {
+    setData((d) => {
+      const items = [...d[key].items];
+      items[idx] = val;
+      return { ...d, [key]: { ...d[key], items } };
+    });
+  }
+  function addItem(key: "experience" | "education" | "skills" | "projects") {
+    setData((d) => ({ ...d, [key]: { ...d[key], items: [...d[key].items, ""] } }));
+  }
+  function removeItem(key: "experience" | "education" | "skills" | "projects", idx: number) {
+    setData((d) => ({
+      ...d,
+      [key]: { ...d[key], items: d[key].items.filter((_, i) => i !== idx) },
+    }));
+  }
+
+  /* ---------- word / bullet counters ---------- */
+  const summaryWordCount = data.summary.trim().split(/\s+/).filter(Boolean).length;
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-5xl space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <div className="h-10 w-10 rounded-xl gradient-brand flex items-center justify-center shadow-glow">
-              <Sparkles className="h-5 w-5 text-primary-foreground" />
-            </div>
-            AI Resume Scanner
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Upload your resume for instant ATS scoring, keyword analysis, and a personalized career
-            roadmap.
-          </p>
-        </div>
-        {resume && (
-          <Button variant="outline" onClick={reAnalyze} disabled={isBusy}>
-            {isBusy ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <RefreshCw className="mr-2 h-4 w-4" />
-            )}
-            Re-analyze
-          </Button>
-        )}
-      </div>
-
-      {/* Drag & drop upload */}
-      <Card className="glass hover:shadow-card-soft transition-all">
-        <CardContent className="p-6">
-          <div
-            onDragOver={(e) => {
-              e.preventDefault();
-              setDragActive(true);
-            }}
-            onDragLeave={() => setDragActive(false)}
-            onDrop={handleDrop}
-            onClick={() => !isBusy && fileInputRef.current?.click()}
-            className={`relative border-2 border-dashed rounded-2xl p-10 text-center cursor-pointer transition-all ${
-              dragActive
-                ? "border-primary bg-primary/5 scale-[1.02]"
-                : "border-border hover:border-primary/50 hover:bg-muted/30"
-            }`}
-          >
-            <input
-              ref={fileInputRef}
-              type="file"
-              className="hidden"
-              accept=".pdf,.docx"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) handleFile(file);
+    <div className="container mx-auto px-4 py-8 grid lg:grid-cols-[280px_1fr] gap-6">
+      {/* ---------- sidebar ---------- */}
+      <aside>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Your resumes</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-1">
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full mb-2"
+              onClick={() => {
+                setCurrentId(null);
+                setTitle("My Resume");
+                setData(empty);
               }}
-              disabled={isBusy}
-            />
-
-            {isBusy ? (
-              <>
-                <Loader2 className="h-12 w-12 mx-auto mb-4 animate-spin text-primary" />
-                <div className="font-semibold text-lg">Analyzing your resume…</div>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Extracting text, scoring, and generating your career roadmap
-                </p>
-              </>
-            ) : resume ? (
-              <>
-                <div className="h-14 w-14 rounded-2xl gradient-brand mx-auto mb-4 flex items-center justify-center shadow-glow">
-                  <FileText className="h-7 w-7 text-primary-foreground" />
-                </div>
-                <div className="font-semibold text-lg">{resume.file_name}</div>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Click to upload a new resume or drag & drop to replace
-                </p>
-                <div className="flex justify-center gap-2 mt-3">
-                  <Badge variant="secondary">
-                    {((resume.file_size ?? 0) / 1024).toFixed(0)} KB
-                  </Badge>
-                  {resume.overall_score != null && (
-                    <Badge className="gradient-brand text-primary-foreground">
-                      Score: {resume.overall_score}/100
-                    </Badge>
-                  )}
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="h-14 w-14 rounded-2xl bg-muted mx-auto mb-4 flex items-center justify-center">
-                  <FileUp className="h-7 w-7 text-muted-foreground" />
-                </div>
-                <div className="font-semibold text-lg">Drop your resume here</div>
-                <p className="text-sm text-muted-foreground mt-1">
-                  or click to browse — PDF or DOCX, max 10MB
-                </p>
-              </>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Loading skeleton */}
-      {isLoading && <SkeletonCard />}
-
-      {/* Scores */}
-      {resume?.overall_score != null && (
-        <Card className="glass animate-fade-in-up">
-          <CardContent className="p-6 space-y-5">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold flex items-center gap-2">
-                <Target className="h-5 w-5 text-primary" /> Your Scores
-              </h2>
-              <Badge
-                className={`text-lg font-bold ${getScoreColor(resume.overall_score)}`}
-                variant="outline"
-              >
-                {resume.overall_score}/100
-              </Badge>
-            </div>
-
-            {/* Overall score ring */}
-            <div className="flex items-center gap-6">
-              <ScoreRing value={resume.overall_score ?? 0} />
-              <div className="flex-1">
-                <p className="text-sm text-muted-foreground">
-                  {getScoreMessage(resume.overall_score)}
-                </p>
-              </div>
-            </div>
-
-            {/* Score breakdown */}
-            <div className="grid md:grid-cols-2 gap-4">
-              {scores.map((s) => {
-                const ScoreIcon = getScoreIcon(s.value);
-                return (
-                  <div key={s.label} className="space-y-1.5">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="flex items-center gap-1.5">
-                        <s.icon className={`h-4 w-4 ${s.color}`} />
-                        {s.label}
-                      </span>
-                      <span className={`font-semibold ${getScoreColor(s.value)}`}>
-                        {s.value ?? 0}/100
-                      </span>
-                    </div>
-                    <Progress value={s.value ?? 0} className="h-2" />
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Suggestions */}
-            {suggestions.length > 0 && (
-              <div className="pt-3 border-t">
-                <h3 className="font-semibold mb-3 flex items-center gap-2">
-                  <Lightbulb className="h-4 w-4 text-amber-500" /> Actionable Recommendations
-                </h3>
-                <div className="grid md:grid-cols-2 gap-2">
-                  {suggestions.map((s, i) => (
-                    <div
-                      key={i}
-                      className="flex items-start gap-2 rounded-lg border p-3 hover:bg-muted/30 transition-colors animate-fade-in"
-                      style={{ animationDelay: `${i * 0.05}s` }}
-                    >
-                      <div className="h-6 w-6 rounded-full bg-amber-500/10 flex items-center justify-center shrink-0">
-                        <span className="text-xs font-bold text-amber-600">{i + 1}</span>
-                      </div>
-                      <span className="text-sm">{s}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Career Roadmap */}
-      {roadmap && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-bold flex items-center gap-2">
-              <Rocket className="h-6 w-6 text-primary" /> Career Roadmap
-            </h2>
-            <Button variant="outline" size="sm" onClick={exportRoadmapPDF} disabled={isExporting}>
-              {isExporting ? (
-                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-              ) : (
-                <Download className="h-4 w-4 mr-1" />
-              )}
-              Export PDF
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              New
             </Button>
-          </div>
+            {resumes?.map((r: any) => (
+              <button
+                key={r.id}
+                onClick={() => load(r)}
+                className={`w-full text-left p-2 rounded text-sm hover:bg-muted ${currentId === r.id ? "bg-muted" : ""}`}
+              >
+                <FileText className="h-3.5 w-3.5 inline mr-1.5" />
+                {r.title ?? "Untitled"}
+              </button>
+            ))}
+          </CardContent>
+        </Card>
+      </aside>
 
-          {roadmap.career_paths && roadmap.career_paths.length > 0 && (
-            <SectionCard icon={Target} title="Career Paths">
-              <div className="space-y-3">
-                {roadmap.career_paths.map((c, i) => (
-                  <div
-                    key={i}
-                    className="border-l-2 border-primary pl-4 hover:bg-muted/30 rounded-r-lg py-2 transition-colors"
-                  >
-                    <div className="font-semibold">{c.title}</div>
-                    <p className="text-sm text-muted-foreground mt-0.5">{c.why}</p>
-                    {c.next_steps?.length > 0 && (
-                      <ul className="mt-2 space-y-1">
-                        {c.next_steps.map((s, j) => (
-                          <li key={j} className="text-sm flex items-start gap-2">
-                            <CheckCircle2 className="h-3.5 w-3.5 text-green-500 mt-0.5 shrink-0" />
-                            {s}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </SectionCard>
-          )}
-
-          <div className="grid md:grid-cols-2 gap-4">
-            {roadmap.skill_gaps && roadmap.skill_gaps.length > 0 && (
-              <SectionCard icon={TrendingUp} title="Skill Gaps">
-                <div className="flex flex-wrap gap-2">
-                  {roadmap.skill_gaps.map((s, i) => (
-                    <Badge
-                      key={i}
-                      variant="secondary"
-                      className="hover:scale-105 transition-transform"
-                    >
-                      {s}
-                    </Badge>
-                  ))}
-                </div>
-              </SectionCard>
-            )}
-
-            {roadmap.missing_skills && roadmap.missing_skills.length > 0 && (
-              <SectionCard icon={Target} title="Missing Skills">
-                <div className="flex flex-wrap gap-2">
-                  {roadmap.missing_skills.map((s, i) => (
-                    <Badge key={i} variant="outline">
-                      {s}
-                    </Badge>
-                  ))}
-                </div>
-              </SectionCard>
-            )}
-          </div>
-
-          {roadmap.recommended_certifications && roadmap.recommended_certifications.length > 0 && (
-            <SectionCard icon={Award} title="Recommended Certifications">
-              <div className="grid md:grid-cols-2 gap-3">
-                {roadmap.recommended_certifications.map((c, i) => (
-                  <div
-                    key={i}
-                    className="rounded-xl border p-4 hover:shadow-card-soft hover:-translate-y-0.5 transition-all"
-                  >
-                    <div className="flex items-center gap-2 mb-1">
-                      <Award className="h-4 w-4 text-primary" />
-                      <div className="font-medium">{c.name}</div>
-                    </div>
-                    <div className="text-sm text-muted-foreground">{c.provider}</div>
-                  </div>
-                ))}
-              </div>
-            </SectionCard>
-          )}
-
-          {roadmap.suggested_projects && roadmap.suggested_projects.length > 0 && (
-            <SectionCard icon={Rocket} title="Suggested Projects">
-              <div className="space-y-2">
-                {roadmap.suggested_projects.map((p, i) => (
-                  <div
-                    key={i}
-                    className="rounded-xl border p-4 hover:bg-muted/30 transition-colors"
-                  >
-                    <div className="font-medium">{p.title}</div>
-                    <p className="text-sm text-muted-foreground mt-0.5">{p.description}</p>
-                  </div>
-                ))}
-              </div>
-            </SectionCard>
-          )}
-
-          {roadmap.salary_prediction && (
-            <SectionCard icon={DollarSign} title="Salary Prediction">
-              <div className="grid grid-cols-3 gap-4">
-                <div className="text-center rounded-xl border p-4 hover:shadow-card-soft transition-all">
-                  <div className="text-2xl font-bold text-muted-foreground">
-                    {roadmap.salary_prediction.low}
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-1">
-                    Low ({roadmap.salary_prediction.currency})
-                  </div>
-                </div>
-                <div className="text-center rounded-xl border-2 border-primary p-4 gradient-brand/5">
-                  <div className="text-2xl font-bold gradient-text">
-                    {roadmap.salary_prediction.mid}
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-1">
-                    Mid ({roadmap.salary_prediction.currency})
-                  </div>
-                </div>
-                <div className="text-center rounded-xl border p-4 hover:shadow-card-soft transition-all">
-                  <div className="text-2xl font-bold text-green-600">
-                    {roadmap.salary_prediction.high}
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-1">
-                    High ({roadmap.salary_prediction.currency})
-                  </div>
-                </div>
-              </div>
-            </SectionCard>
-          )}
-
-          <div className="grid md:grid-cols-2 gap-4">
-            {roadmap.recommended_jobs && roadmap.recommended_jobs.length > 0 && (
-              <SectionCard icon={Briefcase} title="Recommended Jobs">
-                <div className="space-y-2">
-                  {roadmap.recommended_jobs.map((j, i) => (
-                    <div
-                      key={i}
-                      className="rounded-lg border p-3 hover:bg-muted/30 transition-colors"
-                    >
-                      <div className="font-medium">{j.title}</div>
-                      <p className="text-sm text-muted-foreground">{j.why}</p>
-                    </div>
-                  ))}
-                </div>
-              </SectionCard>
-            )}
-
-            {roadmap.companies_hiring && roadmap.companies_hiring.length > 0 && (
-              <SectionCard icon={Building2} title="Companies Hiring">
-                <div className="space-y-2">
-                  {roadmap.companies_hiring.map((c, i) => (
-                    <div
-                      key={i}
-                      className="flex items-center justify-between rounded-lg border p-3 hover:bg-muted/30 transition-colors"
-                    >
-                      <span className="font-medium">{c.name}</span>
-                      <Badge variant="secondary">{c.sector}</Badge>
-                    </div>
-                  ))}
-                </div>
-              </SectionCard>
-            )}
-          </div>
-
-          {roadmap.resume_improvements && roadmap.resume_improvements.length > 0 && (
-            <SectionCard icon={Lightbulb} title="Resume Improvements">
-              <ul className="space-y-2">
-                {roadmap.resume_improvements.map((s, i) => (
-                  <li key={i} className="flex items-start gap-2 text-sm">
-                    <Lightbulb className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
-                    {s}
-                  </li>
-                ))}
-              </ul>
-            </SectionCard>
-          )}
-
-          {roadmap.interview_prep_plan && (
-            <SectionCard icon={Target} title="Interview Preparation Plan">
-              <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {[
-                  {
-                    label: "30 Days",
-                    items: roadmap.interview_prep_plan.thirty_days,
-                    color: "border-green-500",
-                  },
-                  {
-                    label: "60 Days",
-                    items: roadmap.interview_prep_plan.sixty_days,
-                    color: "border-blue-500",
-                  },
-                  {
-                    label: "90 Days",
-                    items: roadmap.interview_prep_plan.ninety_days,
-                    color: "border-amber-500",
-                  },
-                  {
-                    label: "180 Days",
-                    items: roadmap.interview_prep_plan.one_eighty_days,
-                    color: "border-purple-500",
-                  },
-                ].map((phase) => (
-                  <div
-                    key={phase.label}
-                    className={`rounded-xl border-l-4 ${phase.color} bg-muted/20 p-4`}
-                  >
-                    <div className="font-semibold mb-2">{phase.label}</div>
-                    <ul className="space-y-1.5">
-                      {phase.items?.map((s, i) => (
-                        <li key={i} className="text-sm flex items-start gap-1.5">
-                          <CheckCircle2 className="h-3 w-3 text-primary mt-1 shrink-0" />
-                          {s}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
-              </div>
-            </SectionCard>
-          )}
+      {/* ---------- main area ---------- */}
+      <div className="space-y-6">
+        <div className="flex items-center gap-3">
+          <h1 className="text-3xl font-bold flex-1">Resume Builder</h1>
+          <select
+            value={template}
+            onChange={(e) => setTemplate(e.target.value as any)}
+            className="border rounded-md h-9 px-2 text-sm bg-background"
+          >
+            <option value="modern">Modern</option>
+            <option value="classic">Classic</option>
+            <option value="minimal">Minimal</option>
+          </select>
+          <Button variant="outline" onClick={exportPdf} disabled={isExporting}>
+            <Download className="h-4 w-4 mr-1" />
+            {isExporting ? "Exporting..." : "PDF"}
+          </Button>
+          <Button onClick={save} className="gradient-brand text-primary-foreground">
+            Save
+          </Button>
+          <Button
+            variant="outline"
+            onClick={scanResume}
+            disabled={!currentId}
+            className="border-amber-500 text-amber-600 hover:bg-amber-50"
+          >
+            <Sparkles className="h-4 w-4 mr-1" />
+            AI Scan
+          </Button>
         </div>
-      )}
 
-      {/* Job matches */}
-      {matches.length > 0 && (
-        <Card className="glass animate-fade-in-up">
-          <CardContent className="p-6 space-y-3">
-            <h2 className="text-xl font-bold flex items-center gap-2">
-              <Briefcase className="h-5 w-5" /> Top Job Matches
-            </h2>
-            <p className="text-sm text-muted-foreground">Based on your resume skills.</p>
-            <div className="space-y-2">
-              {matches.map((m) => (
-                <Link
-                  key={m.id}
-                  to="/jobs/$jobId"
-                  params={{ jobId: m.id }}
-                  className="flex items-center justify-between p-4 rounded-xl border hover:bg-muted/30 hover:shadow-card-soft transition-all group"
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium group-hover:text-primary transition-colors">
-                      {m.title}
-                    </div>
-                    <div className="text-xs text-muted-foreground">{m.company ?? "—"}</div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Badge className="gradient-brand text-primary-foreground">
-                      {m.score}% match
-                    </Badge>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:translate-x-1 transition-transform" />
-                  </div>
-                </Link>
-              ))}
+        {/* ---------- basic info ---------- */}
+        <Card>
+          <CardContent className="p-6 space-y-4">
+            <div>
+              <Label>Resume title</Label>
+              <Input value={title} onChange={(e) => setTitle(e.target.value)} />
+            </div>
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <Label>Full name</Label>
+                <Input
+                  value={data.full_name}
+                  onChange={(e) => setData({ ...data, full_name: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label>Headline</Label>
+                <Input
+                  value={data.headline}
+                  onChange={(e) => setData({ ...data, headline: e.target.value })}
+                  placeholder="Senior Software Engineer"
+                />
+              </div>
+              <div>
+                <Label>Email</Label>
+                <Input
+                  value={data.email}
+                  onChange={(e) => setData({ ...data, email: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label>Phone</Label>
+                <Input
+                  value={data.phone}
+                  onChange={(e) => setData({ ...data, phone: e.target.value })}
+                />
+              </div>
+            </div>
+            <div>
+              <Label>Professional summary</Label>
+              <Textarea
+                rows={3}
+                value={data.summary}
+                onChange={(e) => setData({ ...data, summary: e.target.value })}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Words: {summaryWordCount}/60{" "}
+                {summaryWordCount > 60 && (
+                  <span className="text-red-500">(will be truncated in preview & PDF)</span>
+                )}
+              </p>
             </div>
           </CardContent>
         </Card>
-      )}
+
+        {/* ---------- sections ---------- */}
+        {(["experience", "education", "skills", "projects"] as const).map((k) => (
+          <Card key={k}>
+            <CardHeader>
+              <CardTitle className="capitalize">{k}</CardTitle>
+              {k === "experience" && (
+                <p className="text-xs text-muted-foreground">
+                  Format: Job Title → Company | Date → bullet points (max 4)
+                </p>
+              )}
+              {k === "projects" && (
+                <p className="text-xs text-muted-foreground">
+                  Format: Project Name → Tech Stack → bullet points (max 3)
+                </p>
+              )}
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {data[k].items.map((v, i) => (
+                <div key={i} className="flex gap-2">
+                  <Textarea
+                    rows={k === "skills" ? 1 : 2}
+                    value={v}
+                    onChange={(e) => updateSection(k, i, e.target.value)}
+                    placeholder={
+                      k === "skills"
+                        ? "e.g. React, TypeScript, Node.js"
+                        : "Role · Company · Dates\nDescription"
+                    }
+                  />
+                  <Button size="icon" variant="ghost" onClick={() => removeItem(k, i)}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+              <Button size="sm" variant="outline" onClick={() => addItem(k)}>
+                <Plus className="h-4 w-4 mr-1" />
+                Add
+              </Button>
+            </CardContent>
+          </Card>
+        ))}
+
+        {/* ---------- ATS‑friendly live preview ---------- */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Live preview</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0 overflow-auto max-h-[600px]">
+            <div
+              style={{
+                width: "210mm",
+                minHeight: "auto",
+                margin: "0 auto",
+                padding: "15mm 15mm 20mm 15mm",
+                fontFamily: "'Inter', Arial, Helvetica, sans-serif",
+                fontSize: "10pt",
+                lineHeight: 1.4,
+                color: "#000",
+                background: "#fff",
+                boxSizing: "border-box",
+              }}
+            >
+              {/* ---------- header ---------- */}
+              <div style={{ textAlign: "center", marginBottom: "6mm" }}>
+                <h1
+                  style={{
+                    fontSize: "24pt",
+                    fontWeight: "bold",
+                    margin: 0,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.5px",
+                  }}
+                >
+                  {data.full_name || "Your Name"}
+                </h1>
+                <p style={{ fontSize: "14pt", margin: "1mm 0", color: "#333" }}>{data.headline}</p>
+                <p style={{ fontSize: "10pt", margin: 0, color: "#555" }}>
+                  {[data.email, data.phone].filter(Boolean).join(" | ")}
+                </p>
+              </div>
+
+              {/* ---------- summary ---------- */}
+              {data.summary && (
+                <div style={{ marginBottom: "5mm" }}>
+                  <h2
+                    style={{
+                      fontSize: "12pt",
+                      fontWeight: "bold",
+                      borderBottom: "1px solid #333",
+                      paddingBottom: "1mm",
+                      marginBottom: "2mm",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    Professional Summary
+                  </h2>
+                  <p style={{ margin: 0, fontSize: "10pt" }}>{truncateWords(data.summary, 60)}</p>
+                </div>
+              )}
+
+              {/* ---------- experience ---------- */}
+              {data.experience.items.some((i) => i.trim()) && (
+                <div style={{ marginBottom: "5mm" }}>
+                  <h2
+                    style={{
+                      fontSize: "12pt",
+                      fontWeight: "bold",
+                      borderBottom: "1px solid #333",
+                      paddingBottom: "1mm",
+                      marginBottom: "2mm",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    Experience
+                  </h2>
+                  {data.experience.items
+                    .filter((i) => i.trim())
+                    .map((item, idx) => {
+                      const { title, subtitle, bullets } = parseExperience(item);
+                      return (
+                        <div key={idx} style={{ marginBottom: "3mm", pageBreakInside: "avoid" }}>
+                          {title && <p style={{ fontWeight: "bold", margin: 0 }}>{title}</p>}
+                          {subtitle && (
+                            <p style={{ fontStyle: "italic", margin: 0, color: "#555" }}>
+                              {subtitle}
+                            </p>
+                          )}
+                          {bullets.length > 0 && (
+                            <ul
+                              style={{ margin: "1mm 0 0 4mm", padding: 0, listStyleType: "disc" }}
+                            >
+                              {bullets.map((b, i) => (
+                                <li key={i} style={{ fontSize: "10pt" }}>
+                                  {b}
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      );
+                    })}
+                </div>
+              )}
+
+              {/* ---------- education ---------- */}
+              {data.education.items.some((i) => i.trim()) && (
+                <div style={{ marginBottom: "5mm" }}>
+                  <h2
+                    style={{
+                      fontSize: "12pt",
+                      fontWeight: "bold",
+                      borderBottom: "1px solid #333",
+                      paddingBottom: "1mm",
+                      marginBottom: "2mm",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    Education
+                  </h2>
+                  {data.education.items
+                    .filter((i) => i.trim())
+                    .map((item, idx) => {
+                      const { title, subtitle, details } = parseEducation(item);
+                      return (
+                        <div key={idx} style={{ marginBottom: "2mm", pageBreakInside: "avoid" }}>
+                          <p style={{ fontWeight: "bold", margin: 0 }}>{title}</p>
+                          {subtitle && <p style={{ margin: 0, color: "#555" }}>{subtitle}</p>}
+                          {details && <p style={{ margin: 0, fontSize: "9pt" }}>{details}</p>}
+                        </div>
+                      );
+                    })}
+                </div>
+              )}
+
+              {/* ---------- projects ---------- */}
+              {data.projects.items.some((i) => i.trim()) && (
+                <div style={{ marginBottom: "5mm" }}>
+                  <h2
+                    style={{
+                      fontSize: "12pt",
+                      fontWeight: "bold",
+                      borderBottom: "1px solid #333",
+                      paddingBottom: "1mm",
+                      marginBottom: "2mm",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    Projects
+                  </h2>
+                  {data.projects.items
+                    .filter((i) => i.trim())
+                    .map((item, idx) => {
+                      const { title, subtitle, bullets } = parseProject(item);
+                      return (
+                        <div key={idx} style={{ marginBottom: "3mm", pageBreakInside: "avoid" }}>
+                          <p style={{ fontWeight: "bold", margin: 0 }}>{title}</p>
+                          {subtitle && (
+                            <p style={{ fontStyle: "italic", margin: 0, color: "#555" }}>
+                              {subtitle}
+                            </p>
+                          )}
+                          {bullets.length > 0 && (
+                            <ul
+                              style={{ margin: "1mm 0 0 4mm", padding: 0, listStyleType: "disc" }}
+                            >
+                              {bullets.map((b, i) => (
+                                <li key={i} style={{ fontSize: "10pt" }}>
+                                  {b}
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      );
+                    })}
+                </div>
+              )}
+
+              {/* ---------- skills ---------- */}
+              {data.skills.items.some((i) => i.trim()) && (
+                <div style={{ marginBottom: "5mm" }}>
+                  <h2
+                    style={{
+                      fontSize: "12pt",
+                      fontWeight: "bold",
+                      borderBottom: "1px solid #333",
+                      paddingBottom: "1mm",
+                      marginBottom: "2mm",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    Skills
+                  </h2>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "2mm" }}>
+                    {data.skills.items
+                      .flatMap((item) => item.split(",").map((s) => s.trim()))
+                      .filter(Boolean)
+                      .map((skill, i) => (
+                        <span
+                          key={i}
+                          style={{
+                            background: "#f0f0f0",
+                            padding: "1mm 2mm",
+                            borderRadius: "2mm",
+                            fontSize: "9pt",
+                            border: "0.5px solid #ccc",
+                          }}
+                        >
+                          {skill}
+                        </span>
+                      ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

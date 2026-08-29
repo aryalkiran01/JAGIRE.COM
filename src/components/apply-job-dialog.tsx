@@ -115,10 +115,32 @@ export function ApplyJobDialog({
         cover_letter: coverLetter.trim() || null,
       });
       if (error) throw error;
+
+      // Increment applications count in jobs table
+      try {
+        await supabase.rpc("increment_job_applications", { job_id: jobId });
+      } catch (rpcError) {
+        console.error("RPC failed, using fallback:", rpcError);
+        // Fallback: direct update
+        const { data: jobData } = await supabase
+          .from("jobs")
+          .select("applications_count")
+          .eq("id", jobId)
+          .single();
+
+        const currentCount = jobData?.applications_count ?? 0;
+        await supabase
+          .from("jobs")
+          .update({ applications_count: currentCount + 1 })
+          .eq("id", jobId);
+      }
+
       toast.success("Application submitted!");
       setSuccess(true);
       qc.invalidateQueries({ queryKey: ["applied", jobId] });
       qc.invalidateQueries({ queryKey: ["apps"] });
+      qc.invalidateQueries({ queryKey: ["job", jobId] }); // Refresh job detail
+      qc.invalidateQueries({ queryKey: ["my-jobs"] }); // Refresh employer dashboard
     } catch (e: any) {
       toast.error(friendlyError(e));
     } finally {

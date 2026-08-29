@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useCallback, useRef, useMemo } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
@@ -90,7 +91,7 @@ type JobMatch = {
   title: string;
   company: string | null;
   score: number;
-  location?: string;
+  location?: string | null;
   salaryMin?: number;
   salaryMax?: number;
   companyLocation?: string;

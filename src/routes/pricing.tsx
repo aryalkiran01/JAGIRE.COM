@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { Card, CardContent } from "@/components/ui/card";
@@ -33,10 +33,12 @@ import {
   ShieldCheck,
   Lock,
   Sparkle,
+  Loader2,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useSubscription, PLAN_NAMES } from "@/hooks/use-subscription";
 import { PLANS, SEEKER_PLANS, EMPLOYER_PLANS, type PlanConfig } from "@/lib/plans";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/pricing")({
   head: () => ({
@@ -58,6 +60,74 @@ function PricingPage() {
   const { user } = useAuth();
   const { data: sub } = useSubscription();
   const [tab, setTab] = useState<Tab>("seeker");
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [isLoadingRole, setIsLoadingRole] = useState(true);
+
+  // Fetch user role from user_roles table
+  useEffect(() => {
+    async function fetchUserRole() {
+      if (!user?.id) {
+        setIsLoadingRole(false);
+        return;
+      }
+
+      setIsLoadingRole(true);
+      try {
+        const { data: roleData, error: roleError } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", user.id)
+          .single();
+
+        if (roleError) {
+          console.error("Error fetching user role:", roleError);
+          // Fallback to profiles table
+          const { data: profileData, error: profileError } = await supabase
+            .from("profiles")
+            .select("user_role")
+            .eq("id", user.id)
+            .single();
+
+          if (!profileError && profileData?.user_role) {
+            setUserRole(profileData.user_role);
+          }
+          setIsLoadingRole(false);
+          return;
+        }
+
+        if (roleData?.role) {
+          setUserRole(roleData.role);
+        }
+      } catch (err) {
+        console.error("Failed to fetch user role:", err);
+      } finally {
+        setIsLoadingRole(false);
+      }
+    }
+
+    fetchUserRole();
+  }, [user?.id]);
+
+  // Auto-set tab based on user role
+  useEffect(() => {
+    if (userRole === "employer") {
+      setTab("employer");
+    } else if (userRole === "seeker" || userRole === "job_seeker") {
+      setTab("seeker");
+    }
+  }, [userRole]);
+
+  // Show loading state while fetching role
+  if (isLoadingRole && user) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  const isEmployer = userRole === "employer";
+  const isSeeker = userRole === "seeker" || userRole === "job_seeker";
 
   return (
     <div className="min-h-screen bg-background">
@@ -73,48 +143,60 @@ function PricingPage() {
             AI-Powered Recruitment & HR Operating System
           </Badge>
           <h1 className="text-4xl md:text-5xl font-bold mb-4 tracking-tight">
-            Pricing built for <span className="gradient-text">career growth</span> and{" "}
-            <span className="gradient-text">enterprise hiring</span>
+            {isEmployer ? (
+              <>
+                Enterprise hiring <span className="gradient-text">solutions</span>
+              </>
+            ) : (
+              <>
+                Pricing built for <span className="gradient-text">career growth</span>
+              </>
+            )}
           </h1>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            Job seekers get AI career tools. Employers get a complete AI recruitment and HR
-            platform. All prices in NPR.
+            {isEmployer
+              ? "Get the complete AI recruitment and HR platform for your company."
+              : "Job seekers get AI career tools to accelerate your job search."}
           </p>
         </div>
       </section>
 
-      {/* Sticky toggle */}
-      <div className="sticky top-16 z-30 py-3 backdrop-blur-md bg-background/70 border-y">
-        <div className="container mx-auto px-4 flex justify-center">
-          <div className="inline-flex rounded-full glass p-1 shadow-card-soft">
-            <ToggleBtn active={tab === "seeker"} onClick={() => setTab("seeker")}>
-              <Users className="h-4 w-4" />
-              Job Seeker
-            </ToggleBtn>
-            <ToggleBtn active={tab === "employer"} onClick={() => setTab("employer")}>
-              <BuildingIcon />
-              Employer
-            </ToggleBtn>
+      {/* Sticky toggle - Only show for non-logged in users */}
+      {!user && (
+        <div className="sticky top-16 z-30 py-3 backdrop-blur-md bg-background/70 border-y">
+          <div className="container mx-auto px-4 flex justify-center">
+            <div className="inline-flex rounded-full glass p-1 shadow-card-soft">
+              <ToggleBtn active={tab === "seeker"} onClick={() => setTab("seeker")}>
+                <Users className="h-4 w-4" />
+                Job Seeker
+              </ToggleBtn>
+              <ToggleBtn active={tab === "employer"} onClick={() => setTab("employer")}>
+                <BuildingIcon />
+                Employer
+              </ToggleBtn>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       <div className="container mx-auto px-4 py-12 max-w-6xl">
-        {/* Current subscription */}
-        {user && sub && <CurrentSubscriptionCard sub={sub} />}
+        {/* Current subscription - Show only relevant plan */}
+        {user && sub && <CurrentSubscriptionCard sub={sub} userRole={userRole} />}
 
-        {tab === "seeker" ? <SeekerPricing /> : <EmployerPricing />}
-
-        {tab === "employer" && (
+        {/* Show only relevant pricing based on role */}
+        {isEmployer ? (
           <>
+            <EmployerPricing />
             <AIRecruitmentSection />
             <AIOfficeSection />
             <EmployerComparisonTable />
           </>
+        ) : (
+          <SeekerPricing />
         )}
 
         <StatsSection />
-        <FAQSection tab={tab} />
+        <FAQSection tab={isEmployer ? "employer" : "seeker"} />
       </div>
 
       <SiteFooter />
@@ -234,7 +316,8 @@ interface PricingCardProps {
 }
 
 function PricingCard({ plan }: PricingCardProps) {
-  const { name, price, currency, period, tagline, badge, features, ai, cta, to, featured } = plan;
+  const { name, price, period, tagline, badge, features, ai, cta, featured, slug, contactSales } =
+    plan;
   const priceLabel = price === 0 ? "Rs. 0" : `Rs. ${price.toLocaleString()}`;
 
   return (
@@ -285,7 +368,15 @@ function PricingCard({ plan }: PricingCardProps) {
           }`}
           variant={featured ? "secondary" : "default"}
         >
-          <Link to={to}>{cta}</Link>
+          {contactSales ? (
+            <Link to="/contact">{cta}</Link>
+          ) : slug === "free" ? (
+            <Link to="/auth">{cta}</Link>
+          ) : (
+            <Link to="/checkout/$plan" params={{ plan: slug }}>
+              {cta}
+            </Link>
+          )}
         </Button>
 
         <div className="space-y-2.5 mb-5">
@@ -755,8 +846,16 @@ function FAQSection({ tab }: { tab: Tab }) {
 
 /* ── Current subscription card ─────────────────────────────── */
 
-function CurrentSubscriptionCard({ sub }: { sub: ReturnType<typeof useSubscription>["data"] }) {
+function CurrentSubscriptionCard({
+  sub,
+  userRole,
+}: {
+  sub: ReturnType<typeof useSubscription>["data"];
+  userRole?: string | null;
+}) {
   if (!sub) return null;
+
+  const isEmployer = userRole === "employer";
 
   if (!sub.isPremium) {
     return (
@@ -764,17 +863,27 @@ function CurrentSubscriptionCard({ sub }: { sub: ReturnType<typeof useSubscripti
         <CardContent className="p-6 flex items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-full bg-amber-200 dark:bg-amber-900 flex items-center justify-center">
-              <Sparkles className="h-5 w-5 text-amber-700 dark:text-amber-300" />
+              {isEmployer ? (
+                <BuildingIcon />
+              ) : (
+                <Sparkles className="h-5 w-5 text-amber-700 dark:text-amber-300" />
+              )}
             </div>
             <div>
-              <div className="font-semibold">Free plan</div>
+              <div className="font-semibold">
+                {isEmployer ? "No active employer plan" : "Free plan"}
+              </div>
               <div className="text-sm text-muted-foreground">
-                Upgrade to unlock AI-powered career tools, priority matching, and more.
+                {isEmployer
+                  ? "Upgrade to unlock AI recruitment tools, candidate management, and more."
+                  : "Upgrade to unlock AI-powered career tools, priority matching, and more."}
               </div>
             </div>
           </div>
           <Button asChild className="gradient-brand text-primary-foreground">
-            <a href="/checkout/premium">Upgrade now</a>
+            <Link to="/checkout/$plan" params={{ plan: isEmployer ? "starter" : "premium" }}>
+              {isEmployer ? "Upgrade to Starter" : "Upgrade to Premium"}
+            </Link>
           </Button>
         </CardContent>
       </Card>
@@ -785,13 +894,21 @@ function CurrentSubscriptionCard({ sub }: { sub: ReturnType<typeof useSubscripti
   const started = sub.started_at ? new Date(sub.started_at).toLocaleDateString() : "—";
   const expires = sub.expires_at ? new Date(sub.expires_at).toLocaleDateString() : "—";
   const days = sub.daysRemaining ?? 0;
+  const isEmployerPlan =
+    sub.plan_type === "starter" ||
+    sub.plan_type === "professional" ||
+    sub.plan_type === "enterprise";
 
   return (
     <Card className="border-primary/30 shadow-glow mb-10 animate-fade-in">
       <CardContent className="p-6">
         <div className="flex items-center gap-3 mb-4">
           <div className="h-10 w-10 rounded-full gradient-brand flex items-center justify-center">
-            <Crown className="h-5 w-5 text-primary-foreground" />
+            {isEmployerPlan ? (
+              <BuildingIcon />
+            ) : (
+              <Crown className="h-5 w-5 text-primary-foreground" />
+            )}
           </div>
           <div className="flex-1">
             <div className="flex items-center gap-2">
@@ -823,7 +940,9 @@ function CurrentSubscriptionCard({ sub }: { sub: ReturnType<typeof useSubscripti
           <div className="mt-4 rounded-lg bg-amber-50 dark:bg-amber-950 p-3 text-sm text-amber-800 dark:text-amber-300 flex items-center justify-between gap-2 flex-wrap">
             <span>Your subscription expires soon. Renew to keep your premium benefits.</span>
             <Button asChild size="sm" className="gradient-brand text-primary-foreground">
-              <a href="/checkout/premium">Renew</a>
+              <Link to="/checkout/$plan" params={{ plan: sub.plan_type || "premium" }}>
+                Renew
+              </Link>
             </Button>
           </div>
         )}

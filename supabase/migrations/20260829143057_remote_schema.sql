@@ -1,4 +1,7 @@
 drop extension if exists "pg_net";
+
+drop trigger if exists "trg_ai_conversations_updated" on "public"."ai_conversations";
+
 drop trigger if exists "trg_apps_count" on "public"."applications";
 
 drop trigger if exists "trg_apps_updated" on "public"."applications";
@@ -42,8 +45,6 @@ drop policy "Participants can insert events" on "public"."application_events";
 drop policy "Applicant delete own" on "public"."applications";
 
 drop policy "Applicant or employer update" on "public"."applications";
-
-drop policy "Applicants create own" on "public"."applications";
 
 drop policy "Users create own attempts" on "public"."assessment_attempts";
 
@@ -229,6 +230,12 @@ drop policy "admin_delete_user_roles" on "public"."user_roles";
 
 drop policy "admin_update_user_roles" on "public"."user_roles";
 
+drop policy "delete_own_messages" on "public"."ai_messages";
+
+drop policy "insert_own_messages" on "public"."ai_messages";
+
+drop policy "select_own_messages" on "public"."ai_messages";
+
 drop policy "Applicants view own applications" on "public"."applications";
 
 drop policy "admin_select_contact_messages" on "public"."contact_messages";
@@ -376,9 +383,8 @@ drop function if exists "public"."ensure_referral_code_on_insert"();
 drop function if exists "public"."generate_referral_code"();
 
 drop function if exists "public"."prevent_self_apply"();
-drop trigger if exists "on_auth_user_created_referral" on "auth"."users";
-drop function if exists "public"."process_referral_on_signup"();
 
+drop function if exists "public"."process_referral_on_signup"();
 
 drop function if exists "public"."tg_post_comments_count"();
 
@@ -413,6 +419,10 @@ drop index if exists "public"."categories_name_key";
 drop index if exists "public"."chats_user_a_user_b_key";
 
 drop index if exists "public"."idx_activity_created";
+
+drop index if exists "public"."idx_ai_conversations_user_id";
+
+drop index if exists "public"."idx_ai_messages_conversation_id";
 
 drop index if exists "public"."idx_apps_applicant";
 
@@ -637,6 +647,21 @@ alter table "public"."job_matches" enable row level security;
 alter table "public"."learning_courses" enable row level security;
 
 
+  create table "public"."learning_resources" (
+    "id" uuid not null default gen_random_uuid(),
+    "kind" text,
+    "title" text not null,
+    "provider" text,
+    "url" text not null,
+    "skills" text[] default '{}'::text[],
+    "description" text,
+    "created_at" timestamp with time zone default now()
+      );
+
+
+alter table "public"."learning_resources" enable row level security;
+
+
   create table "public"."post_reports" (
     "id" uuid not null default gen_random_uuid(),
     "post_id" uuid not null,
@@ -683,17 +708,7 @@ alter table "public"."jobs" alter column "experience_level" set default 'mid'::p
 alter table "public"."jobs" alter column "job_type" set default 'full_time'::public.job_type;
 
 alter table "public"."jobs" alter column "status" set default 'active'::public.job_status;
--- Drop functions that depend on old enum types
-drop function if exists "public"."has_role"(uuid, app_role__old_version_to_be_dropped);
-drop function if exists "public"."has_role"(app_role__old_version_to_be_dropped);
-drop function if exists "public"."get_user_role"(uuid);
-alter table "public"."application_events" drop column "status";
--- Now safe to drop old types
-drop type "public"."app_role__old_version_to_be_dropped";
-drop type "public"."application_status__old_version_to_be_dropped";
-drop type "public"."experience_level__old_version_to_be_dropped";
-drop type "public"."job_status__old_version_to_be_dropped";
-drop type "public"."job_type__old_version_to_be_dropped";
+
 drop type "public"."app_role__old_version_to_be_dropped";
 
 drop type "public"."application_status__old_version_to_be_dropped";
@@ -742,7 +757,7 @@ alter table "public"."application_events" drop column "actor_id";
 
 alter table "public"."application_events" drop column "note";
 
-
+alter table "public"."application_events" drop column "status";
 
 alter table "public"."application_events" add column "event_type" text not null;
 
@@ -1350,6 +1365,10 @@ drop type "public"."ticket_status";
 
 CREATE UNIQUE INDEX app_user_connections_user_id_provider_key ON public.app_user_connections USING btree (user_id, provider);
 
+CREATE INDEX applications_applicant_id_idx ON public.applications USING btree (applicant_id);
+
+CREATE INDEX applications_job_id_idx ON public.applications USING btree (job_id);
+
 CREATE INDEX applications_job_idx ON public.applications USING btree (job_id);
 
 CREATE INDEX applications_seeker_idx ON public.applications USING btree (seeker_id);
@@ -1430,8 +1449,6 @@ CREATE INDEX idx_bookmarks_job_id ON public.bookmarks USING btree (job_id);
 
 CREATE INDEX idx_bookmarks_user ON public.bookmarks USING btree (user_id);
 
-CREATE INDEX idx_career_coach_sessions_user_id ON public.career_coach_sessions USING btree (user_id);
-
 CREATE INDEX idx_chat_participants_user_id ON public.chat_participants USING btree (user_id);
 
 CREATE INDEX idx_chats_user_a ON public.chats USING btree (user_a);
@@ -1494,6 +1511,12 @@ CREATE INDEX idx_jobs_slug ON public.jobs USING btree (slug);
 
 CREATE INDEX idx_jobs_status ON public.jobs USING btree (status);
 
+CREATE INDEX idx_knowledge_chunks_company ON public.knowledge_chunks USING btree (company_id);
+
+CREATE INDEX idx_knowledge_chunks_document ON public.knowledge_chunks USING btree (document_id);
+
+CREATE INDEX idx_knowledge_documents_company ON public.knowledge_documents USING btree (company_id);
+
 CREATE INDEX idx_knowledge_documents_uploaded_by ON public.knowledge_documents USING btree (uploaded_by);
 
 CREATE INDEX idx_learning_items_course_id ON public.learning_items USING btree (course_id);
@@ -1503,6 +1526,8 @@ CREATE INDEX idx_learning_progress_course_id ON public.learning_progress USING b
 CREATE INDEX idx_learning_progress_item_id ON public.learning_progress USING btree (item_id);
 
 CREATE INDEX idx_learning_progress_user ON public.learning_progress USING btree (user_id);
+
+CREATE INDEX idx_learning_resources_skills ON public.learning_resources USING gin (skills);
 
 CREATE INDEX idx_meetings_application_id ON public.meetings USING btree (application_id);
 
@@ -1604,6 +1629,10 @@ CREATE INDEX idx_subscriptions_user ON public.subscriptions USING btree (user_id
 
 CREATE INDEX idx_support_tickets_user_id ON public.support_tickets USING btree (user_id);
 
+CREATE INDEX interviews_candidate_id_scheduled_at_idx ON public.interviews USING btree (candidate_id, scheduled_at);
+
+CREATE INDEX interviews_employer_id_scheduled_at_idx ON public.interviews USING btree (employer_id, scheduled_at);
+
 CREATE UNIQUE INDEX interviews_pkey ON public.interviews USING btree (id);
 
 CREATE UNIQUE INDEX jagire_pkey ON public.jagire USING btree (id);
@@ -1621,6 +1650,10 @@ CREATE INDEX jobs_status_idx ON public.jobs USING btree (status);
 CREATE UNIQUE INDEX learning_courses_pkey ON public.learning_courses USING btree (id);
 
 CREATE UNIQUE INDEX learning_progress_user_id_course_id_key ON public.learning_progress USING btree (user_id, course_id);
+
+CREATE UNIQUE INDEX learning_resources_pkey ON public.learning_resources USING btree (id);
+
+CREATE UNIQUE INDEX learning_resources_url_key ON public.learning_resources USING btree (url);
 
 CREATE INDEX messages_receiver_read_idx ON public.messages USING btree (receiver_id, is_read) WHERE (receiver_id IS NOT NULL);
 
@@ -1667,6 +1700,8 @@ alter table "public"."jagire" add constraint "jagire_pkey" PRIMARY KEY using ind
 alter table "public"."job_matches" add constraint "job_matches_pkey" PRIMARY KEY using index "job_matches_pkey";
 
 alter table "public"."learning_courses" add constraint "learning_courses_pkey" PRIMARY KEY using index "learning_courses_pkey";
+
+alter table "public"."learning_resources" add constraint "learning_resources_pkey" PRIMARY KEY using index "learning_resources_pkey";
 
 alter table "public"."post_reports" add constraint "post_reports_pkey" PRIMARY KEY using index "post_reports_pkey";
 
@@ -1827,6 +1862,12 @@ alter table "public"."learning_progress" add constraint "learning_progress_statu
 alter table "public"."learning_progress" validate constraint "learning_progress_status_check";
 
 alter table "public"."learning_progress" add constraint "learning_progress_user_id_course_id_key" UNIQUE using index "learning_progress_user_id_course_id_key";
+
+alter table "public"."learning_resources" add constraint "learning_resources_kind_check" CHECK ((kind = ANY (ARRAY['course'::text, 'video'::text, 'challenge'::text, 'interview'::text]))) not valid;
+
+alter table "public"."learning_resources" validate constraint "learning_resources_kind_check";
+
+alter table "public"."learning_resources" add constraint "learning_resources_url_key" UNIQUE using index "learning_resources_url_key";
 
 alter table "public"."messages" add constraint "messages_job_id_fkey" FOREIGN KEY (job_id) REFERENCES public.jobs(id) ON DELETE SET NULL not valid;
 
@@ -2009,17 +2050,16 @@ END;
 $function$
 ;
 
-CREATE OR REPLACE FUNCTION public.create_notification(_user_id uuid, _type text, _title text, _message text DEFAULT NULL::text, _link text DEFAULT NULL::text, _metadata jsonb DEFAULT NULL::jsonb)
+CREATE OR REPLACE FUNCTION public.create_notification(p_user_id uuid, p_type text, p_title text, p_message text, p_link text DEFAULT NULL::text, p_metadata jsonb DEFAULT '{}'::jsonb)
  RETURNS uuid
  LANGUAGE plpgsql
  SECURITY DEFINER
  SET search_path TO 'public'
 AS $function$
-DECLARE
-v_id uuid;
+DECLARE v_id uuid;
 BEGIN
-INSERT INTO notifications (user_id, type, title, message, link, metadata)
-VALUES (_user_id, _type, _title, _message, _link, COALESCE(_metadata, '{}'::jsonb))
+INSERT INTO public.notifications (user_id, type, title, message, is_read, link, metadata)
+VALUES (p_user_id, p_type, p_title, p_message, false, p_link, COALESCE(p_metadata, '{}'::jsonb))
 RETURNING id INTO v_id;
 RETURN v_id;
 END;
@@ -2052,6 +2092,128 @@ END;
 $function$
 ;
 
+CREATE OR REPLACE FUNCTION public.handle_new_comment_notification()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+AS $function$
+DECLARE
+  post_owner_id UUID;
+  commenter_name TEXT;
+BEGIN
+  -- Get post owner
+  SELECT author_id INTO post_owner_id 
+  FROM posts WHERE id = NEW.post_id;
+  
+  -- Get commenter name
+  SELECT full_name INTO commenter_name FROM profiles WHERE id = NEW.author_id;
+  
+  -- Only notify if comment is not from post owner
+  IF post_owner_id IS NOT NULL AND post_owner_id != NEW.author_id THEN
+    INSERT INTO notifications (user_id, type, title, message, link, data)
+    VALUES (
+      post_owner_id,
+      'comment',
+      COALESCE(commenter_name, 'Someone') || ' commented on your post',
+      COALESCE(NEW.content, NEW.body, 'Check out the comment'),
+      '/feed#post-' || NEW.post_id,
+      jsonb_build_object(
+        'post_id', NEW.post_id,
+        'comment_id', NEW.id,
+        'commenter_id', NEW.author_id
+      )
+    );
+  END IF;
+  
+  RETURN NEW;
+END;
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.handle_new_like_notification()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+AS $function$
+DECLARE
+  post_owner_id UUID;
+  liker_name TEXT;
+BEGIN
+  -- Get post owner
+  SELECT author_id INTO post_owner_id 
+  FROM posts WHERE id = NEW.post_id;
+  
+  -- Get liker name
+  SELECT full_name INTO liker_name FROM profiles WHERE id = NEW.user_id;
+  
+  -- Only notify if like is not from post owner
+  IF post_owner_id IS NOT NULL AND post_owner_id != NEW.user_id THEN
+    INSERT INTO notifications (user_id, type, title, message, link, data)
+    VALUES (
+      post_owner_id,
+      'post_like',
+      COALESCE(liker_name, 'Someone') || ' liked your post',
+      'Your post received a like',
+      '/feed#post-' || NEW.post_id,
+      jsonb_build_object(
+        'post_id', NEW.post_id,
+        'liker_id', NEW.user_id
+      )
+    );
+  END IF;
+  
+  RETURN NEW;
+END;
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.handle_new_message_notification()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+AS $function$
+DECLARE
+  chat_record RECORD;
+  recipient_id UUID;
+  sender_name TEXT;
+BEGIN
+  -- Get chat details
+  SELECT * INTO chat_record FROM chats WHERE id = NEW.chat_id;
+  
+  IF chat_record.id IS NOT NULL THEN
+    -- Determine recipient
+    IF chat_record.user_a = NEW.sender_id THEN
+      recipient_id := chat_record.user_b;
+    ELSE
+      recipient_id := chat_record.user_a;
+    END IF;
+    
+    -- Get sender name
+    SELECT full_name INTO sender_name FROM profiles WHERE id = NEW.sender_id;
+    
+    -- Only notify if recipient is not sender
+    IF recipient_id IS NOT NULL AND recipient_id != NEW.sender_id THEN
+      INSERT INTO notifications (user_id, type, title, message, link, data)
+      VALUES (
+        recipient_id,
+        'message',
+        'New message from ' || COALESCE(sender_name, 'Someone'),
+        COALESCE(NEW.body, 'You have a new message'),
+        '/messages?chat=' || NEW.chat_id,
+        jsonb_build_object(
+          'chat_id', NEW.chat_id,
+          'sender_id', NEW.sender_id,
+          'message_id', NEW.id
+        )
+      );
+    END IF;
+  END IF;
+  
+  RETURN NEW;
+END;
+$function$
+;
+
 CREATE OR REPLACE FUNCTION public.has_role(_role public.app_role)
  RETURNS boolean
  LANGUAGE sql
@@ -2059,6 +2221,32 @@ CREATE OR REPLACE FUNCTION public.has_role(_role public.app_role)
  SET search_path TO 'public'
 AS $function$
 SELECT EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role = _role);
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.increment_job_applications(job_id uuid)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+AS $function$
+BEGIN
+  UPDATE jobs
+  SET applications_count = COALESCE(applications_count, 0) + 1
+  WHERE id = job_id;
+END;
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.increment_job_views(job_id uuid)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+AS $function$
+BEGIN
+  UPDATE jobs
+  SET views_count = COALESCE(views_count, 0) + 1
+  WHERE id = job_id;
+END;
 $function$
 ;
 
@@ -2091,6 +2279,28 @@ AS $function$
 BEGIN
   NEW.seeker_id := NEW.applicant_id;
   RETURN NEW;
+END;
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.sync_job_application_count()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+BEGIN
+IF TG_OP = 'INSERT' THEN
+UPDATE public.jobs SET applications_count = (SELECT count(*) FROM public.applications WHERE job_id = NEW.job_id), updated_at = now() WHERE id = NEW.job_id;
+RETURN NEW;
+ELSIF TG_OP = 'DELETE' THEN
+UPDATE public.jobs SET applications_count = (SELECT count(*) FROM public.applications WHERE job_id = OLD.job_id), updated_at = now() WHERE id = OLD.job_id;
+RETURN OLD;
+ELSIF TG_OP = 'UPDATE' AND NEW.job_id IS DISTINCT FROM OLD.job_id THEN
+UPDATE public.jobs SET applications_count = (SELECT count(*) FROM public.applications WHERE job_id = OLD.job_id), updated_at = now() WHERE id = OLD.job_id;
+UPDATE public.jobs SET applications_count = (SELECT count(*) FROM public.applications WHERE job_id = NEW.job_id), updated_at = now() WHERE id = NEW.job_id;
+END IF;
+RETURN NEW;
 END;
 $function$
 ;
@@ -2529,24 +2739,21 @@ $function$
 CREATE OR REPLACE FUNCTION public.search_knowledge_base(query_embedding public.vector, match_company_id uuid, match_limit integer DEFAULT 5)
  RETURNS TABLE(content text, document_id uuid, document_title text, similarity double precision, chunk_index integer)
  LANGUAGE plpgsql
- SECURITY DEFINER
- SET search_path TO 'public'
 AS $function$
 BEGIN
-RETURN QUERY
-SELECT
-kc.content,
-kc.document_id,
-kd.title AS document_title,
-1 - (kc.embedding <=> query_embedding) AS similarity,
-kc.chunk_index
-FROM knowledge_chunks kc
-INNER JOIN knowledge_documents kd ON kd.id = kc.document_id
-WHERE kc.company_id = match_company_id
-AND kc.embedding IS NOT NULL
-AND kd.status = 'ready'
-ORDER BY kc.embedding <=> query_embedding
-LIMIT match_limit;
+  RETURN QUERY
+  SELECT
+    kc.content,
+    kc.document_id,
+    kd.title AS document_title,
+    1 - (kc.embedding <=> query_embedding) AS similarity,
+    kc.chunk_index
+  FROM knowledge_chunks kc
+  JOIN knowledge_documents kd ON kd.id = kc.document_id
+  WHERE kc.company_id = match_company_id
+    AND kc.embedding IS NOT NULL
+  ORDER BY kc.embedding <=> query_embedding
+  LIMIT match_limit;
 END;
 $function$
 ;
@@ -2554,24 +2761,21 @@ $function$
 CREATE OR REPLACE FUNCTION public.search_knowledge_base_text(search_query text, match_company_id uuid, match_limit integer DEFAULT 5)
  RETURNS TABLE(content text, document_id uuid, document_title text, similarity double precision, chunk_index integer)
  LANGUAGE plpgsql
- SECURITY DEFINER
- SET search_path TO 'public'
 AS $function$
 BEGIN
-RETURN QUERY
-SELECT
-kc.content,
-kc.document_id,
-kd.title AS document_title,
-similarity(search_query, kc.content) AS similarity,
-kc.chunk_index
-FROM knowledge_chunks kc
-INNER JOIN knowledge_documents kd ON kd.id = kc.document_id
-WHERE kc.company_id = match_company_id
-AND kd.status = 'ready'
-AND kc.content % search_query
-ORDER BY similarity(search_query, kc.content) DESC
-LIMIT match_limit;
+  RETURN QUERY
+  SELECT
+    kc.content,
+    kc.document_id,
+    kd.title AS document_title,
+    similarity(search_query, kc.content) AS similarity,
+    kc.chunk_index
+  FROM knowledge_chunks kc
+  JOIN knowledge_documents kd ON kd.id = kc.document_id
+  WHERE kc.company_id = match_company_id
+    AND similarity(search_query, kc.content) > 0.1
+  ORDER BY similarity(search_query, kc.content) DESC
+  LIMIT match_limit;
 END;
 $function$
 ;
@@ -3519,6 +3723,48 @@ grant select on table "public"."learning_progress" to "anon";
 
 grant update on table "public"."learning_progress" to "anon";
 
+grant delete on table "public"."learning_resources" to "anon";
+
+grant insert on table "public"."learning_resources" to "anon";
+
+grant references on table "public"."learning_resources" to "anon";
+
+grant select on table "public"."learning_resources" to "anon";
+
+grant trigger on table "public"."learning_resources" to "anon";
+
+grant truncate on table "public"."learning_resources" to "anon";
+
+grant update on table "public"."learning_resources" to "anon";
+
+grant delete on table "public"."learning_resources" to "authenticated";
+
+grant insert on table "public"."learning_resources" to "authenticated";
+
+grant references on table "public"."learning_resources" to "authenticated";
+
+grant select on table "public"."learning_resources" to "authenticated";
+
+grant trigger on table "public"."learning_resources" to "authenticated";
+
+grant truncate on table "public"."learning_resources" to "authenticated";
+
+grant update on table "public"."learning_resources" to "authenticated";
+
+grant delete on table "public"."learning_resources" to "service_role";
+
+grant insert on table "public"."learning_resources" to "service_role";
+
+grant references on table "public"."learning_resources" to "service_role";
+
+grant select on table "public"."learning_resources" to "service_role";
+
+grant trigger on table "public"."learning_resources" to "service_role";
+
+grant truncate on table "public"."learning_resources" to "service_role";
+
+grant update on table "public"."learning_resources" to "service_role";
+
 grant delete on table "public"."meetings" to "anon";
 
 grant insert on table "public"."meetings" to "anon";
@@ -3841,43 +4087,6 @@ using ((auth.uid() = user_id));
 
 
 
-  create policy "delete_own_conversations"
-  on "public"."ai_conversations"
-  as permissive
-  for delete
-  to authenticated
-using ((auth.uid() = user_id));
-
-
-
-  create policy "insert_own_conversations"
-  on "public"."ai_conversations"
-  as permissive
-  for insert
-  to authenticated
-with check ((auth.uid() = user_id));
-
-
-
-  create policy "select_own_conversations"
-  on "public"."ai_conversations"
-  as permissive
-  for select
-  to authenticated
-using ((auth.uid() = user_id));
-
-
-
-  create policy "update_own_conversations"
-  on "public"."ai_conversations"
-  as permissive
-  for update
-  to authenticated
-using ((auth.uid() = user_id))
-with check ((auth.uid() = user_id));
-
-
-
   create policy "Users can view application events"
   on "public"."application_events"
   as permissive
@@ -3906,6 +4115,17 @@ with check ((auth.uid() = applicant_id));
 using (((auth.uid() = applicant_id) OR (EXISTS ( SELECT 1
    FROM public.jobs j
   WHERE ((j.id = applications.job_id) AND (j.posted_by = auth.uid())))) OR public.has_role(auth.uid(), 'admin'::public.app_role)));
+
+
+
+  create policy "Employers can view applications for their jobs"
+  on "public"."applications"
+  as permissive
+  for select
+  to authenticated
+using ((EXISTS ( SELECT 1
+   FROM public.jobs j
+  WHERE ((j.id = applications.job_id) AND ((j.employer_id = auth.uid()) OR (j.posted_by = auth.uid()))))));
 
 
 
@@ -4093,6 +4313,24 @@ with check ((public.has_role(auth.uid(), 'admin'::public.app_role) OR (created_b
   for select
   to public
 using (true);
+
+
+
+  create policy "Users can insert their own badges"
+  on "public"."badges"
+  as permissive
+  for insert
+  to authenticated
+with check ((auth.uid() = user_id));
+
+
+
+  create policy "Users can view their own badges"
+  on "public"."badges"
+  as permissive
+  for select
+  to authenticated
+using ((auth.uid() = user_id));
 
 
 
@@ -5013,6 +5251,43 @@ using ((EXISTS ( SELECT 1
 
 
 
+  create policy "Allow authenticated users to delete learning_items"
+  on "public"."learning_items"
+  as permissive
+  for delete
+  to authenticated
+using (true);
+
+
+
+  create policy "Allow authenticated users to insert learning_items"
+  on "public"."learning_items"
+  as permissive
+  for insert
+  to authenticated
+with check (true);
+
+
+
+  create policy "Allow authenticated users to update learning_items"
+  on "public"."learning_items"
+  as permissive
+  for update
+  to authenticated
+using (true)
+with check (true);
+
+
+
+  create policy "Allow authenticated users to view learning_items"
+  on "public"."learning_items"
+  as permissive
+  for select
+  to authenticated
+using (true);
+
+
+
   create policy "Anyone can view learning items"
   on "public"."learning_items"
   as permissive
@@ -5055,6 +5330,34 @@ using ((EXISTS ( SELECT 1
 with check ((EXISTS ( SELECT 1
    FROM public.profiles
   WHERE ((profiles.id = auth.uid()) AND (profiles.is_admin = true)))));
+
+
+
+  create policy "Users can insert their own progress"
+  on "public"."learning_progress"
+  as permissive
+  for insert
+  to authenticated
+with check ((auth.uid() = user_id));
+
+
+
+  create policy "Users can update their own progress"
+  on "public"."learning_progress"
+  as permissive
+  for update
+  to authenticated
+using ((auth.uid() = user_id))
+with check ((auth.uid() = user_id));
+
+
+
+  create policy "Users can view their own progress"
+  on "public"."learning_progress"
+  as permissive
+  for select
+  to authenticated
+using ((auth.uid() = user_id));
 
 
 
@@ -5714,6 +6017,55 @@ with check (public.has_role(auth.uid(), 'admin'::public.app_role));
 
 
 
+  create policy "Employers can view applicant resumes"
+  on "public"."resumes"
+  as permissive
+  for select
+  to authenticated
+using ((EXISTS ( SELECT 1
+   FROM (public.applications a
+     JOIN public.jobs j ON ((a.job_id = j.id)))
+  WHERE ((a.resume_id = resumes.id) AND ((j.employer_id = auth.uid()) OR (j.posted_by = auth.uid()))))));
+
+
+
+  create policy "Users can delete own resumes"
+  on "public"."resumes"
+  as permissive
+  for delete
+  to authenticated
+using ((auth.uid() = user_id));
+
+
+
+  create policy "Users can insert own resumes"
+  on "public"."resumes"
+  as permissive
+  for insert
+  to authenticated
+with check ((auth.uid() = user_id));
+
+
+
+  create policy "Users can update own resumes"
+  on "public"."resumes"
+  as permissive
+  for update
+  to authenticated
+using ((auth.uid() = user_id))
+with check ((auth.uid() = user_id));
+
+
+
+  create policy "Users can view own resumes"
+  on "public"."resumes"
+  as permissive
+  for select
+  to authenticated
+using ((auth.uid() = user_id));
+
+
+
   create policy "delete_own_resumes"
   on "public"."resumes"
   as permissive
@@ -6021,6 +6373,39 @@ with check (public.has_role(auth.uid(), 'admin'::public.app_role));
 
 
 
+  create policy "delete_own_messages"
+  on "public"."ai_messages"
+  as permissive
+  for delete
+  to authenticated
+using ((EXISTS ( SELECT 1
+   FROM public.ai_conversations c
+  WHERE ((c.id = ai_messages.conversation_id) AND (c.user_id = auth.uid())))));
+
+
+
+  create policy "insert_own_messages"
+  on "public"."ai_messages"
+  as permissive
+  for insert
+  to authenticated
+with check ((EXISTS ( SELECT 1
+   FROM public.ai_conversations c
+  WHERE ((c.id = ai_messages.conversation_id) AND (c.user_id = auth.uid())))));
+
+
+
+  create policy "select_own_messages"
+  on "public"."ai_messages"
+  as permissive
+  for select
+  to authenticated
+using ((EXISTS ( SELECT 1
+   FROM public.ai_conversations c
+  WHERE ((c.id = ai_messages.conversation_id) AND (c.user_id = auth.uid())))));
+
+
+
   create policy "Applicants view own applications"
   on "public"."applications"
   as permissive
@@ -6070,6 +6455,8 @@ using ((auth.uid() = user_id));
 
 CREATE TRIGGER applications_set_updated_at BEFORE UPDATE ON public.applications FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 
+CREATE TRIGGER applications_sync_job_count AFTER INSERT OR DELETE OR UPDATE OF job_id ON public.applications FOR EACH ROW EXECUTE FUNCTION public.sync_job_application_count();
+
 CREATE TRIGGER applications_updated_at BEFORE UPDATE ON public.applications FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
 
 CREATE TRIGGER prevent_self_job_application_trigger BEFORE INSERT ON public.applications FOR EACH ROW EXECUTE FUNCTION public.prevent_self_job_application();
@@ -6104,11 +6491,17 @@ CREATE TRIGGER jobs_updated_at BEFORE UPDATE ON public.jobs FOR EACH ROW EXECUTE
 
 CREATE TRIGGER messages_updated_at BEFORE UPDATE ON public.messages FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
 
+CREATE TRIGGER on_new_message_created AFTER INSERT ON public.messages FOR EACH ROW EXECUTE FUNCTION public.handle_new_message_notification();
+
 CREATE TRIGGER payments_updated_at BEFORE UPDATE ON public.payments FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
+
+CREATE TRIGGER on_post_comment_created AFTER INSERT ON public.post_comments FOR EACH ROW EXECUTE FUNCTION public.handle_new_comment_notification();
 
 CREATE TRIGGER post_comments_count_delete AFTER DELETE ON public.post_comments FOR EACH ROW EXECUTE FUNCTION public.update_post_comments_count();
 
 CREATE TRIGGER post_comments_count_insert AFTER INSERT ON public.post_comments FOR EACH ROW EXECUTE FUNCTION public.update_post_comments_count();
+
+CREATE TRIGGER on_post_like_created AFTER INSERT ON public.post_likes FOR EACH ROW EXECUTE FUNCTION public.handle_new_like_notification();
 
 CREATE TRIGGER post_likes_count_trigger AFTER INSERT OR DELETE ON public.post_likes FOR EACH ROW EXECUTE FUNCTION public.update_post_counters();
 
@@ -6122,6 +6515,7 @@ CREATE TRIGGER resumes_set_updated_at BEFORE UPDATE ON public.resumes FOR EACH R
 
 CREATE TRIGGER resumes_updated_at BEFORE UPDATE ON public.resumes FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
 
+drop trigger if exists "on_auth_user_created_referral" on "auth"."users";
 
 drop policy "Public read avatars" on "storage"."objects";
 
@@ -6191,12 +6585,48 @@ using ((bucket_id = 'company-logos'::text));
 
 
 
+  create policy "Public can view resumes"
+  on "storage"."objects"
+  as permissive
+  for select
+  to public
+using ((bucket_id = 'resumes'::text));
+
+
+
+  create policy "Users can delete their own resumes"
+  on "storage"."objects"
+  as permissive
+  for delete
+  to authenticated
+using (((bucket_id = 'resumes'::text) AND ((auth.uid())::text = (storage.foldername(name))[1])));
+
+
+
+  create policy "Users can update their own resumes"
+  on "storage"."objects"
+  as permissive
+  for update
+  to authenticated
+using (((bucket_id = 'resumes'::text) AND ((auth.uid())::text = (storage.foldername(name))[1])));
+
+
+
   create policy "Users can upload posts"
   on "storage"."objects"
   as permissive
   for insert
   to authenticated
 with check ((bucket_id = 'posts'::text));
+
+
+
+  create policy "Users can upload resumes"
+  on "storage"."objects"
+  as permissive
+  for insert
+  to authenticated
+with check (((bucket_id = 'resumes'::text) AND ((auth.uid())::text = (storage.foldername(name))[1])));
 
 
 

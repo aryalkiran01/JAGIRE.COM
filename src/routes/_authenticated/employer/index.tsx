@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent } from "@/components/ui/card";
@@ -13,11 +13,18 @@ import {
   Sparkles,
   Loader as Loader2,
   Video,
+  Building2,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { seedDemoData } from "@/lib/demo-seed";
-import { useQueryClient } from "@tanstack/react-query";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export const Route = createFileRoute("/_authenticated/employer/")({ component: EmployerDashboard });
 
@@ -25,6 +32,7 @@ function EmployerDashboard() {
   const { user } = useAuth();
   const qc = useQueryClient();
   const [seeding, setSeeding] = useState(false);
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
 
   async function runSeed() {
     if (!user) return;
@@ -32,8 +40,7 @@ function EmployerDashboard() {
     try {
       const res = await seedDemoData(user.id);
       toast.success(`Added ${res.jobs} demo jobs`);
-      qc.invalidateQueries({ queryKey: ["my-company"] });
-      qc.invalidateQueries({ queryKey: ["my-jobs"] });
+      window.location.reload();
     } catch (e: any) {
       toast.error(e.message ?? "Seed failed");
     } finally {
@@ -41,15 +48,37 @@ function EmployerDashboard() {
     }
   }
 
-  const { data: company } = useQuery({
-    queryKey: ["my-company", user?.id],
+  // Fetch ALL companies for this user
+  const { data: companies, isLoading: companiesLoading } = useQuery({
+    queryKey: ["my-companies", user?.id],
     enabled: !!user,
-    queryFn: async () =>
-      (await supabase.from("companies").select("*").eq("owner_id", user!.id).maybeSingle()).data,
+    staleTime: 0,
+    refetchOnMount: "always",
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("companies")
+        .select("*")
+        .eq("owner_id", user!.id)
+        .order("created_at", { ascending: false });
+      console.log("All companies:", data);
+      return data ?? [];
+    },
   });
+
+  // Set default selected company to the most recent
+  useEffect(() => {
+    if (companies && companies.length > 0 && !selectedCompanyId) {
+      setSelectedCompanyId(companies[0].id);
+    }
+  }, [companies, selectedCompanyId]);
+
+  const company = companies?.find((c) => c.id === selectedCompanyId) || companies?.[0];
+
   const { data: jobs } = useQuery({
     queryKey: ["my-jobs", company?.id],
     enabled: !!company?.id,
+    staleTime: 0,
+    refetchOnMount: "always",
     queryFn: async () =>
       (
         await supabase
@@ -76,7 +105,16 @@ function EmployerDashboard() {
     },
   });
 
-  if (!company) {
+  if (companiesLoading) {
+    return (
+      <div className="container mx-auto px-4 py-16 flex justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // No companies at all
+  if (!companies || companies.length === 0) {
     return (
       <div className="container mx-auto px-4 py-16 max-w-lg">
         <Card>
@@ -103,17 +141,41 @@ function EmployerDashboard() {
       </div>
     );
   }
-  const totalApps = appCounts ?? 0;
-  const totalViews = jobs?.reduce((sum, j) => sum + (j.views_count ?? 0), 0) ?? 0;
 
+  const totalApps = jobs?.reduce((sum, j) => sum + (j.applications_count ?? 0), 0) ?? 0;
+  const totalViews = jobs?.reduce((sum, j) => sum + (j.views_count ?? 0), 0) ?? 0;
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-bold">{company.name}</h1>
+          <h1 className="text-3xl font-bold">{company?.name}</h1>
           <p className="text-muted-foreground">Employer dashboard</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
+          {/* Company Switcher */}
+          {companies.length > 1 && (
+            <Select value={selectedCompanyId || ""} onValueChange={setSelectedCompanyId}>
+              <SelectTrigger className="w-[200px]">
+                <Building2 className="h-4 w-4 mr-2" />
+                <SelectValue placeholder="Switch company" />
+              </SelectTrigger>
+              <SelectContent>
+                {companies.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+
+          <Button variant="outline" asChild>
+            <Link to="/employer/company">
+              <Plus className="mr-2 h-4 w-4" />
+              New Company
+            </Link>
+          </Button>
+
           <Button variant="outline" asChild>
             <Link to="/employer/interviews">
               <Video className="mr-2 h-4 w-4" />
@@ -129,13 +191,14 @@ function EmployerDashboard() {
             Seed demo jobs
           </Button>
           <Button asChild className="gradient-brand text-primary-foreground">
-            <Link to="/employer/jobs/new">
+            <Link to="/employer/jobs/new" search={{ companyId: company?.id }}>
               <Plus className="mr-2 h-4 w-4" />
               Post a job
             </Link>
           </Button>
         </div>
       </div>
+
       <div className="grid md:grid-cols-3 gap-4 mb-8">
         <StatCard
           icon={Briefcase}
@@ -145,9 +208,10 @@ function EmployerDashboard() {
         <StatCard icon={Users} label="Total applicants" value={totalApps} />
         <StatCard icon={TrendingUp} label="Total views" value={totalViews} />
       </div>
+
       <Card>
         <CardContent className="p-6">
-          <h2 className="font-semibold mb-4">Your jobs</h2>
+          <h2 className="font-semibold mb-4">Jobs at {company?.name}</h2>
           {jobs?.length ? (
             <div className="space-y-2">
               {jobs.map((j) => (
@@ -173,7 +237,7 @@ function EmployerDashboard() {
             </div>
           ) : (
             <div className="text-center py-8 text-muted-foreground">
-              No jobs yet. Post your first!
+              No jobs yet for {company?.name}. Post your first!
             </div>
           )}
         </CardContent>
