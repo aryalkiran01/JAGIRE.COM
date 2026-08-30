@@ -80,14 +80,14 @@ function AboutPage() {
       </section>
 
       {/* Stats */}
-      <section className="container mx-auto px-4 py-12">
+      {/* <section className="container mx-auto px-4 py-12">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
           <StatBox icon={Briefcase} value="5,000+" label="Active jobs" />
           <StatBox icon={Building2} value="500+" label="Companies" />
           <StatBox icon={Users} value="10,000+" label="Candidates" />
           <StatBox icon={Award} value="98%" label="Match accuracy" />
         </div>
-      </section>
+      </section> */}
 
       {/* Mission & Vision */}
       <section className="container mx-auto px-4 py-20">

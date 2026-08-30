@@ -21,12 +21,27 @@ export interface SubscriptionStatus {
 }
 
 export function useSubscription() {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
 
   return useQuery<SubscriptionStatus>({
-    queryKey: ["subscription", user?.id],
+    queryKey: ["subscription", user?.id, role],
     enabled: !!user,
     queryFn: async () => {
+      // Admins get full access without subscription
+      if (role === "admin") {
+        return {
+          isPremium: true,
+          plan_type: "enterprise",
+          plan_name: "Admin Access",
+          status: "active",
+          payment_status: "paid",
+          daysRemaining: null,
+          isActive: true,
+          isExpired: false,
+          isTrialing: false,
+        };
+      }
+
       const { data, error } = await supabase
         .from("subscriptions")
         .select(
