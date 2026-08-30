@@ -18,44 +18,73 @@ DROP POLICY IF EXISTS "Allow authenticated users to insert learning_items" ON pu
 DROP POLICY IF EXISTS "Allow authenticated users to update learning_items" ON public.learning_items;
 DROP POLICY IF EXISTS "Allow authenticated users to view learning_items" ON public.learning_items;
 DROP POLICY IF EXISTS "Anyone can view learning items" ON public.learning_items;
+DROP POLICY IF EXISTS "Anyone can view learning_items" ON public.learning_items;
 
 CREATE POLICY "Anyone can view learning_items"
   ON public.learning_items FOR SELECT TO anon, authenticated USING (true);
 
+DROP POLICY IF EXISTS "admin_insert_learning_items"
+  ON public.learning_items;
+
 CREATE POLICY "admin_insert_learning_items"
-  ON public.learning_items FOR INSERT TO authenticated
-  WITH CHECK (public.has_role(auth.uid(), 'admin'::public.app_role));
+  ON public.learning_items
+  FOR INSERT
+  TO authenticated
+  WITH CHECK (
+    public.has_role(auth.uid(), 'admin'::public.app_role)
+  );
+
+DROP POLICY IF EXISTS "admin_update_learning_items"
+  ON public.learning_items;
 
 CREATE POLICY "admin_update_learning_items"
-  ON public.learning_items FOR UPDATE TO authenticated
-  USING (public.has_role(auth.uid(), 'admin'::public.app_role))
-  WITH CHECK (public.has_role(auth.uid(), 'admin'::public.app_role));
+  ON public.learning_items
+  FOR UPDATE
+  TO authenticated
+  USING (
+    public.has_role(auth.uid(), 'admin'::public.app_role)
+  )
+  WITH CHECK (
+    public.has_role(auth.uid(), 'admin'::public.app_role)
+  );
+
+DROP POLICY IF EXISTS "admin_delete_learning_items"
+  ON public.learning_items;
 
 CREATE POLICY "admin_delete_learning_items"
-  ON public.learning_items FOR DELETE TO authenticated
-  USING (public.has_role(auth.uid(), 'admin'::public.app_role));
+  ON public.learning_items
+  FOR DELETE
+  TO authenticated
+  USING (
+    public.has_role(auth.uid(), 'admin'::public.app_role)
+  );
 
 -- ── 3. user_roles: Remove self-insert and self-update policies (privilege escalation)
 DROP POLICY IF EXISTS "insert_own_user_role" ON public.user_roles;
 DROP POLICY IF EXISTS "update_own_user_role" ON public.user_roles;
 DROP POLICY IF EXISTS "insert_user_roles" ON public.user_roles;
 
-CREATE POLICY "admin_insert_user_roles"
-  ON public.user_roles FOR INSERT TO authenticated
-  WITH CHECK (public.has_role(auth.uid(), 'admin'::public.app_role));
+DROP POLICY IF EXISTS "admin_insert_user_roles"
+  ON public.user_roles;
 
+CREATE POLICY "admin_insert_user_roles"
+  ON public.user_roles
+  FOR INSERT
+  TO authenticated
+  WITH CHECK (
+    public.has_role(auth.uid(), 'admin'::public.app_role)
+  );
+
+-- ── 4. admin_users view: Add security_invoker to respect RLS
 -- ── 4. admin_users view: Add security_invoker to respect RLS
 CREATE OR REPLACE VIEW public.admin_users
 WITH (security_invoker = true) AS
-SELECT p.id, p.full_name, p.headline, p.bio, p.avatar_url, p.location,
-    p.created_at, p.updated_at, p.current_position, p.experience_years,
-    p.preferred_location, p.expected_salary, p.phone, p.email,
-    p.website, p.github_url, p.linkedin_url, p.skills, p.languages,
-    p.education, p.experience, p.projects, p.certifications,
-    p.referral_code, p.banner_url, p.github_username, p.about,
-    p.onboarding_completed, p.ai_profile_data, ur.role
-FROM (public.profiles p
-  LEFT JOIN public.user_roles ur ON (ur.user_id = p.id));
+SELECT
+  p.*,
+  ur.role
+FROM public.profiles p
+LEFT JOIN public.user_roles ur
+  ON ur.user_id = p.id;
 
 REVOKE SELECT ON public.admin_users FROM anon;
 GRANT SELECT ON public.admin_users TO authenticated;
