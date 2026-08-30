@@ -1,13 +1,19 @@
 -- Issue 1: Employers must NOT be able to apply for jobs.
--- Replace the existing INSERT policy on applications to add a check
--- that the applicant does NOT have the 'employer' role.
+-- Remove all old INSERT policies that could bypass the role restriction.
 
-DROP POLICY IF EXISTS "Applicants create own" ON applications;
+DROP POLICY IF EXISTS "Applicants can apply" ON public.applications;
+DROP POLICY IF EXISTS "Users can apply" ON public.applications;
+DROP POLICY IF EXISTS "insert_own_application" ON public.applications;
+
+-- Recreate the secure INSERT policy.
+
+DROP POLICY IF EXISTS "Applicants create own" ON public.applications;
 
 CREATE POLICY "Applicants create own"
-  ON applications FOR INSERT
-  TO authenticated
-  WITH CHECK (
-    auth.uid() = applicant_id
-    AND NOT has_role(auth.uid(), 'employer'::app_role)
-  );
+ON public.applications
+FOR INSERT
+TO authenticated
+WITH CHECK (
+  auth.uid() = applicant_id
+  AND NOT has_role(auth.uid(), 'employer'::app_role)
+);
