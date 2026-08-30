@@ -1,1 +1,7 @@
 project_id = "qtkwzcdawwtbukrnpkbk"
+
+[functions.verify-esewa-payment]
+verify_jwt = false
+
+[functions.send-email]
+verify_jwt = false

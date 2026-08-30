@@ -298,17 +298,20 @@ jobs:
 ## 7. Security Audit & Hardening Report
 
 ### 7.1 Auth & Role Escalation Audit (Fixed & Verified)
+
 - **Server-Side Role Mutation (`adminUpdateUserRole`)**: Role assignment is now guarded on the server via `adminUpdateUserRole` using verified JWT claims (`requireSupabaseAuth`) and `supabaseAdmin`, preventing client-side role manipulation.
 - **Admin User & Company Deletion (`adminDeleteUser`, `adminDeleteCompany`)**: Cascading deletions and auth user cleanup are now strictly performed in server RPC endpoints requiring verified admin privileges.
 - **Client Route Guarding**: Authenticated admin routes in `_authenticated/admin.tsx` only execute queries and mutations when role is verified as `admin`.
 
 ### 7.2 Google Calendar & OAuth Audit (Fixed & Verified)
+
 - **Token Leakage Prevention**: Removed sensitive OAuth token logging in production server logs.
 - **IDOR Protection (`scheduleInterview`)**: `scheduleInterview` now verifies that the authenticated user owns the job or company before creating interviews or calendar events.
 - **Cryptographic Key Derivation**: AES-256-GCM encryption in `connection-key-crypto.server.ts` now uses SHA-256 key derivation, ensuring robust 32-byte key handling regardless of secret string format.
 - **State & Access Revocation Handling**: Handled cases where Google OAuth does not return a refresh token if already granted without re-prompting consent.
 
 ### 7.3 AI Integration Key Exposure Audit (Verified)
+
 - **Zero Client-Side Key Exposure**: Verified that all AI API keys (`GEMINI_API_KEY`, `DEEPSEEK_API_KEY`, `OPENROUTER_API_KEY`) are kept exclusively on the server (`.server.ts` and `createServerFn`).
 - **No `VITE_` Key Leaks**: None of the AI keys are prefixed with `VITE_` or exposed in client bundles.
 - **Server Middleware Protection**: All AI endpoints (`generateText`, `generateJson`, employer/jobseeker AI assistants) are shielded behind authentication and rate validation.
@@ -332,13 +335,13 @@ jobs:
 
 ## 9. Troubleshooting & Rollback
 
-| Symptom | Probable Cause | Resolution |
-| :--- | :--- | :--- |
-| **500 on SSR initial load** | Missing server environment variables (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`) | Verify env variables are provided in host dashboard. |
-| **AI requests failing** | `GEMINI_API_KEY` missing or invalid provider chosen | Check `AI_PROVIDER` and corresponding API keys. |
-| **eSewa payment redirect fails** | Using test merchant code with live URL or vice versa | Ensure matching credentials and URLs in `ESEWA_*` vars. |
-| **Google Calendar OAuth error** | Redirect URI mismatch in Google Cloud Console | Ensure URI is exact: `https://<domain>/google-calendar/callback`. |
-| **CORS errors on Supabase calls** | Domain not whitelisted in Supabase Auth settings | Add production URL to Supabase Auth Redirect URLs. |
+| Symptom                           | Probable Cause                                                                     | Resolution                                                        |
+| :-------------------------------- | :--------------------------------------------------------------------------------- | :---------------------------------------------------------------- |
+| **500 on SSR initial load**       | Missing server environment variables (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`) | Verify env variables are provided in host dashboard.              |
+| **AI requests failing**           | `GEMINI_API_KEY` missing or invalid provider chosen                                | Check `AI_PROVIDER` and corresponding API keys.                   |
+| **eSewa payment redirect fails**  | Using test merchant code with live URL or vice versa                               | Ensure matching credentials and URLs in `ESEWA_*` vars.           |
+| **Google Calendar OAuth error**   | Redirect URI mismatch in Google Cloud Console                                      | Ensure URI is exact: `https://<domain>/google-calendar/callback`. |
+| **CORS errors on Supabase calls** | Domain not whitelisted in Supabase Auth settings                                   | Add production URL to Supabase Auth Redirect URLs.                |
 
 ---
 
