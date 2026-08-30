@@ -10,8 +10,6 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
-const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL ?? "admin@jagire.com";
-
 export const Route = createFileRoute("/contact")({
   head: () => ({
     meta: [
@@ -34,28 +32,6 @@ function ContactPage() {
     try {
       const { error } = await supabase.from("contact_messages").insert({ name, email, message });
       if (error) throw error;
-
-      // Fire-and-forget admin email notification
-      supabase.functions
-        .invoke("send-email", {
-          body: {
-            to: ADMIN_EMAIL,
-            subject: `New contact message from ${name}`,
-            html: `
-              <h2>New contact message — Jagire</h2>
-              <table style="border-collapse:collapse;width:100%">
-                <tr><td style="padding:6px;font-weight:bold;width:100px">Name</td><td style="padding:6px">${name}</td></tr>
-                <tr><td style="padding:6px;font-weight:bold">Email</td><td style="padding:6px"><a href="mailto:${email}">${email}</a></td></tr>
-                <tr><td style="padding:6px;font-weight:bold">Time</td><td style="padding:6px">${new Date().toLocaleString()}</td></tr>
-              </table>
-              <h3 style="margin-top:16px">Message</h3>
-              <p style="white-space:pre-wrap">${message}</p>
-            `,
-          },
-        })
-        .catch(() => {
-          /* silent — notification best-effort */
-        });
 
       toast.success("Message sent — we'll be in touch!");
       setName("");

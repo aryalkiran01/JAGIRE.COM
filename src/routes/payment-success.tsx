@@ -9,6 +9,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
 import { PLANS } from "@/lib/plans";
 import { useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/payment-success")({
   head: () => ({ meta: [{ title: "Payment successful — Jagire" }] }),
@@ -88,17 +89,22 @@ function PaymentSuccess() {
         // Call the edge function for server-side verification
         const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
         const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+        const { data: session } = await supabase.auth.getSession();
+        const accessToken = session.session?.access_token;
+        if (!accessToken) {
+          setState({ status: "failed", error: "Authentication required to verify payment." });
+          return;
+        }
         const response = await fetch(`${supabaseUrl}/functions/v1/verify-esewa-payment`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${supabaseKey}`,
+            Authorization: `Bearer ${accessToken}`,
             apikey: supabaseKey,
           },
           body: JSON.stringify({
             transaction_uuid: transactionUuid,
             total_amount: totalAmount,
-            user_id: user.id,
             esewa_signature: esewaSignature || undefined,
             signed_field_names: signedFieldNames || undefined,
           }),

@@ -12,6 +12,15 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 export const Route = createFileRoute("/support")({
   head: () => ({
     meta: [
@@ -54,12 +63,16 @@ function Support() {
     toast.success("Ticket submitted!");
 
     const adminEmail = import.meta.env.VITE_ADMIN_EMAIL ?? "admin@jagire.com";
+    const { data: session } = await supabase.auth.getSession();
+    const accessToken = session.session?.access_token;
+    if (!accessToken) return;
     supabase.functions
       .invoke("send-email", {
+        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
         body: {
           to: adminEmail,
           subject: `[Support] New ticket: ${subject}`,
-          html: `<h2>New Support Ticket</h2><p><b>User:</b> ${user.email ?? user.id}</p><p><b>Subject:</b> ${subject}</p><p><b>Message:</b><br/>${message}</p><p><b>Time:</b> ${new Date().toLocaleString()}</p>`,
+          html: `<h2>New Support Ticket</h2><p><b>User:</b> ${escapeHtml(user.email ?? user.id)}</p><p><b>Subject:</b> ${escapeHtml(subject)}</p><p><b>Message:</b><br/>${escapeHtml(message)}</p><p><b>Time:</b> ${new Date().toLocaleString()}</p>`,
         },
       })
       .catch(() => {});

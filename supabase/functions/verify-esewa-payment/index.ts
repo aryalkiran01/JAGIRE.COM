@@ -27,10 +27,8 @@ interface VerifyBody {
   transaction_uuid: string;
   total_amount: string;
   product_code?: string;
-  user_id?: string;
-  // eSewa callback signature for verification
-  esewa_signature?: string;
-  signed_field_names?: string;
+  esewa_signature: string;
+  signed_field_names: string;
 }
 
 async function hmacSha256Hex(message: string, secret: string): Promise<string> {
@@ -61,6 +59,38 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
+    // 0. Authenticate the caller via Supabase JWT — do NOT trust client-supplied user_id
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!supabaseUrl || !anonKey || !serviceRoleKey) {
+      return new Response(JSON.stringify({ error: "Server misconfiguration" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const userClient = createClient(supabaseUrl, anonKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: { user }, error: userError } = await userClient.auth.getUser();
+    if (userError || !user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const userId = user.id;
+
     const body = (await req.json()) as VerifyBody;
     const { transaction_uuid, total_amount } = body;
 
@@ -71,8 +101,9 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    if (!body.user_id) {
-      return new Response(JSON.stringify({ error: "Missing user_id" }), {
+    // Signature is MANDATORY — reject if missing
+    if (!body.esewa_signature || !body.signed_field_names) {
+      return new Response(JSON.stringify({ error: "Missing eSewa signature", verified: false }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -80,23 +111,27 @@ Deno.serve(async (req: Request) => {
 
     const product_code = body.product_code ?? MERCHANT_CODE;
 
-    // 1. Verify eSewa callback signature if provided
-    if (body.esewa_signature && body.signed_field_names) {
-      const fields = body.signed_field_names.split(",");
-      const messageParts: string[] = [];
-      for (const f of fields) {
-        const val = (body as any)[f.trim()] ?? "";
-        messageParts.push(`${f.trim()}=${val}`);
-      }
-      const message = messageParts.join(",");
-      const computedSig = await hmacSha256Hex(message, ESEWA_SECRET);
-      if (computedSig !== body.esewa_signature) {
-        console.error("Signature mismatch:", { computed: computedSig, provided: body.esewa_signature });
-        return new Response(JSON.stringify({ error: "Invalid eSewa signature", verified: false }), {
-          status: 403,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
+    // 1. Verify eSewa callback signature (mandatory)
+    const fields = body.signed_field_names.split(",");
+    const messageParts: string[] = [];
+    for (const f of fields) {
+      const fieldName = f.trim();
+      // Look up the value from the body by field name
+      let val: string;
+      if (fieldName === "total_amount") val = total_amount;
+      else if (fieldName === "transaction_uuid") val = transaction_uuid;
+      else if (fieldName === "product_code") val = product_code;
+      else val = (body as any)[fieldName] ?? "";
+      messageParts.push(`${fieldName}=${val}`);
+    }
+    const message = messageParts.join(",");
+    const computedSig = await hmacSha256Hex(message, ESEWA_SECRET);
+    if (computedSig !== body.esewa_signature) {
+      console.error("Signature mismatch");
+      return new Response(JSON.stringify({ error: "Invalid eSewa signature", verified: false }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // 2. Verify with eSewa server-to-server
@@ -126,15 +161,6 @@ Deno.serve(async (req: Request) => {
       String(esewaData?.total_amount ?? "") === String(total_amount);
 
     // 3. Connect to Supabase with service role (bypass RLS)
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    if (!supabaseUrl || !serviceRoleKey) {
-      return new Response(JSON.stringify({ error: "Server misconfiguration" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
     const supabase = createClient(supabaseUrl, serviceRoleKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
@@ -161,7 +187,7 @@ Deno.serve(async (req: Request) => {
     // 5. Record verification attempt (audit log)
     const { error: logError } = await supabase.from("payment_verifications").insert({
       transaction_uuid,
-      user_id: body.user_id,
+      user_id: userId,
       product_code,
       total_amount: Number(total_amount),
       verified: isVerified,
@@ -180,7 +206,6 @@ Deno.serve(async (req: Request) => {
         JSON.stringify({
           verified: false,
           error: "Payment not confirmed by eSewa",
-          http_status: esewaResponse.status,
         }),
         {
           status: 402,
@@ -216,7 +241,7 @@ Deno.serve(async (req: Request) => {
     // 7. Upsert subscription (service role bypasses RLS)
     const { error: subError } = await supabase.from("subscriptions").upsert(
       {
-        user_id: body.user_id,
+        user_id: userId,
         plan_type: planType,
         status: "active",
         payment_status: "paid",
@@ -240,7 +265,7 @@ Deno.serve(async (req: Request) => {
 
     // 8. Record in payments table
     await supabase.from("payments").insert({
-      user_id: body.user_id,
+      user_id: userId,
       amount,
       currency: "NPR",
       plan_type: planType,
@@ -256,11 +281,11 @@ Deno.serve(async (req: Request) => {
       subscription_plan: planType,
       subscription_expires_at: expiresAt.toISOString(),
       updated_at: now.toISOString(),
-    }).eq("id", body.user_id);
+    }).eq("id", userId);
 
     // 10. Notify user
     await supabase.from("notifications").insert({
-      user_id: body.user_id,
+      user_id: userId,
       type: "payment_success",
       title: `${planType.charAt(0).toUpperCase() + planType.slice(1)} plan activated`,
       message: `Your ${planType} plan is now active for ${durationDays} days. AI features unlocked!`,
