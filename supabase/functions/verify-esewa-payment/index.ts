@@ -73,9 +73,9 @@ Deno.serve(async (req: Request) => {
     console.log("Status URL:", statusUrl);
     console.log("HTTP Status:", esewaResponse.status);
     console.log("Raw eSewa Response:", rawText);
-    let esewaData: any = null;
+    let esewaData: Record<string, unknown> | null = null;
     try {
-      esewaData = JSON.parse(rawText);
+      esewaData = JSON.parse(rawText) as Record<string, unknown>;
     } catch {
       esewaData = { raw: rawText };
     }

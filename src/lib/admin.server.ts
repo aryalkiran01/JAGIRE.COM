@@ -237,3 +237,111 @@ export const adminDeleteBlogComment = createServerFn({ method: "POST" })
 
     return { success: true, message: "Blog comment deleted" };
   });
+
+const updateUserRoleSchema = z.object({
+  targetUserId: z.string().uuid("Invalid user ID"),
+  newRole: z.enum(["job_seeker", "seeker", "employer", "admin"]),
+});
+
+export const adminUpdateUserRole = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator(updateUserRoleSchema)
+  .handler(async ({ data, context }) => {
+    const userId = (context as any)?.userId;
+    if (!userId) throw new Error("Not authenticated");
+
+    const { data: roleData } = await supabaseAdmin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (!roleData || roleData.role !== "admin") {
+      throw new Error("Not authorized: admin role required");
+    }
+
+    const { error } = await (supabaseAdmin as any)
+      .from("user_roles")
+      .upsert({ user_id: data.targetUserId, role: data.newRole }, { onConflict: "user_id,role" });
+
+    if (error) throw new Error(error.message);
+    return { success: true };
+  });
+
+const adminDeleteUserSchema = z.object({
+  targetUserId: z.string().uuid("Invalid user ID"),
+});
+
+export const adminDeleteUser = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator(adminDeleteUserSchema)
+  .handler(async ({ data, context }) => {
+    const userId = (context as any)?.userId;
+    if (!userId) throw new Error("Not authenticated");
+
+    const { data: roleData } = await supabaseAdmin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (!roleData || roleData.role !== "admin") {
+      throw new Error("Not authorized: admin role required");
+    }
+
+    // Cascade delete user data
+    await supabaseAdmin.from("applications").delete().eq("applicant_id", data.targetUserId);
+    await supabaseAdmin.from("resumes").delete().eq("user_id", data.targetUserId);
+    await supabaseAdmin.from("saved_jobs").delete().eq("user_id", data.targetUserId);
+    await supabaseAdmin.from("user_roles").delete().eq("user_id", data.targetUserId);
+    const { error } = await supabaseAdmin.from("profiles").delete().eq("id", data.targetUserId);
+    if (error) throw new Error(error.message);
+
+    try {
+      await (supabaseAdmin.auth.admin as any)?.deleteUser(data.targetUserId);
+    } catch (e: any) {
+      console.warn("auth.admin.deleteUser notice:", e?.message);
+    }
+
+    return { success: true };
+  });
+
+const adminDeleteCompanySchema = z.object({
+  companyId: z.string().uuid("Invalid company ID"),
+});
+
+export const adminDeleteCompany = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator(adminDeleteCompanySchema)
+  .handler(async ({ data, context }) => {
+    const userId = (context as any)?.userId;
+    if (!userId) throw new Error("Not authenticated");
+
+    const { data: roleData } = await supabaseAdmin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (!roleData || roleData.role !== "admin") {
+      throw new Error("Not authorized: admin role required");
+    }
+
+    const { data: companyJobs } = await supabaseAdmin
+      .from("jobs")
+      .select("id")
+      .eq("company_id", data.companyId);
+
+    if (companyJobs && companyJobs.length > 0) {
+      const jobIds = companyJobs.map((j: any) => j.id);
+      await supabaseAdmin.from("interviews").delete().in("job_id", jobIds);
+      await supabaseAdmin.from("applications").delete().in("job_id", jobIds);
+      await supabaseAdmin.from("saved_jobs").delete().in("job_id", jobIds);
+      await supabaseAdmin.from("jobs").delete().in("id", jobIds);
+    }
+
+    const { error } = await supabaseAdmin.from("companies").delete().eq("id", data.companyId);
+    if (error) throw new Error(error.message);
+
+    return { success: true };
+  });

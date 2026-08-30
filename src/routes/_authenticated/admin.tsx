@@ -58,7 +58,12 @@ import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useServerFn } from "@tanstack/react-start";
-import { adminDeleteJob } from "@/lib/admin.server";
+import {
+  adminDeleteJob,
+  adminUpdateUserRole,
+  adminDeleteUser,
+  adminDeleteCompany,
+} from "@/lib/admin.server";
 
 export const Route = createFileRoute("/_authenticated/admin")({ component: Admin });
 
@@ -169,13 +174,18 @@ function Admin() {
       ).data ?? [],
   });
 
+  const updateRoleFn = useServerFn(adminUpdateUserRole);
+  const deleteUserFn = useServerFn(adminDeleteUser);
+  const deleteCompanyFn = useServerFn(adminDeleteCompany);
+
   const changeRole = useMutation({
     mutationFn: async ({ userId, newRole }: { userId: string; newRole: string }) => {
-      const { error } = await supabase
-        .from("user_roles")
-        .update({ role: newRole as "seeker" | "employer" | "admin" | "job_seeker" })
-        .eq("user_id", userId);
-      if (error) throw error;
+      await updateRoleFn({
+        data: {
+          targetUserId: userId,
+          newRole: newRole as "job_seeker" | "seeker" | "employer" | "admin",
+        },
+      });
     },
     onSuccess: () => {
       toast.success("Role updated");
@@ -186,17 +196,7 @@ function Admin() {
 
   const deleteUser = useMutation({
     mutationFn: async (userId: string) => {
-      // Remove applications, resumes, profile (cascade handles most via FK)
-      await supabase.from("applications").delete().eq("applicant_id", userId);
-      await supabase.from("resumes").delete().eq("user_id", userId);
-      await supabase.from("saved_jobs").delete().eq("user_id", userId);
-      await supabase.from("user_roles").delete().eq("user_id", userId);
-      await supabase.from("profiles").delete().eq("id", userId);
-      // Auth user deletion requires service role — best effort via admin API
-      const { error } = await supabase.functions.invoke("delete-user", {
-        body: { userId },
-      });
-      // If edge function not deployed, still consider it success (profile removed)
+      await deleteUserFn({ data: { targetUserId: userId } });
     },
     onSuccess: () => {
       toast.success("User removed");
@@ -207,18 +207,7 @@ function Admin() {
 
   const deleteCompany = useMutation({
     mutationFn: async (companyId: string) => {
-      // Remove jobs and their applications first
-      const { data: companyJobs } = await supabase
-        .from("jobs")
-        .select("id")
-        .eq("company_id", companyId);
-      if (companyJobs?.length) {
-        const ids = companyJobs.map((j: any) => j.id);
-        await supabase.from("applications").delete().in("job_id", ids);
-        await supabase.from("jobs").delete().in("id", ids);
-      }
-      const { error } = await supabase.from("companies").delete().eq("id", companyId);
-      if (error) throw error;
+      await deleteCompanyFn({ data: { companyId } });
     },
     onSuccess: () => {
       toast.success("Company deleted");

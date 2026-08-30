@@ -87,7 +87,7 @@ async function getCompanyIdForUser(userId: string): Promise<string> {
 
 export const uploadKnowledgeDocument = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => {
+  .validator((input: unknown) => {
     const i = input as {
       title: string;
       description?: string;
@@ -211,7 +211,7 @@ export const listKnowledgeDocuments = createServerFn({ method: "GET" })
 
 export const deleteKnowledgeDocument = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => {
+  .validator((input: unknown) => {
     const i = input as { documentId: string };
     if (!i?.documentId) throw new Error("Document ID is required");
     return { documentId: i.documentId };
@@ -233,7 +233,7 @@ export const deleteKnowledgeDocument = createServerFn({ method: "POST" })
 
 export const searchKnowledgeBase = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => {
+  .validator((input: unknown) => {
     const i = input as { query: string; limit?: number };
     if (!i?.query?.trim()) throw new Error("Query is required");
     return { query: i.query.trim(), limit: i.limit ?? 5 };
@@ -272,7 +272,7 @@ export const searchKnowledgeBase = createServerFn({ method: "POST" })
 
 export const getRagContext = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => {
+  .validator((input: unknown) => {
     const i = input as { query: string; companyId?: string };
     if (!i?.query?.trim()) throw new Error("Query is required");
     return { query: i.query.trim(), companyId: i.companyId };

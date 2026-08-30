@@ -11,7 +11,7 @@ const schema = z.object({
 
 export const updateApplicationStatus = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: z.infer<typeof schema>) => schema.parse(input))
+  .validator((input: z.infer<typeof schema>) => schema.parse(input))
   .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 

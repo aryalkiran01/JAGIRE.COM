@@ -190,8 +190,20 @@ function parseEducationItem(item: string) {
   return { title, subtitle, details };
 }
 
+export interface ResumeData {
+  full_name?: string;
+  headline?: string;
+  email?: string;
+  phone?: string;
+  summary?: string;
+  experience: { items: string[] };
+  education: { items: string[] };
+  projects: { items: string[] };
+  skills: { items: string[] };
+}
+
 interface ResumePDFProps {
-  data: any;
+  data: ResumeData;
   title: string;
   template: string;
 }

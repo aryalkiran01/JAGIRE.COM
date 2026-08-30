@@ -319,7 +319,7 @@ function AiFeaturePage() {
     const q = input.trim();
     if (!q || ask.isPending || !isPremium || !hasCompany) return;
     ask.mutate(q);
-  }, [input, ask.isPending, isPremium, hasCompany, ask]);
+  }, [input, isPremium, hasCompany, ask]);
 
   const handleSuggestionClick = useCallback(
     (q: string) => {

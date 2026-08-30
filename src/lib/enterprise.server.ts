@@ -1,10 +1,9 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 import { createServerFn } from "@tanstack/react-start";
 import { randomBytes, createHash } from "node:crypto";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth.middleware";
 import { requirePremium } from "@/lib/premium.server";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import type { Json } from "@/integrations/supabase/types";
 
 async function getCompanyIdForUser(userId: string): Promise<string> {
   const { data, error } = await supabaseAdmin
@@ -33,7 +32,7 @@ export const listDepartments = createServerFn({ method: "GET" })
 
 export const createDepartment = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => {
+  .validator((input: unknown) => {
     const i = input as { name: string; description?: string; headId?: string };
     if (!i?.name?.trim()) throw new Error("Department name is required");
     return {
@@ -73,7 +72,7 @@ export const createDepartment = createServerFn({ method: "POST" })
 
 export const deleteDepartment = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => {
+  .validator((input: unknown) => {
     const i = input as { departmentId: string };
     if (!i?.departmentId) throw new Error("Department ID is required");
     return { departmentId: i.departmentId };
@@ -102,7 +101,7 @@ export const deleteDepartment = createServerFn({ method: "POST" })
 
 export const listAuditLogs = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => {
+  .validator((input: unknown) => {
     const i = (input ?? {}) as { limit?: number; offset?: number };
     return { limit: i.limit ?? 50, offset: i.offset ?? 0 };
   })
@@ -135,12 +134,12 @@ export const listApiKeys = createServerFn({ method: "GET" })
 
 export const createApiKey = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => {
+  .validator((input: unknown) => {
     const i = input as { name: string; permissions?: Record<string, unknown>; expiresAt?: string };
     if (!i?.name?.trim()) throw new Error("Key name is required");
     return {
       name: i.name.trim().slice(0, 100),
-      permissions: i.permissions ?? {},
+      permissions: (i.permissions ?? {}) as unknown as Json,
       expiresAt: i.expiresAt || undefined,
     };
   })
@@ -159,7 +158,7 @@ export const createApiKey = createServerFn({ method: "POST" })
         name: data.name,
         key_hash: keyHash,
         key_prefix: keyPrefix,
-        permissions: data.permissions,
+        permissions: data.permissions as unknown as Json,
         expires_at: data.expiresAt ?? null,
         created_by: context.userId,
       })
@@ -182,7 +181,7 @@ export const createApiKey = createServerFn({ method: "POST" })
 
 export const revokeApiKey = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => {
+  .validator((input: unknown) => {
     const i = input as { keyId: string };
     if (!i?.keyId) throw new Error("Key ID is required");
     return { keyId: i.keyId };

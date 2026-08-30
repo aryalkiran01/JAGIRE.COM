@@ -22,6 +22,7 @@ import {
   Briefcase,
   Users,
   CheckCheck,
+  LucideIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
@@ -30,7 +31,7 @@ export const Route = createFileRoute("/_authenticated/notifications")({
   component: Notifications,
 });
 
-const ICONS: Record<string, any> = {
+const ICONS: Record<string, LucideIcon> = {
   interview_scheduled: Video,
   interview_confirmed: Check,
   interview_cancelled: Calendar,
@@ -57,11 +58,11 @@ type Notification = {
   type: string;
   title: string;
   message: string | null;
-  data: any;
+  data: Record<string, unknown> | null;
   is_read: boolean;
   created_at: string;
   link: string | null;
-  metadata: any;
+  metadata: Record<string, unknown> | null;
 };
 
 function Notifications() {
@@ -138,6 +139,7 @@ function Notifications() {
     return () => {
       supabase.removeChannel(channel);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, qc]);
 
   const scrollToPost = (postId: string) => {

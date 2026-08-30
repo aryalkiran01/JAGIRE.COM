@@ -12,13 +12,13 @@ function Saved() {
   const { data } = useQuery({
     queryKey: ["saved", user?.id],
     enabled: !!user,
-    queryFn: async () =>
-      (
-        await supabase
-          .from("saved_jobs")
-          .select("job:jobs(*, company:companies(name, logo_url))")
-          .eq("user_id", user!.id)
-      ).data ?? [],
+    queryFn: async () => {
+      const res = await supabase
+        .from("saved_jobs")
+        .select("job:jobs(*, company:companies(name, logo_url))")
+        .eq("user_id", user!.id);
+      return res.data ?? [];
+    },
   });
   return (
     <div className="container mx-auto px-4 py-8">
@@ -26,7 +26,7 @@ function Saved() {
       {data?.length ? (
         <div className="grid gap-3">
           {data.map(
-            (s: any) =>
+            (s) =>
               s.job && (
                 <Link key={s.job.id} to="/jobs/$jobId" params={{ jobId: s.job.id }}>
                   <Card className="hover:shadow-glow">
