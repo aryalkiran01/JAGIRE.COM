@@ -1,4 +1,4 @@
-project_id = "qtkwzcdawwtbukrnpkbk"
+project_id = "jqzbzaewolouoqifzqwl"
 
 [functions.verify-esewa-payment]
 verify_jwt = false
