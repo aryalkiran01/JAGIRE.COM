@@ -92,11 +92,11 @@ type JobMatch = {
   company: string | null;
   score: number;
   location?: string | null;
-  salaryMin?: number;
-  salaryMax?: number;
-  companyLocation?: string;
+  salaryMin?: number | null;
+  salaryMax?: number | null;
+  companyLocation?: string | null;
   isNepalBased?: boolean;
-  jobType?: string;
+  jobType?: string | null;
   requiredSkills?: string[];
 };
 

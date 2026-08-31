@@ -121,14 +121,10 @@ function ResumeBuilder() {
     }
     try {
       toast.info("Scanning resume with AI...");
-      const result = await runScan({ data: { resumeId: currentId } });
-      if (result.success) {
-        toast.success(
-          "Resume scanned successfully! Check the Resume Scanner page for detailed results.",
-        );
-      } else {
-        toast.error(result.error?.message ?? "Unable to complete the resume scan right now.");
-      }
+      await runScan({ data: { resumeId: currentId } });
+      toast.success(
+        "Resume scanned successfully! Check the Resume Scanner page for detailed results.",
+      );
     } catch (err) {
       toast.error((err as Error).message ?? "Unable to complete the resume scan right now.");
     }

@@ -124,7 +124,7 @@ Deno.serve(async (req: Request) => {
       if (fieldName === "total_amount") val = total_amount;
       else if (fieldName === "transaction_uuid") val = transaction_uuid;
       else if (fieldName === "product_code") val = product_code;
-      else val = (body as any)[fieldName] ?? "";
+      else val = String((body as Record<string, unknown>)[fieldName] ?? "");
       messageParts.push(`${fieldName}=${val}`);
     }
     const message = messageParts.join(",");
@@ -151,7 +151,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const rawText = await esewaResponse.text();
-    let esewaData: any = null;
+    let esewaData: Record<string, unknown> | null = null;
     try {
       esewaData = JSON.parse(rawText) as Record<string, unknown>;
     } catch {
