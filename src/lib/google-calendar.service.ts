@@ -454,6 +454,20 @@ export const scheduleInterview = createServerFn({ method: "POST" })
     }
     const candidateId = application.applicant_id;
 
+    // Prevent duplicate active interviews for the same application
+    const { data: existingInterview } = await supabaseAdmin
+      .from("interviews")
+      .select("id, status, title, scheduled_at")
+      .eq("application_id", data.applicationId)
+      .in("status", ["scheduled", "confirmed", "reschedule_requested"])
+      .maybeSingle();
+
+    if (existingInterview) {
+      throw new Error(
+        `An active interview already exists for this application ("${existingInterview.title}" on ${new Date(existingInterview.scheduled_at).toLocaleString()}). Cancel or complete it before scheduling a new one.`,
+      );
+    }
+
     const { data: interview, error: interviewError } = await supabaseAdmin
       .from("interviews")
       .insert({
