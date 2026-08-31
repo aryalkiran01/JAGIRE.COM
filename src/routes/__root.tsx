@@ -143,7 +143,25 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     scripts: [
       {
         type: "text/javascript",
-        children: `(function(){try{var t=localStorage.getItem("jagire-theme");if(t==="dark"||(t===null&&window.matchMedia("(prefers-color-scheme: dark)").matches)){document.documentElement.classList.add("dark");}}catch(e){}})();`,
+        children: `
+      (function() {
+        try {
+          var stored = localStorage.getItem('jagire-theme');
+          var theme = stored;
+          
+          if (!theme) {
+            theme = 'light'; // Force light by default
+          }
+          
+          document.documentElement.classList.remove('dark');
+          if (theme === 'dark') {
+            document.documentElement.classList.add('dark');
+          }
+        } catch (e) {
+          document.documentElement.classList.remove('dark');
+        }
+      })();
+    `,
       },
     ],
   }),

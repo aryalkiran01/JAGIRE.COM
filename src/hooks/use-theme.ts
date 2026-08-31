@@ -1,20 +1,29 @@
 import { useEffect, useState, useCallback } from "react";
-import { initTheme, toggleTheme, type Theme } from "@/lib/theme";
+import { applyTheme, toggleTheme, type Theme } from "@/lib/theme";
 
 export function useTheme() {
-  const [theme, setTheme] = useState<Theme>("light"); // Default to light
+  // Read from actual DOM state instead of hardcoding "light"
+  const [theme, setTheme] = useState<Theme>(() => {
+    if (typeof window !== "undefined") {
+      return document.documentElement.classList.contains("dark") ? "dark" : "light";
+    }
+    return "light";
+  });
 
   useEffect(() => {
-    // Initialize theme and get the actual applied theme
-    const currentTheme = document.documentElement.classList.contains("dark") ? "dark" : "light";
-    setTheme(currentTheme);
+    // Force light theme if no stored preference
+    const stored = localStorage.getItem("jagire-theme");
+    if (!stored) {
+      applyTheme("light");
+      setTheme("light");
+    }
 
-    // Listen for system theme changes
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
     const handleChange = (e: MediaQueryListEvent) => {
-      // Only update if no stored preference
       if (!localStorage.getItem("jagire-theme")) {
-        setTheme(e.matches ? "dark" : "light");
+        const newTheme: Theme = e.matches ? "dark" : "light";
+        applyTheme(newTheme);
+        setTheme(newTheme);
       }
     };
 
