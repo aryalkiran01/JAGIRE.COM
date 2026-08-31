@@ -92,11 +92,11 @@ type JobMatch = {
   company: string | null;
   score: number;
   location?: string | null;
-  salaryMin?: number | null;
-  salaryMax?: number | null;
+  salaryMin?: number;
+  salaryMax?: number;
   companyLocation?: string | null;
   isNepalBased?: boolean;
-  jobType?: string | null;
+  jobType?: string;
   requiredSkills?: string[];
 };
 
@@ -416,7 +416,14 @@ function ResumeScanner() {
       return runScan({ data: { resumeId } });
     },
     onSuccess: (result) => {
-      setMatches(result.matches ?? []);
+      setMatches(
+        (result.matches ?? []).map((match) => ({
+          ...match,
+          jobType: match.jobType ?? undefined,
+          salaryMin: match.salaryMin ?? undefined,
+          salaryMax: match.salaryMax ?? undefined,
+        })),
+      );
       toast.success("Analysis complete! Career roadmap generated.");
       qc.invalidateQueries({ queryKey: ["my-resume-full"] });
       qc.invalidateQueries({ queryKey: ["my-resume"] });

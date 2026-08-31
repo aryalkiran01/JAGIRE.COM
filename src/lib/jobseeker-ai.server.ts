@@ -1127,7 +1127,7 @@ ${activeJobs
 
 export const runJobSeekerAiFeature = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((input: unknown) => {
+  .inputValidator((input: unknown) => {
     const i = input as { featureSlug: string; message: string };
     if (!i?.featureSlug) throw new Error("Feature slug is required");
     if (!i?.message?.trim()) throw new Error("Message is required");

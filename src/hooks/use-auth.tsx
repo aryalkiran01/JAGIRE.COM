@@ -52,7 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     return () => sub.subscription.unsubscribe();
-  }, [qc]);
+  }, []);
 
   async function fetchRole(userId: string) {
     const { data } = await supabase

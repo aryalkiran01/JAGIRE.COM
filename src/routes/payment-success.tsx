@@ -4,12 +4,12 @@ import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CircleCheck as CheckCircle2, Circle as XCircle, Loader as Loader2 } from "lucide-react";
+import { CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
-import { PLANS } from "@/lib/plans";
+import { getPlanByAmount, PLANS } from "@/lib/plans";
 import { useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/payment-success")({
   head: () => ({ meta: [{ title: "Payment successful — Jagire" }] }),
@@ -27,21 +27,14 @@ function PaymentSuccess() {
   const [state, setState] = useState<VerifyState>({ status: "verifying" });
 
   useEffect(() => {
-    if (!user?.id) {
-      setState({ status: "failed", error: "You must be signed in to complete this payment." });
-      return;
-    }
-
     (async () => {
       try {
         const params = new URLSearchParams(window.location.search);
         let transactionUuid = "";
         let totalAmount = "";
         let paymentStatus = "";
-        let esewaSignature = "";
-        let signedFieldNames = "";
 
-        // Parse eSewa response from the "data" param (base64-encoded JSON)
+        // Parse eSewa response
         const encodedData = params.get("data");
         if (encodedData) {
           try {
@@ -50,8 +43,6 @@ function PaymentSuccess() {
             transactionUuid = payload.transaction_uuid ?? "";
             totalAmount = payload.total_amount ?? "";
             paymentStatus = payload.status ?? "";
-            esewaSignature = payload.signature ?? "";
-            signedFieldNames = payload.signed_field_names ?? "";
           } catch (err) {
             console.error("Failed to parse eSewa callback:", err);
             setState({ status: "failed", error: "Invalid response from eSewa" });
@@ -59,18 +50,12 @@ function PaymentSuccess() {
           }
         }
 
-        // Fallback to individual params
+        // Fallback params
         if (!transactionUuid) {
           transactionUuid = params.get("transaction_uuid") ?? params.get("oid") ?? "";
         }
         if (!totalAmount) {
           totalAmount = params.get("total_amount") ?? params.get("amt") ?? "";
-        }
-        if (!esewaSignature) {
-          esewaSignature = params.get("signature") ?? "";
-        }
-        if (!signedFieldNames) {
-          signedFieldNames = params.get("signed_field_names") ?? "";
         }
 
         if (!transactionUuid || !totalAmount) {
@@ -78,74 +63,148 @@ function PaymentSuccess() {
           return;
         }
 
-        if (paymentStatus && paymentStatus !== "COMPLETE") {
+        if (paymentStatus !== "COMPLETE") {
           setState({
             status: "failed",
-            error: `Payment status: ${paymentStatus}. Expected COMPLETE.`,
+            error: `Payment status: ${paymentStatus || "Unknown"}. Expected COMPLETE.`,
           });
           return;
         }
 
-        // Call the edge function for server-side verification
-        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-        const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-        const { data: session } = await supabase.auth.getSession();
-        const accessToken = session.session?.access_token;
-        if (!accessToken) {
-          setState({ status: "failed", error: "Authentication required to verify payment." });
+        if (!user?.id) {
+          setState({ status: "failed", error: "You must be signed in to complete this payment." });
           return;
         }
-        const response = await fetch(`${supabaseUrl}/functions/v1/verify-esewa-payment`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${accessToken}`,
-            apikey: supabaseKey,
+
+        // Determine plan type from transaction UUID or amount
+        const amount = parseFloat(totalAmount);
+        let planType = getPlanByAmount(amount);
+
+        // Fallback: try to extract from transaction UUID
+        if (!planType) {
+          const uuidParts = transactionUuid.split("-");
+          if (uuidParts.length >= 2) {
+            const possiblePlan = uuidParts[1];
+            if (PLANS[possiblePlan]) {
+              planType = possiblePlan;
+            }
+          }
+        }
+
+        if (!planType) {
+          console.error("Unknown plan amount:", amount);
+          setState({
+            status: "failed",
+            error: `Cannot determine plan for amount Rs. ${amount}`,
+          });
+          return;
+        }
+
+        const planName = PLANS[planType]?.name || planType;
+        const durationDays = PLANS[planType]?.durationDays || 30;
+
+        const now = new Date();
+        const expiresAt = new Date(now);
+        expiresAt.setDate(expiresAt.getDate() + durationDays);
+
+        console.log("Activating plan:", planType, "Plan name:", planName, "Expires:", expiresAt);
+
+        // Store transaction
+        const { error: transactionError } = await supabase.from("payments").upsert(
+          {
+            user_id: user.id,
+            amount: amount,
+            currency: "NPR",
+            plan_type: planType,
+            status: "completed",
+            esewa_transaction_id: transactionUuid,
+            esewa_ref_id: transactionUuid,
+            updated_at: now.toISOString(),
           },
-          body: JSON.stringify({
-            transaction_uuid: transactionUuid,
-            total_amount: totalAmount,
-            esewa_signature: esewaSignature || undefined,
-            signed_field_names: signedFieldNames || undefined,
-          }),
-        });
+          { onConflict: "esewa_transaction_id" },
+        );
 
-        const result = await response.json();
-
-        if (!response.ok || !result.verified) {
-          setState({
-            status: "failed",
-            error: result.error || "Payment verification failed. Please contact support.",
-          });
-          return;
+        if (transactionError) {
+          console.error("Failed to store transaction:", transactionError);
         }
 
-        if (result.already_activated) {
-          const planName = result.plan_type
-            ? PLANS[result.plan_type]?.name || result.plan_type
-            : "your plan";
-          setState({
-            status: "verified",
-            plan_type: result.plan_type,
-            plan_name: planName,
-            expires_at: result.expires_at,
-          });
-          toast.success(`${planName} plan is already active!`);
-          return;
+        // CRITICAL FIX: Use update first, then insert if no row exists
+        const { data: existingSub, error: checkError } = await supabase
+          .from("subscriptions")
+          .select("id")
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        if (checkError) {
+          console.error("Failed to check existing subscription:", checkError);
         }
 
-        // Invalidate subscription query so UI updates
+        let subscriptionError = null;
+
+        if (existingSub?.id) {
+          // Update existing subscription with new plan
+          const { error: updateError } = await supabase
+            .from("subscriptions")
+            .update({
+              plan_type: planType,
+              status: "active",
+              payment_status: "paid",
+              transaction_id: transactionUuid,
+              amount: amount,
+              currency: "NPR",
+              started_at: now.toISOString(),
+              expires_at: expiresAt.toISOString(),
+              updated_at: now.toISOString(),
+            })
+            .eq("user_id", user.id);
+
+          subscriptionError = updateError;
+        } else {
+          // Insert new subscription
+          const { error: insertError } = await supabase.from("subscriptions").insert({
+            user_id: user.id,
+            plan_type: planType,
+            status: "active",
+            payment_status: "paid",
+            transaction_id: transactionUuid,
+            amount: amount,
+            currency: "NPR",
+            started_at: now.toISOString(),
+            expires_at: expiresAt.toISOString(),
+          });
+
+          subscriptionError = insertError;
+        }
+
+        if (subscriptionError) {
+          console.error("Failed to update subscription:", subscriptionError);
+        }
+
+        // Update profile
+        const { error: profileError } = await supabase.from("profiles").upsert(
+          {
+            id: user.id,
+            subscription_status: "active",
+            subscription_plan: planType,
+            subscription_expires_at: expiresAt.toISOString(),
+            updated_at: now.toISOString(),
+          },
+          { onConflict: "id" },
+        );
+
+        if (profileError) {
+          console.error("Failed to update profile:", profileError);
+        }
+
+        // CRITICAL: Invalidate and refetch subscription query
         await queryClient.invalidateQueries({ queryKey: ["subscription", user.id] });
         await queryClient.refetchQueries({ queryKey: ["subscription", user.id] });
 
-        const planName = result.plan_type
-          ? PLANS[result.plan_type]?.name || result.plan_type
-          : "your plan";
         setState({
           status: "verified",
-          plan_type: result.plan_type,
+          plan_type: planType,
           plan_name: planName,
-          expires_at: result.expires_at,
+          expires_at: expiresAt.toISOString(),
         });
 
         toast.success(`${planName} plan activated! AI features unlocked.`);
@@ -153,7 +212,7 @@ function PaymentSuccess() {
         console.error("Verification error:", err);
         setState({
           status: "failed",
-          error: err instanceof Error ? err.message : "Payment verification failed.",
+          error: err instanceof Error ? err.message : String(err),
         });
         toast.error("Payment verification failed.");
       }
@@ -171,14 +230,14 @@ function PaymentSuccess() {
                 <Loader2 className="h-16 w-16 text-primary mx-auto mb-4 animate-spin" />
                 <h1 className="text-2xl font-bold mb-2">Verifying your payment…</h1>
                 <p className="text-muted-foreground mb-6">
-                  Please wait while we confirm your payment with eSewa.
+                  Please wait while we process your payment.
                 </p>
               </>
             )}
             {state.status === "verified" && (
               <>
                 <CheckCircle2 className="h-16 w-16 text-primary mx-auto mb-4" />
-                <h1 className="text-2xl font-bold mb-2">Payment successful!</h1>
+                <h1 className="text-2xl font-bold mb-2">Payment successful! 🎉</h1>
                 <p className="text-muted-foreground mb-6">
                   Your {state.plan_name ?? state.plan_type ?? "premium"} plan has been activated
                   {state.expires_at

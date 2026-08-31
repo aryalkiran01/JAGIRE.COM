@@ -231,7 +231,7 @@ function JobSeekerAiFeaturePage() {
     const q = input.trim();
     if (!q || ask.isPending || !isPremium) return;
     ask.mutate(q);
-  }, [input, isPremium, ask]);
+  }, [input, ask.isPending, isPremium, ask]);
 
   const handleSuggestionClick = useCallback(
     (q: string) => {

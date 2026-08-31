@@ -154,7 +154,6 @@ function LearnPage() {
     if (user && !hasGenerated && !loading) {
       generateRecommendations();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   async function generateRecommendations() {

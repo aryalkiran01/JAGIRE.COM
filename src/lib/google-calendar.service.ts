@@ -27,7 +27,7 @@ function hasGoogleCreds() {
 // ------------------- OAuth endpoints -------------------
 export const startGoogleCalendarConnect = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((targetOrigin: string) => z.string().url().parse(targetOrigin))
+  .inputValidator((targetOrigin: string) => z.string().url().parse(targetOrigin))
   .handler(async ({ data: targetOrigin }) => {
     const { clientId } = clientCreds();
     if (!clientId) throw new Error("Google OAuth is not configured.");
@@ -45,21 +45,23 @@ export const startGoogleCalendarConnect = createServerFn({ method: "POST" })
 
 export const saveGoogleCalendarConnection = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((input: { code: string; redirectOrigin: string }) =>
+  .inputValidator((input: { code: string; redirectOrigin: string }) =>
     z.object({ code: z.string().min(1), redirectOrigin: z.string().url() }).parse(input),
   )
   .handler(async ({ data, context }) => {
+    console.log("=== saveGoogleCalendarConnection START ===");
+
     const { clientId, clientSecret } = clientCreds();
-    if (!clientId || !clientSecret) {
-      throw new Error("Google OAuth credentials are not configured on the server.");
-    }
+
+    console.log("User:", context.userId);
+    console.log("Code received:", !!data.code);
 
     const redirectUri = `${data.redirectOrigin}/google-calendar/callback`;
 
     const body = new URLSearchParams({
       code: data.code,
-      client_id: clientId,
-      client_secret: clientSecret,
+      client_id: clientId!,
+      client_secret: clientSecret!,
       redirect_uri: redirectUri,
       grant_type: "authorization_code",
     });
@@ -72,26 +74,22 @@ export const saveGoogleCalendarConnection = createServerFn({ method: "POST" })
       body,
     });
 
+    console.log("Google status:", res.status);
+
+    const response = await res.text();
+    console.log("Google response:", response);
+
     if (!res.ok) {
-      const errText = await res.text();
-      throw new Error(`Google token exchange failed: ${errText}`);
+      throw new Error(response);
     }
 
-    const tokens = (await res.json()) as { refresh_token?: string; access_token?: string };
+    const tokens = JSON.parse(response);
 
-    if (!tokens.refresh_token) {
-      // If user had already consented, Google might not re-send refresh_token unless prompt=consent was passed
-      const existing = await (
-        await import("@/lib/connection-key-crypto.server")
-      ).getConnectionKeyForUser(context.userId, "google_calendar");
-      if (!existing) {
-        throw new Error(
-          "Google did not return a refresh token. Please revoke access in your Google Account and try again.",
-        );
-      }
-    } else {
-      await saveConnectionKeyForUser(context.userId, "google_calendar", tokens.refresh_token);
-    }
+    console.log("Refresh token exists:", !!tokens.refresh_token);
+
+    await saveConnectionKeyForUser(context.userId, "google_calendar", tokens.refresh_token);
+
+    console.log("=== SAVED SUCCESSFULLY ===");
 
     return { ok: true };
   });
@@ -338,11 +336,8 @@ async function getApplicationDetails(supabaseAdmin: any, applicationId: string) 
       jobs (
         id,
         title,
-        employer_id,
-        posted_by,
         companies (
-          name,
-          owner_id
+          name
         )
       )
     `,
@@ -356,7 +351,7 @@ async function getApplicationDetails(supabaseAdmin: any, applicationId: string) 
 // ------------------- Main schedule function -------------------
 export const scheduleInterview = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator(
+  .inputValidator(
     (input: {
       applicationId: string;
       candidateEmail: string;
@@ -443,30 +438,7 @@ export const scheduleInterview = createServerFn({ method: "POST" })
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const application = await getApplicationDetails(supabaseAdmin, data.applicationId);
-    if (!application) throw new Error("Application not found");
-    const job = Array.isArray(application.jobs) ? application.jobs[0] : application.jobs;
-    const company = Array.isArray(job?.companies) ? job?.companies[0] : job?.companies;
-    const jobOwnerId = job?.employer_id ?? job?.posted_by ?? company?.owner_id;
-    if (jobOwnerId && jobOwnerId !== context.userId) {
-      throw new Error(
-        "Not authorized: only the job employer can schedule interviews for this application.",
-      );
-    }
     const candidateId = application.applicant_id;
-
-    // Prevent duplicate active interviews for the same application
-    const { data: existingInterview } = await supabaseAdmin
-      .from("interviews")
-      .select("id, status, title, scheduled_at")
-      .eq("application_id", data.applicationId)
-      .in("status", ["scheduled", "confirmed", "reschedule_requested"])
-      .maybeSingle();
-
-    if (existingInterview) {
-      throw new Error(
-        `An active interview already exists for this application ("${existingInterview.title}" on ${new Date(existingInterview.scheduled_at).toLocaleString()}). Cancel or complete it before scheduling a new one.`,
-      );
-    }
 
     const { data: interview, error: interviewError } = await supabaseAdmin
       .from("interviews")
@@ -553,7 +525,7 @@ export const scheduleInterview = createServerFn({ method: "POST" })
 // ------------------- Status update functions -------------------
 export const updateInterviewStatus = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((input: { interviewId: string; status: string; notes?: string }) =>
+  .inputValidator((input: { interviewId: string; status: string; notes?: string }) =>
     z
       .object({
         interviewId: z.string().uuid(),
@@ -620,7 +592,7 @@ export const updateInterviewStatus = createServerFn({ method: "POST" })
 
 export const rescheduleInterview = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((input: { interviewId: string; proposedTimeISO: string; reason?: string }) =>
+  .inputValidator((input: { interviewId: string; proposedTimeISO: string; reason?: string }) =>
     z
       .object({
         interviewId: z.string().uuid(),

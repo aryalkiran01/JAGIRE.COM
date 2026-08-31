@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
@@ -25,7 +26,6 @@ import {
   ScanText,
   Video,
   FileText,
-  type LucideIcon,
 } from "lucide-react";
 
 export const Route = createFileRoute("/about")({
@@ -80,14 +80,14 @@ function AboutPage() {
       </section>
 
       {/* Stats */}
-      <section className="container mx-auto px-4 py-12">
+      {/* <section className="container mx-auto px-4 py-12">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
           <StatBox icon={Briefcase} value="5,000+" label="Active jobs" />
           <StatBox icon={Building2} value="500+" label="Companies" />
           <StatBox icon={Users} value="10,000+" label="Candidates" />
           <StatBox icon={Award} value="98%" label="Match accuracy" />
         </div>
-      </section>
+      </section> */}
 
       {/* Mission & Vision */}
       <section className="container mx-auto px-4 py-20">
@@ -376,7 +376,7 @@ function AboutPage() {
   );
 }
 
-function StatBox({ icon: Icon, value, label }: { icon: LucideIcon; value: string; label: string }) {
+function StatBox({ icon: Icon, value, label }: { icon: any; value: string; label: string }) {
   return (
     <Card className="glass text-center hover:shadow-card-soft transition-all">
       <CardContent className="p-6">
@@ -388,15 +388,7 @@ function StatBox({ icon: Icon, value, label }: { icon: LucideIcon; value: string
   );
 }
 
-function PlatformCard({
-  icon: Icon,
-  title,
-  desc,
-}: {
-  icon: LucideIcon;
-  title: string;
-  desc: string;
-}) {
+function PlatformCard({ icon: Icon, title, desc }: { icon: any; title: string; desc: string }) {
   return (
     <Card className="glass hover:shadow-glow hover:-translate-y-1 transition-all group">
       <CardContent className="p-6">
@@ -410,7 +402,7 @@ function PlatformCard({
   );
 }
 
-function ValueCard({ icon: Icon, title, desc }: { icon: LucideIcon; title: string; desc: string }) {
+function ValueCard({ icon: Icon, title, desc }: { icon: any; title: string; desc: string }) {
   return (
     <Card className="glass hover:shadow-card-soft transition-all text-center">
       <CardContent className="p-8">

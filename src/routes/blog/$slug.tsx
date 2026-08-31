@@ -84,8 +84,10 @@ function BlogPost() {
       const { data } = await supabase
         .from("blog_comments")
         .select("id, blog_id, author_id, content, created_at")
-        .eq("blog_id", post!.id);
-      return (data ?? []).map((comment) => ({ ...comment, author: null }));
+        .eq("blog_id", post!.id)
+        .order("created_at", { ascending: false });
+
+      return (data ?? []).map((comment: any) => ({ ...comment, author: null }));
     },
   });
 

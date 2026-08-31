@@ -172,8 +172,8 @@ function Messages() {
           .order("created_at", { ascending: false })
           .limit(chatIds.length);
 
-        lastMessagesData?.forEach((msg) => {
-          if (msg.chat_id && !lastMessageMap.has(msg.chat_id)) {
+        lastMessagesData?.forEach((msg: any) => {
+          if (!lastMessageMap.has(msg.chat_id)) {
             lastMessageMap.set(msg.chat_id, {
               id: msg.id,
               chat_id: msg.chat_id,

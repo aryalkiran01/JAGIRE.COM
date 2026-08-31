@@ -106,13 +106,13 @@ async function updateApplication(
 
 export const shortlistApplication = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((input: { applicationId: string }) => applicationInput.parse(input))
+  .inputValidator((input: { applicationId: string }) => applicationInput.parse(input))
   .handler(({ data, context }) =>
     updateApplication(data.applicationId, context.userId, "shortlisted"),
   );
 export const rejectApplication = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((input: { applicationId: string; remark: string }) =>
+  .inputValidator((input: { applicationId: string; remark: string }) =>
     applicationInput.extend({ remark: z.string().trim().min(1).max(2000) }).parse(input),
   )
   .handler(({ data, context }) =>
@@ -121,7 +121,7 @@ export const rejectApplication = createServerFn({ method: "POST" })
 
 export const deleteJobAsAdmin = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((input: { jobId: string }) => z.object({ jobId: z.string().uuid() }).parse(input))
+  .inputValidator((input: { jobId: string }) => z.object({ jobId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     const { data: role, error: roleError } = await supabaseAdmin
       .from("user_roles")

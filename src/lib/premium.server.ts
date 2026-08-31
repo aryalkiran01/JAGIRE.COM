@@ -10,11 +10,32 @@ export class PremiumRequiredError extends Error {
   }
 }
 
+async function isAdmin(userId: string): Promise<boolean> {
+  const { data, error } = await supabaseAdmin
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Error checking admin role:", error);
+    return false;
+  }
+
+  return data?.role === "admin";
+}
+
 /**
  * Throws PremiumRequiredError if the user does NOT have an active, paid,
- * non-expired subscription. Supports all plan types (premium, starter, professional, enterprise).
+ * non-expired subscription. Admins bypass this check.
+ * Supports all plan types (premium, starter, professional, enterprise).
  */
 export async function requirePremium(userId: string): Promise<void> {
+  // Admins bypass subscription checks
+  if (await isAdmin(userId)) {
+    return;
+  }
+
   const { data, error } = await supabaseAdmin
     .from("subscriptions")
     .select("status, payment_status, expires_at, plan_type")
@@ -38,9 +59,15 @@ export async function requirePremium(userId: string): Promise<void> {
 
 /**
  * Checks if the user has a specific plan type.
+ * Admins bypass this check.
  * Useful for restricting enterprise-only features.
  */
 export async function requirePlan(userId: string, allowedPlans: string[]): Promise<void> {
+  // Admins bypass subscription checks
+  if (await isAdmin(userId)) {
+    return;
+  }
+
   const { data, error } = await supabaseAdmin
     .from("subscriptions")
     .select("status, payment_status, expires_at, plan_type")
@@ -65,14 +92,26 @@ export async function requirePlan(userId: string, allowedPlans: string[]): Promi
 
 /**
  * Checks if the user has an employer plan (starter, professional, enterprise).
+ * Admins bypass this check.
  */
 export async function requireEmployerPlan(userId: string): Promise<void> {
+  // Admins bypass subscription checks
+  if (await isAdmin(userId)) {
+    return;
+  }
+
   await requirePlan(userId, ["starter", "professional", "enterprise"]);
 }
 
 /**
  * Checks if the user has a job seeker premium plan.
+ * Admins bypass this check.
  */
 export async function requireSeekerPremium(userId: string): Promise<void> {
+  // Admins bypass subscription checks
+  if (await isAdmin(userId)) {
+    return;
+  }
+
   await requirePlan(userId, ["premium"]);
 }

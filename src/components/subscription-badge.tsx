@@ -4,9 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useSubscription, PLAN_NAMES, isEmployerPlan } from "@/hooks/use-subscription";
+import { useAuth } from "@/hooks/use-auth";
 
 export function SubscriptionBadge() {
+  const { role } = useAuth();
   const { data: sub, isLoading } = useSubscription();
+
+  // Don't show subscription badge for admins
+  if (role === "admin") return null;
 
   if (isLoading) return null;
 

@@ -553,7 +553,7 @@ Analyze each job and match it with the candidate. Return the match results.`;
 
 export const scoreResume = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((input: unknown) => {
+  .inputValidator((input: unknown) => {
     const i = input as { resumeId: string; text: string };
     if (!i?.resumeId || !i?.text) throw new Error("Missing resumeId or text");
     return { resumeId: i.resumeId, text: i.text.slice(0, 12000) };
@@ -627,7 +627,7 @@ export const careerRecommendations = createServerFn({ method: "POST" })
 
 export const scanResumeFromStorage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((input: unknown) => {
+  .inputValidator((input: unknown) => {
     const i = input as { resumeId: string };
     if (!i?.resumeId) throw new Error("Missing resumeId");
     return { resumeId: i.resumeId };
@@ -856,7 +856,7 @@ export const scanResumeFromStorage = createServerFn({ method: "POST" })
 
 export const importFromGitHub = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((input: unknown) => {
+  .inputValidator((input: unknown) => {
     const i = input as { username: string };
     const u = (i?.username ?? "").trim().replace(/^@/, "");
     if (!/^[a-zA-Z0-9-]{1,39}$/.test(u)) throw new Error("Invalid GitHub username");
@@ -922,7 +922,7 @@ export const importFromGitHub = createServerFn({ method: "POST" })
 
 export const importFromLinkedInText = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((input: unknown) => {
+  .inputValidator((input: unknown) => {
     const i = input as { text: string; url?: string };
     if (!i?.text || i.text.trim().length < 50)
       throw new Error("Paste at least your LinkedIn About / Experience text");
@@ -1069,7 +1069,7 @@ export const learningRecommendations = createServerFn({ method: "POST" })
 
 export const careerCoach = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((input: unknown) => {
+  .inputValidator((input: unknown) => {
     const i = input as { question: string; sessionId?: string };
     if (!i?.question?.trim()) throw new Error("Question is required");
     return { question: i.question.trim().slice(0, 1000), sessionId: i.sessionId };
@@ -1265,7 +1265,7 @@ async function buildUserContext(supabase: any, userId: string, role: string | nu
 
 export const aiAssistantChat = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((input: unknown) => {
+  .inputValidator((input: unknown) => {
     const i = input as { message: string; conversationId?: string; role?: string };
     if (!i?.message?.trim()) throw new Error("Message is required");
     return {

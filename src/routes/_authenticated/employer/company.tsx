@@ -22,7 +22,27 @@ import {
   Save,
   ArrowLeft,
   CheckCircle2,
+  Plus,
+  Trash2,
+  AlertTriangle,
 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/_authenticated/employer/company")({
   component: CompanyForm,
@@ -35,57 +55,81 @@ function slugify(s: string) {
     .replace(/^-|-$/g, "");
 }
 
+const emptyForm = {
+  name: "",
+  tagline: "",
+  description: "",
+  website: "",
+  industry: "",
+  size: "",
+  headquarters: "",
+  logo_url: "",
+};
+
 function CompanyForm() {
   const { user } = useAuth();
   const qc = useQueryClient();
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [companyToDelete, setCompanyToDelete] = useState<string | null>(null);
+  const [deleteJobCount, setDeleteJobCount] = useState(0);
 
-  const { data: company } = useQuery({
-    queryKey: ["my-company", user?.id],
+  // Fetch all companies owned by the user
+  const { data: companies, isLoading: companiesLoading } = useQuery({
+    queryKey: ["my-companies", user?.id],
     enabled: !!user,
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("companies")
         .select("*")
         .eq("owner_id", user!.id)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .order("created_at", { ascending: false });
 
-      return data;
+      if (error) throw error;
+      return data || [];
     },
   });
 
-  const [form, setForm] = useState<any>({
-    name: "",
-    tagline: "",
-    description: "",
-    website: "",
-    industry: "",
-    size: "",
-    headquarters: "",
-    logo_url: "",
-  });
+  // Get the selected company
+  const selectedCompany = companies?.find((c) => c.id === selectedCompanyId);
+
+  const [form, setForm] = useState<any>(emptyForm);
 
   useEffect(() => {
-    if (company) {
+    if (selectedCompany) {
       setForm({
-        name: company.name ?? "",
-        tagline: company.tagline ?? "",
-        description: company.description ?? "",
-        website: company.website ?? "",
-        industry: company.industry ?? "",
-        size: company.size ?? "",
-        headquarters: company.headquarters ?? "",
-        logo_url: company.logo_url ?? "",
+        name: selectedCompany.name ?? "",
+        tagline: selectedCompany.tagline ?? "",
+        description: selectedCompany.description ?? "",
+        website: selectedCompany.website ?? "",
+        industry: selectedCompany.industry ?? "",
+        size: selectedCompany.size ?? "",
+        headquarters: selectedCompany.headquarters ?? "",
+        logo_url: selectedCompany.logo_url ?? "",
       });
+    } else if (companies && companies.length === 0) {
+      // No companies yet, start with empty form
+      setForm(emptyForm);
     }
-  }, [company]);
+  }, [selectedCompany, companies]);
+
+  // Set initial selected company when companies load
+  useEffect(() => {
+    if (companies && companies.length > 0 && !selectedCompanyId) {
+      setSelectedCompanyId(companies[0].id);
+    }
+  }, [companies, selectedCompanyId]);
 
   const updateField = (field: string, value: string) => {
     setForm((prev: any) => ({
       ...prev,
       [field]: value,
     }));
+  };
+
+  const resetForm = () => {
+    setForm(emptyForm);
+    setSelectedCompanyId(null);
   };
 
   const upsert = useMutation({
@@ -110,8 +154,9 @@ function CompanyForm() {
         logo_url: form.logo_url.trim() || null,
       };
 
-      if (company) {
-        const nextSlug = slugify(form.name) || company.slug;
+      if (selectedCompany) {
+        // Update existing company
+        const nextSlug = slugify(form.name) || selectedCompany.slug;
 
         const { error } = await supabase
           .from("companies")
@@ -119,10 +164,11 @@ function CompanyForm() {
             ...editable,
             slug: nextSlug,
           })
-          .eq("id", company.id);
+          .eq("id", selectedCompany.id);
 
         if (error) throw error;
       } else {
+        // Create new company
         const { data: inserted, error } = await supabase
           .from("companies")
           .insert({
@@ -136,19 +182,232 @@ function CompanyForm() {
         if (error) throw error;
 
         console.log("Company created with ID:", inserted.id);
+        setSelectedCompanyId(inserted.id);
       }
     },
 
     onSuccess: async () => {
-      toast.success("Company profile saved successfully");
+      toast.success(selectedCompany ? "Company profile updated" : "Company created successfully");
 
-      qc.clear();
-
-      window.location.href = "/employer";
+      await qc.invalidateQueries({ queryKey: ["my-companies", user?.id] });
     },
 
     onError: (e: any) => {
       toast.error(e.message);
+    },
+  });
+
+  // Check job count before showing delete dialog
+  const handleDeleteClick = async (companyId: string) => {
+    try {
+      // Get count of jobs for this company
+      const { count, error } = await supabase
+        .from("jobs")
+        .select("*", { count: "exact", head: true })
+        .eq("company_id", companyId);
+
+      if (error) throw error;
+
+      setDeleteJobCount(count || 0);
+      setCompanyToDelete(companyId);
+      setShowDeleteDialog(true);
+    } catch (error: any) {
+      toast.error("Failed to check company jobs: " + error.message);
+    }
+  };
+
+  const deleteCompany = useMutation({
+    mutationFn: async (companyId: string) => {
+      // 1. First, get all job IDs for this company
+      const { data: jobs, error: jobsError } = await supabase
+        .from("jobs")
+        .select("id")
+        .eq("company_id", companyId);
+
+      if (jobsError) throw jobsError;
+
+      const jobIds = jobs?.map((job) => job.id) || [];
+
+      // 2. Delete related data for each job
+      for (const jobId of jobIds) {
+        // Delete applications and their related data
+        const { data: applications, error: appFetchError } = await supabase
+          .from("applications")
+          .select("id")
+          .eq("job_id", jobId);
+
+        if (!appFetchError && applications) {
+          for (const app of applications) {
+            // Delete application events
+            const { error: appEventsError } = await supabase
+              .from("application_events")
+              .delete()
+              .eq("application_id", app.id);
+
+            if (appEventsError) {
+              console.error(`Failed to delete events for application ${app.id}:`, appEventsError);
+            }
+
+            // Delete interviews related to this application
+            const { error: interviewsError } = await supabase
+              .from("interviews")
+              .delete()
+              .eq("application_id", app.id);
+
+            if (interviewsError) {
+              console.error(
+                `Failed to delete interviews for application ${app.id}:`,
+                interviewsError,
+              );
+            }
+          }
+
+          // Delete all applications for this job
+          const { error: applicationsError } = await supabase
+            .from("applications")
+            .delete()
+            .eq("job_id", jobId);
+
+          if (applicationsError) {
+            console.error(`Failed to delete applications for job ${jobId}:`, applicationsError);
+          }
+        }
+
+        // Delete saved jobs
+        const { error: savedJobsError } = await supabase
+          .from("saved_jobs")
+          .delete()
+          .eq("job_id", jobId);
+
+        if (savedJobsError) {
+          console.error(`Failed to delete saved jobs for job ${jobId}:`, savedJobsError);
+        }
+
+        // Delete job matches
+        const { error: jobMatchesError } = await supabase
+          .from("job_matches")
+          .delete()
+          .eq("job_id", jobId);
+
+        if (jobMatchesError) {
+          console.error(`Failed to delete job matches for job ${jobId}:`, jobMatchesError);
+        }
+
+        // Delete the job itself
+        const { error: jobDeleteError } = await supabase.from("jobs").delete().eq("id", jobId);
+
+        if (jobDeleteError) {
+          console.error(`Failed to delete job ${jobId}:`, jobDeleteError);
+          throw jobDeleteError;
+        }
+      }
+
+      // 3. Delete company-related data - explicit calls for each table
+      const { error: companyReviewsError } = await supabase
+        .from("company_reviews")
+        .delete()
+        .eq("company_id", companyId);
+
+      if (companyReviewsError) {
+        console.error("Failed to delete company reviews:", companyReviewsError);
+      }
+
+      const { error: departmentsError } = await supabase
+        .from("departments")
+        .delete()
+        .eq("company_id", companyId);
+
+      if (departmentsError) {
+        console.error("Failed to delete departments:", departmentsError);
+      }
+
+      const { error: followsError } = await supabase
+        .from("follows")
+        .delete()
+        .eq("company_id", companyId);
+
+      if (followsError) {
+        console.error("Failed to delete follows:", followsError);
+      }
+
+      const { error: knowledgeChunksError } = await supabase
+        .from("knowledge_chunks")
+        .delete()
+        .eq("company_id", companyId);
+
+      if (knowledgeChunksError) {
+        console.error("Failed to delete knowledge chunks:", knowledgeChunksError);
+      }
+
+      const { error: knowledgeDocumentsError } = await supabase
+        .from("knowledge_documents")
+        .delete()
+        .eq("company_id", companyId);
+
+      if (knowledgeDocumentsError) {
+        console.error("Failed to delete knowledge documents:", knowledgeDocumentsError);
+      }
+
+      const { error: reviewsError } = await supabase
+        .from("reviews")
+        .delete()
+        .eq("company_id", companyId);
+
+      if (reviewsError) {
+        console.error("Failed to delete reviews:", reviewsError);
+      }
+
+      const { error: apiKeysError } = await supabase
+        .from("api_keys")
+        .delete()
+        .eq("company_id", companyId);
+
+      if (apiKeysError) {
+        console.error("Failed to delete API keys:", apiKeysError);
+      }
+
+      const { error: auditLogsError } = await supabase
+        .from("audit_logs")
+        .delete()
+        .eq("company_id", companyId);
+
+      if (auditLogsError) {
+        console.error("Failed to delete audit logs:", auditLogsError);
+      }
+
+      // 4. Finally, delete the company
+      const { error: companyDeleteError } = await supabase
+        .from("companies")
+        .delete()
+        .eq("id", companyId);
+
+      if (companyDeleteError) {
+        console.error("Failed to delete company:", companyDeleteError);
+        throw companyDeleteError;
+      }
+
+      return jobIds.length;
+    },
+    onSuccess: async (deletedJobsCount) => {
+      toast.success(
+        `Company deleted successfully${deletedJobsCount > 0 ? ` along with ${deletedJobsCount} job posting(s)` : ""}`,
+      );
+      setShowDeleteDialog(false);
+      setCompanyToDelete(null);
+      setDeleteJobCount(0);
+
+      // Reset form if the deleted company was selected
+      if (selectedCompanyId === companyToDelete) {
+        resetForm();
+      }
+
+      await qc.invalidateQueries({ queryKey: ["my-companies", user?.id] });
+    },
+    onError: (e: any) => {
+      toast.error("Failed to delete company: " + e.message);
+      setShowDeleteDialog(false);
+      setCompanyToDelete(null);
+      setDeleteJobCount(0);
     },
   });
 
@@ -192,19 +451,18 @@ function CompanyForm() {
               </div>
 
               <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
-                {company ? "Edit your company" : "Create your company profile"}
+                {selectedCompany ? "Edit company" : "Create company profile"}
               </h1>
 
               <p className="mt-2 max-w-2xl text-muted-foreground">
-                Tell candidates who you are, what you do, and why they should consider joining your
-                team.
+                Manage your company profiles and tell candidates who you are.
               </p>
             </div>
 
-            {company && (
+            {companies && companies.length > 0 && (
               <div className="inline-flex items-center gap-2 rounded-full border bg-background px-3 py-1.5 text-sm text-muted-foreground">
                 <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                Profile created
+                {companies.length} {companies.length === 1 ? "company" : "companies"} created
               </div>
             )}
           </div>
@@ -213,6 +471,56 @@ function CompanyForm() {
 
       {/* Main */}
       <main className="container mx-auto max-w-5xl px-4 py-8">
+        {/* Company selector */}
+        {companies && companies.length > 0 && (
+          <Card className="mb-6 border-border/60 shadow-sm">
+            <CardContent className="p-4">
+              <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
+                <Label className="text-sm font-medium shrink-0">Select company:</Label>
+
+                <Select
+                  value={selectedCompanyId || ""}
+                  onValueChange={(value) => {
+                    if (value === "new") {
+                      resetForm();
+                    } else {
+                      setSelectedCompanyId(value);
+                    }
+                  }}
+                >
+                  <SelectTrigger className="w-full sm:w-[300px]">
+                    <SelectValue placeholder="Select a company" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {companies.map((company) => (
+                      <SelectItem key={company.id} value={company.id}>
+                        {company.name}
+                      </SelectItem>
+                    ))}
+                    <SelectItem value="new">
+                      <span className="flex items-center gap-2">
+                        <Plus className="h-4 w-4" /> Create new company
+                      </span>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {selectedCompany && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-destructive hover:text-destructive"
+                    onClick={() => handleDeleteClick(selectedCompany.id)}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
           {/* Form */}
           <div className="space-y-6">
@@ -441,34 +749,43 @@ function CompanyForm() {
 
                     <div>
                       <p className="font-medium">
-                        {company
-                          ? "Ready to update your profile?"
-                          : "Ready to publish your company?"}
+                        {selectedCompany
+                          ? "Ready to update this company?"
+                          : "Ready to create a new company?"}
                       </p>
 
                       <p className="text-sm text-muted-foreground">
-                        Your changes will be saved to your company profile.
+                        Your changes will be saved to this company profile.
                       </p>
                     </div>
                   </div>
 
-                  <Button
-                    onClick={() => upsert.mutate()}
-                    disabled={!form.name.trim() || upsert.isPending}
-                    className="h-11 min-w-[150px] gradient-brand text-primary-foreground"
-                  >
-                    {upsert.isPending ? (
-                      <>
-                        <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                        Saving...
-                      </>
-                    ) : (
-                      <>
-                        <Save className="mr-2 h-4 w-4" />
-                        {company ? "Save changes" : "Create company"}
-                      </>
+                  <div className="flex gap-3">
+                    {selectedCompany && (
+                      <Button variant="outline" onClick={resetForm} className="h-11">
+                        <Plus className="mr-2 h-4 w-4" />
+                        New company
+                      </Button>
                     )}
-                  </Button>
+
+                    <Button
+                      onClick={() => upsert.mutate()}
+                      disabled={!form.name.trim() || upsert.isPending}
+                      className="h-11 min-w-[150px] gradient-brand text-primary-foreground"
+                    >
+                      {upsert.isPending ? (
+                        <>
+                          <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="mr-2 h-4 w-4" />
+                          {selectedCompany ? "Save changes" : "Create company"}
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -575,6 +892,78 @@ function CompanyForm() {
           </aside>
         </div>
       </main>
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              Delete company
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              <div className="space-y-3">
+                <p>
+                  Are you sure you want to delete{" "}
+                  <span className="font-medium text-foreground">
+                    {companyToDelete && companies?.find((c) => c.id === companyToDelete)?.name}
+                  </span>
+                  ?
+                </p>
+
+                {deleteJobCount > 0 ? (
+                  <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3">
+                    <p className="font-medium text-destructive">
+                      This company has {deleteJobCount} job posting{deleteJobCount !== 1 ? "s" : ""}
+                      .
+                    </p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Deleting this company will also permanently delete all associated jobs,
+                      applications, and related data. This action cannot be undone.
+                    </p>
+                  </div>
+                ) : (
+                  <p>This action cannot be undone.</p>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => {
+                setCompanyToDelete(null);
+                setDeleteJobCount(0);
+              }}
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (companyToDelete) {
+                  deleteCompany.mutate(companyToDelete);
+                }
+              }}
+              disabled={deleteCompany.isPending}
+            >
+              {deleteCompany.isPending ? (
+                <>
+                  <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete company
+                  {deleteJobCount > 0
+                    ? ` and ${deleteJobCount} job${deleteJobCount !== 1 ? "s" : ""}`
+                    : ""}
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
