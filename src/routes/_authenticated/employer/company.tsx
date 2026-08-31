@@ -22,6 +22,34 @@ function slugify(s: string) {
     .replace(/^-|-$/g, "");
 }
 
+async function fetchCurrentCompany(userId: string) {
+  const { data: ownerCompany } = await supabase
+    .from("companies")
+    .select("*")
+    .eq("owner_id", userId)
+    .maybeSingle();
+
+  if (ownerCompany) return ownerCompany;
+
+  const { data: jobCompany } = await supabase
+    .from("jobs")
+    .select("company_id")
+    .eq("posted_by", userId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!jobCompany?.company_id) return null;
+
+  const { data: company } = await supabase
+    .from("companies")
+    .select("*")
+    .eq("id", jobCompany.company_id)
+    .maybeSingle();
+
+  return company;
+}
+
 function CompanyForm() {
   const { user } = useAuth();
   const nav = useNavigate();
@@ -29,8 +57,7 @@ function CompanyForm() {
   const { data: company } = useQuery({
     queryKey: ["my-company", user?.id],
     enabled: !!user,
-    queryFn: async () =>
-      (await supabase.from("companies").select("*").eq("owner_id", user!.id).maybeSingle()).data,
+    queryFn: async () => (user ? fetchCurrentCompany(user.id) : null),
   });
   const [form, setForm] = useState<any>({
     name: "",

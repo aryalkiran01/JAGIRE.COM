@@ -9,16 +9,27 @@ export const Route = createFileRoute("/_authenticated/saved")({ component: Saved
 
 function Saved() {
   const { user } = useAuth();
-  const { data } = useQuery({
+  type SavedJobRow = {
+    job?: {
+      id: string;
+      title: string;
+      company?: {
+        name?: string | null;
+        logo_url?: string | null;
+      } | null;
+    } | null;
+  };
+
+  const { data } = useQuery<SavedJobRow[]>({
     queryKey: ["saved", user?.id],
     enabled: !!user,
     queryFn: async () =>
-      (
+      ((
         await supabase
           .from("saved_jobs")
           .select("job:jobs(*, company:companies(name, logo_url))")
           .eq("user_id", user!.id)
-      ).data ?? [],
+      ).data as SavedJobRow[] | null) ?? [],
   });
   return (
     <div className="container mx-auto px-4 py-8">
@@ -26,7 +37,7 @@ function Saved() {
       {data?.length ? (
         <div className="grid gap-3">
           {data.map(
-            (s: any) =>
+            (s: SavedJobRow) =>
               s.job && (
                 <Link key={s.job.id} to="/jobs/$jobId" params={{ jobId: s.job.id }}>
                   <Card className="hover:shadow-glow">

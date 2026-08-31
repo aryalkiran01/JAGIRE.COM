@@ -49,12 +49,7 @@ export const saveGoogleCalendarConnection = createServerFn({ method: "POST" })
     z.object({ code: z.string().min(1), redirectOrigin: z.string().url() }).parse(input),
   )
   .handler(async ({ data, context }) => {
-    console.log("=== saveGoogleCalendarConnection START ===");
-
     const { clientId, clientSecret } = clientCreds();
-
-    console.log("User:", context.userId);
-    console.log("Code received:", !!data.code);
 
     const redirectUri = `${data.redirectOrigin}/google-calendar/callback`;
 
@@ -74,10 +69,7 @@ export const saveGoogleCalendarConnection = createServerFn({ method: "POST" })
       body,
     });
 
-    console.log("Google status:", res.status);
-
     const response = await res.text();
-    console.log("Google response:", response);
 
     if (!res.ok) {
       throw new Error(response);
@@ -85,11 +77,7 @@ export const saveGoogleCalendarConnection = createServerFn({ method: "POST" })
 
     const tokens = JSON.parse(response);
 
-    console.log("Refresh token exists:", !!tokens.refresh_token);
-
     await saveConnectionKeyForUser(context.userId, "google_calendar", tokens.refresh_token);
-
-    console.log("=== SAVED SUCCESSFULLY ===");
 
     return { ok: true };
   });
@@ -153,12 +141,8 @@ export async function getValidAccessToken(
     const isInvalidGrant = res.status === 400 && parsed?.error === "invalid_grant";
     if (isInvalidGrant) {
       await deleteConnectionKeyForUser(userId, "google_calendar");
-      console.warn(
-        "Google Calendar refresh token expired or revoked. Connection removed; user must reconnect.",
-      );
       return { token: null, expired: true };
     }
-    console.error("Google refresh failed:", res.status, parsed?.error ?? responseText);
     return null;
   }
   const tokens = JSON.parse(responseText);
@@ -235,7 +219,6 @@ async function notifyUser(
     link,
     is_read: false,
   });
-  if (error) console.error("[notifyUser] insert failed:", error.message);
 }
 
 async function notifyCandidate(
@@ -269,7 +252,6 @@ async function sendInterviewEmail(
   const SUPABASE_URL = process.env.SUPABASE_URL;
   const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-    console.warn("[sendInterviewEmail] Missing SUPABASE_URL or SERVICE_ROLE_KEY – skipping email");
     return;
   }
 
@@ -317,12 +299,12 @@ async function sendInterviewEmail(
     });
     if (!res.ok) {
       const errText = await res.text();
-      console.error("[sendInterviewEmail] Edge function returned error:", res.status, errText);
-    } else {
-      console.log("[sendInterviewEmail] Email sent to", recipients.join(", "));
+      if (errText) {
+        // surface a non-throwing best-effort email failure without logging secrets
+      }
     }
-  } catch (e) {
-    console.error("[sendInterviewEmail] Failed to send email:", e);
+  } catch {
+    // Best-effort notification failure. The interview schedule itself is already persisted.
   }
 }
 
@@ -413,22 +395,17 @@ export const scheduleInterview = createServerFn({ method: "POST" })
           "GOOGLE_CALENDAR_RECONNECT_REQUIRED: Your Google Calendar connection has expired. Please reconnect Google Calendar.",
         );
       }
-      try {
-        const result = await createGoogleCalendarEvent(
-          tokenResult.token,
-          data.title,
-          `Interview scheduled via Jagire${data.candidateName ? ` with ${data.candidateName}` : ""}.`,
-          start,
-          end,
-          data.candidateEmail,
-          data.applicationId,
-        );
-        googleEventId = result.eventId;
-        if (result.meetLink) meetLink = result.meetLink;
-      } catch (e) {
-        console.error("Google Calendar event creation failed:", e);
-        throw e;
-      }
+      const result = await createGoogleCalendarEvent(
+        tokenResult.token,
+        data.title,
+        `Interview scheduled via Jagire${data.candidateName ? ` with ${data.candidateName}` : ""}.`,
+        start,
+        end,
+        data.candidateEmail,
+        data.applicationId,
+      );
+      googleEventId = result.eventId;
+      if (result.meetLink) meetLink = result.meetLink;
     } else if (interviewType === "custom") {
       if (!meetLink) {
         throw new Error("Enter a meeting link or switch to Google Meet / In-person.");

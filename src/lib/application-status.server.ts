@@ -93,8 +93,9 @@ export const updateApplicationStatus = createServerFn({ method: "POST" })
         link: "/applications",
         is_read: false,
       });
-      if (notifError)
-        console.error("[updateApplicationStatus] notification failed:", notifError.message);
+      if (notifError) {
+        throw new Error(notifError.message);
+      }
     }
 
     return { success: true, message: `Application ${data.status}`, noop: false };

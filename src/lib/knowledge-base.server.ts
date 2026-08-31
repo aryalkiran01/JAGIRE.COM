@@ -123,7 +123,6 @@ export const uploadKnowledgeDocument = createServerFn({ method: "POST" })
         const buffer = Buffer.from(data.fileBase64, "base64");
         const pdfData = await pdf(buffer);
         finalText = pdfData.text.slice(0, 100_000);
-        console.log(`Extracted ${finalText.length} characters from PDF`);
       } catch (err) {
         throw new Error(
           `Failed to extract text from PDF: ${err instanceof Error ? err.message : "Unknown error"}`,
@@ -154,7 +153,6 @@ export const uploadKnowledgeDocument = createServerFn({ method: "POST" })
 
     try {
       const chunks = chunkText(finalText);
-      console.log(`Created ${chunks.length} chunks`);
 
       for (let idx = 0; idx < chunks.length; idx++) {
         const chunk = chunks[idx];
@@ -178,7 +176,6 @@ export const uploadKnowledgeDocument = createServerFn({ method: "POST" })
 
       return { documentId: doc.id, chunkCount: chunks.length, status: "ready" };
     } catch (err) {
-      console.error("Chunk processing error:", err);
       await (supabaseAdmin as any)
         .from("knowledge_documents")
         .update({

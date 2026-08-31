@@ -333,7 +333,6 @@ export const runEmployerAiFeature = createServerFn({ method: "POST" })
         provider: "ai",
       };
     } catch (err) {
-      console.error("runEmployerAiFeature failed:", (err as Error).message);
       return {
         success: false as const,
         data: null,

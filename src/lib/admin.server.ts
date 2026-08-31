@@ -26,7 +26,6 @@ async function notifyUser(
     link,
     is_read: false,
   });
-  if (error) console.error("[notifyUser] insert failed:", error.message);
 }
 
 export const adminDeleteJob = createServerFn({ method: "POST" })

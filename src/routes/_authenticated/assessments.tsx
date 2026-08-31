@@ -33,9 +33,6 @@ function Assessments() {
         .select("*")
         .order("created_at", { ascending: false });
 
-      console.log("Assessments:", data);
-      console.log("Assessment error:", error);
-
       if (error) throw error;
 
       return data ?? [];

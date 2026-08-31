@@ -70,12 +70,9 @@ Deno.serve(async (req: Request) => {
     }
 
     const rawText = await esewaResponse.text();
-    console.log("Status URL:", statusUrl);
-    console.log("HTTP Status:", esewaResponse.status);
-    console.log("Raw eSewa Response:", rawText);
-    let esewaData: any = null;
+    let esewaData: Record<string, unknown> | null = null;
     try {
-      esewaData = JSON.parse(rawText);
+      esewaData = JSON.parse(rawText) as Record<string, unknown>;
     } catch {
       esewaData = { raw: rawText };
     }
@@ -132,7 +129,7 @@ Deno.serve(async (req: Request) => {
     });
 
     if (logError) {
-      console.error("Failed to log verification:", logError.message);
+      throw new Error(logError.message);
     }
 
     if (!isVerified) {
@@ -153,9 +150,6 @@ Deno.serve(async (req: Request) => {
         },
       );
     }
-    console.log("Status URL:", statusUrl);
-    console.log("HTTP Status:", esewaResponse.status);
-    console.log("Raw eSewa Response:", rawText);
 
     // 5. Determine plan from the verified amount (single source of truth)
     const amount = Number(total_amount);
@@ -200,7 +194,6 @@ Deno.serve(async (req: Request) => {
       );
 
       if (subError) {
-        console.error("Failed to activate subscription:", subError.message);
         return new Response(
           JSON.stringify({ verified: true, error: "Failed to activate subscription" }),
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -240,7 +233,6 @@ Deno.serve(async (req: Request) => {
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (err) {
-    console.error("verify-esewa-payment error:", err);
     return new Response(JSON.stringify({ error: String(err), verified: false }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

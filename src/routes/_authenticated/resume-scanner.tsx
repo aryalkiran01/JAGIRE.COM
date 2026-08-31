@@ -64,6 +64,7 @@ function ResumeScanner() {
   const [matches, setMatches] = useState<
     Array<{ id: string; title: string; company: string | null; score: number }>
   >([]);
+  const [scanResult, setScanResult] = useState<Record<string, unknown> | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: resume, isLoading } = useQuery({
@@ -117,7 +118,23 @@ function ResumeScanner() {
         toast.success("Resume uploaded — analyzing…");
         const result = await runScan({ data: { resumeId: ins.data.id } });
         if (result.success && result.data) {
-          setMatches(result.data.matches ?? []);
+          const nextData = result.data as Record<string, unknown>;
+          setMatches((nextData.matches as Array<{ id: string; title: string; company: string | null; score: number }> | undefined) ?? []);
+          setScanResult((prev) => ({
+            ...(prev ?? {}),
+            ...(nextData as Record<string, unknown>),
+            file_name: resume?.file_name ?? "resume.pdf",
+            file_size: resume?.file_size ?? file.size,
+            overall_score: nextData.overall_score ?? prev?.overall_score ?? null,
+            ats_score: nextData.ats_score ?? prev?.ats_score ?? null,
+            grammar_score: nextData.grammar_score ?? prev?.grammar_score ?? null,
+            formatting_score: nextData.formatting_score ?? prev?.formatting_score ?? null,
+            keyword_score: nextData.keyword_score ?? prev?.keyword_score ?? null,
+            professionalism_score:
+              nextData.professionalism_score ?? prev?.professionalism_score ?? null,
+            suggestions: nextData.suggestions ?? prev?.suggestions ?? [],
+            career_roadmap: nextData.career_roadmap ?? prev?.career_roadmap ?? null,
+          }));
           toast.success("Analysis complete! Career roadmap generated.");
         } else {
           setMatches([]);
@@ -154,7 +171,7 @@ function ResumeScanner() {
       let scanId = resume.id;
 
       // If this resume has no stored text, try to find a builder-saved resume
-      const parsedData = resume.parsed_data as Record<string, any> | null;
+      const parsedData = resume.parsed_data as Record<string, unknown> | null;
       const hasStoredText = parsedData?.raw_text || resume.resume_data;
 
       if (!hasStoredText) {
@@ -175,7 +192,23 @@ function ResumeScanner() {
 
       const result = await runScan({ data: { resumeId: scanId } });
       if (result.success && result.data) {
-        setMatches(result.data.matches ?? []);
+        const nextData = result.data as Record<string, unknown>;
+        setMatches((nextData.matches as Array<{ id: string; title: string; company: string | null; score: number }> | undefined) ?? []);
+        setScanResult((prev) => ({
+          ...(prev ?? {}),
+          ...(nextData as Record<string, unknown>),
+          file_name: resume?.file_name ?? "resume.pdf",
+          file_size: resume?.file_size ?? 0,
+          overall_score: nextData.overall_score ?? prev?.overall_score ?? null,
+          ats_score: nextData.ats_score ?? prev?.ats_score ?? null,
+          grammar_score: nextData.grammar_score ?? prev?.grammar_score ?? null,
+          formatting_score: nextData.formatting_score ?? prev?.formatting_score ?? null,
+          keyword_score: nextData.keyword_score ?? prev?.keyword_score ?? null,
+          professionalism_score:
+            nextData.professionalism_score ?? prev?.professionalism_score ?? null,
+          suggestions: nextData.suggestions ?? prev?.suggestions ?? [],
+          career_roadmap: nextData.career_roadmap ?? prev?.career_roadmap ?? null,
+        }));
         toast.success("Re-analyzed! Career roadmap updated.");
       } else {
         setMatches([]);
@@ -273,34 +306,59 @@ function ResumeScanner() {
     });
   }
 
-  const scores = resume
+  type VisibleResume = {
+    file_name?: string | null;
+    file_size?: number | null;
+    overall_score?: number | null;
+    ats_score?: number | null;
+    grammar_score?: number | null;
+    formatting_score?: number | null;
+    keyword_score?: number | null;
+    professionalism_score?: number | null;
+    suggestions?: string[] | null;
+    career_roadmap?: Roadmap | null;
+  };
+
+  const activeResume = (scanResult ?? resume) as VisibleResume | null;
+  const scores = activeResume
     ? [
-        { label: "Overall", value: resume.overall_score, icon: Sparkles, color: "text-primary" },
-        { label: "ATS", value: resume.ats_score, icon: ScanText, color: "text-blue-500" },
+        {
+          label: "Overall",
+          value: activeResume.overall_score ?? null,
+          icon: Sparkles,
+          color: "text-primary",
+        },
+        { label: "ATS", value: activeResume.ats_score ?? null, icon: ScanText, color: "text-blue-500" },
         {
           label: "Grammar",
-          value: resume.grammar_score,
+          value: activeResume.grammar_score ?? null,
           icon: CheckCircle2,
           color: "text-green-500",
         },
         {
           label: "Formatting",
-          value: resume.formatting_score,
+          value: activeResume.formatting_score ?? null,
           icon: FileText,
           color: "text-accent",
         },
-        { label: "Keywords", value: resume.keyword_score, icon: Target, color: "text-orange-500" },
+        {
+          label: "Keywords",
+          value: activeResume.keyword_score ?? null,
+          icon: Target,
+          color: "text-orange-500",
+        },
         {
           label: "Professionalism",
-          value: resume.professionalism_score,
+          value: activeResume.professionalism_score ?? null,
           icon: Award,
           color: "text-purple-500",
         },
       ]
     : [];
-  const suggestions = (resume?.suggestions as string[] | null) ?? [];
-  const roadmap = (resume?.career_roadmap as Roadmap | null) ?? null;
+  const suggestions = activeResume?.suggestions ?? [];
+  const roadmap = activeResume?.career_roadmap ?? null;
   const skillGaps = roadmap?.skill_gaps ?? [];
+  const currentOverallScore = activeResume?.overall_score ?? null;
 
   function getScoreColor(value: number | null | undefined): string {
     if (value == null) return "text-muted-foreground";
@@ -332,7 +390,7 @@ function ResumeScanner() {
             roadmap.
           </p>
         </div>
-        {resume && (
+        {(resume || activeResume) && (
           <Button variant="outline" onClick={reAnalyze} disabled={busy}>
             {busy ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -380,22 +438,22 @@ function ResumeScanner() {
                   Extracting text, scoring, and generating your career roadmap
                 </p>
               </>
-            ) : resume ? (
+            ) : activeResume ? (
               <>
                 <div className="h-14 w-14 rounded-2xl gradient-brand mx-auto mb-4 flex items-center justify-center shadow-glow">
                   <FileText className="h-7 w-7 text-primary-foreground" />
                 </div>
-                <div className="font-semibold text-lg">{resume.file_name}</div>
+                <div className="font-semibold text-lg">{String(activeResume.file_name ?? "resume.pdf")}</div>
                 <p className="text-sm text-muted-foreground mt-1">
                   Click to upload a new resume or drag & drop to replace
                 </p>
                 <div className="flex justify-center gap-2 mt-3">
                   <Badge variant="secondary">
-                    {((resume.file_size ?? 0) / 1024).toFixed(0)} KB
+                    {(((activeResume.file_size as number | null) ?? 0) / 1024).toFixed(0)} KB
                   </Badge>
-                  {resume.overall_score != null && (
+                  {(currentOverallScore ?? null) != null && (
                     <Badge className="gradient-brand text-primary-foreground">
-                      Score: {resume.overall_score}/100
+                      Score: {String(currentOverallScore)}/100
                     </Badge>
                   )}
                 </div>
@@ -419,7 +477,7 @@ function ResumeScanner() {
       {isLoading && <SkeletonCard />}
 
       {/* Scores */}
-      {resume?.overall_score != null && (
+      {(activeResume?.overall_score as number | null | undefined) != null && (
         <Card className="glass animate-fade-in-up">
           <CardContent className="p-6 space-y-5">
             <div className="flex items-center justify-between">
@@ -427,21 +485,21 @@ function ResumeScanner() {
                 <Target className="h-5 w-5 text-primary" /> Your Scores
               </h2>
               <Badge
-                className={`text-lg font-bold ${getScoreColor(resume.overall_score)}`}
+                className={`text-lg font-bold ${getScoreColor(currentOverallScore)}`}
                 variant="outline"
               >
-                {resume.overall_score}/100
+                {(currentOverallScore ?? 0)}/100
               </Badge>
             </div>
 
             {/* Overall score ring */}
             <div className="flex items-center gap-6">
-              <ScoreRing value={resume.overall_score ?? 0} />
+              <ScoreRing value={currentOverallScore ?? 0} />
               <div className="flex-1">
                 <p className="text-sm text-muted-foreground">
-                  {resume.overall_score >= 80
+                  {(currentOverallScore ?? 0) >= 80
                     ? "Excellent! Your resume is well-optimized for ATS systems."
-                    : resume.overall_score >= 60
+                    : (currentOverallScore ?? 0) >= 60
                       ? "Good foundation. A few improvements could boost your visibility."
                       : "Needs work. Focus on the recommendations below to improve."}
                 </p>

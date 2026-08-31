@@ -29,31 +29,18 @@ export async function saveConnectionKeyForUser(
   connectionAPIKey: string,
 ) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  try {
-    const encrypted = encryptConnectionKey(connectionAPIKey);
-    console.log(
-      "[saveConnectionKeyForUser] Encrypted token for user:",
-      userId,
-      "provider:",
-      connectorId,
-    );
-    const { error } = await supabaseAdmin.from("app_user_connections").upsert(
-      {
-        user_id: userId,
-        provider: connectorId,
-        refresh_token: encrypted,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "user_id,provider" },
-    );
-    if (error) {
-      console.error("[saveConnectionKeyForUser] Upsert error:", error);
-      throw error;
-    }
-    console.log("[saveConnectionKeyForUser] Token saved successfully for user:", userId);
-  } catch (err) {
-    console.error("[saveConnectionKeyForUser] Failed:", err);
-    throw err;
+  const encrypted = encryptConnectionKey(connectionAPIKey);
+  const { error } = await supabaseAdmin.from("app_user_connections").upsert(
+    {
+      user_id: userId,
+      provider: connectorId,
+      refresh_token: encrypted,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "user_id,provider" },
+  );
+  if (error) {
+    throw error;
   }
 }
 
@@ -62,7 +49,6 @@ export async function getConnectionKeyForUser(
   connectorId: string,
 ): Promise<string | null> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  console.log(" getConnectionKeyForUser called with:", { userId, connectorId });
   const { data, error } = await supabaseAdmin
     .from("app_user_connections")
     .select("refresh_token")
@@ -71,20 +57,15 @@ export async function getConnectionKeyForUser(
     .maybeSingle();
 
   if (error) {
-    console.error("❌ DB error in getConnectionKeyForUser:", error);
     return null;
   }
   if (!data) {
-    console.log("❌ No row found for user:", userId, "provider:", connectorId);
     return null;
   }
-  console.log("Row found, attempting decryption");
   try {
     const decrypted = decryptConnectionKey(data.refresh_token!);
-    console.log("Decryption successful");
     return decrypted;
   } catch (e) {
-    console.error(" Decryption failed:", e);
     return null;
   }
 }

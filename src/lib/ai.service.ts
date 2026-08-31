@@ -4,6 +4,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth.middleware";
 import { aiGenerateJsonValidated, aiGenerateTextResult } from "@/integrations/ai/ai-service";
 import { requirePremium } from "@/lib/premium.server";
+import { assertBucketPrivate, createPrivateSignedUrl } from "@/lib/storage";
 import { extractResumeText, ResumeScanError } from "@/lib/resume-extraction";
 import {
   resumeAnalysisSchema,
@@ -127,7 +128,6 @@ export const scoreResume = createServerFn({ method: "POST" })
       if (error) throw new Error(error.message);
       return aiSuccess(update, "ai");
     } catch (err) {
-      console.error("scoreResume failed:", (err as Error).message);
       return aiFailure("AI_ANALYSIS_FAILED", "Unable to complete the resume scoring right now.");
     }
   });
@@ -169,7 +169,6 @@ export const careerRecommendations = createServerFn({ method: "POST" })
         "ai",
       );
     } catch (err) {
-      console.error("careerRecommendations failed:", (err as Error).message);
       return aiFailure(
         "AI_ANALYSIS_FAILED",
         "Unable to generate career recommendations right now.",
@@ -219,17 +218,20 @@ export const scanResumeFromStorage = createServerFn({ method: "POST" })
     }
     // If no stored text, try file extraction
     else if (resume.file_path) {
-      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-      const dl = await supabaseAdmin.storage.from("resumes").download(resume.file_path);
-      if (dl.error || !dl.data) {
-        return aiFailure(
-          "FILE_DOWNLOAD_FAILED",
-          "Could not download your resume file. Please re-upload it.",
-        );
-      }
-      const buf = new Uint8Array(await dl.data.arrayBuffer());
-
       try {
+        await assertBucketPrivate("resumes");
+        const signedUrl = await createPrivateSignedUrl("resumes", resume.file_path, 60);
+        const response = await fetch(signedUrl);
+
+        if (!response.ok) {
+          return aiFailure(
+            "FILE_DOWNLOAD_FAILED",
+            "Could not access your resume file. Please re-upload it.",
+          );
+        }
+
+        const buf = new Uint8Array(await response.arrayBuffer());
+
         const result = await extractResumeText(
           buf,
           resume.file_name ?? "",
@@ -360,7 +362,6 @@ export const scanResumeFromStorage = createServerFn({ method: "POST" })
 
       return aiSuccess({ ...scoringUpdate, matches }, "ai");
     } catch (err) {
-      console.error("scanResumeFromStorage failed:", (err as Error).message);
       return aiFailure("AI_ANALYSIS_FAILED", "Unable to complete the resume scan right now.");
     }
   });
@@ -510,8 +511,6 @@ export const learningRecommendations = createServerFn({ method: "POST" })
         "ai",
       );
     } catch (err) {
-      console.warn("AI generation failed for learning recommendations:", (err as Error).message);
-
       // Return random database items
       if (dbItems && dbItems.length > 0) {
         return aiSuccess(
@@ -597,7 +596,6 @@ export const importFromLinkedInText = createServerFn({ method: "POST" })
       if (error) throw new Error(error.message);
       return { imported: { fields: Object.keys(patch).length, skills: patch.skills?.length ?? 0 } };
     } catch (err) {
-      console.error("importFromLinkedInText failed:", (err as Error).message);
       throw new Error("Unable to import LinkedIn data right now. Please try again.");
     }
   });
@@ -679,7 +677,6 @@ export const careerCoach = createServerFn({ method: "POST" })
 
       return aiSuccess(response, "ai");
     } catch (err) {
-      console.error("careerCoach failed:", (err as Error).message);
       return aiFailure(
         "AI_ANALYSIS_FAILED",
         "AI career coach is temporarily unavailable. Please try again.",

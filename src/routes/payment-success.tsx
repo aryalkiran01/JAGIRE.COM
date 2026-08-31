@@ -27,9 +27,6 @@ function PaymentSuccess() {
   useEffect(() => {
     (async () => {
       try {
-        console.log("Full URL:", window.location.href);
-        console.log("Search:", window.location.search);
-
         const params = new URLSearchParams(window.location.search);
         let transactionUuid = "";
         let totalAmount = "";
@@ -39,16 +36,13 @@ function PaymentSuccess() {
         if (encodedData) {
           try {
             const decoded = atob(decodeURIComponent(encodedData));
-            console.log("Decoded:", decoded);
 
             const payload = JSON.parse(decoded);
-            console.log("Parsed payload:", payload);
 
             transactionUuid = payload.transaction_uuid ?? "";
             totalAmount = payload.total_amount ?? "";
             paymentStatus = payload.status ?? "";
           } catch (err) {
-            console.error("Failed to parse eSewa callback:", err);
             setState({
               status: "failed",
               error: "Invalid response from eSewa",
@@ -64,8 +58,6 @@ function PaymentSuccess() {
         if (!totalAmount) {
           totalAmount = params.get("total_amount") ?? params.get("amt") ?? "";
         }
-
-        console.log({ transactionUuid, totalAmount, paymentStatus });
 
         if (!transactionUuid || !totalAmount) {
           setState({
@@ -103,8 +95,6 @@ function PaymentSuccess() {
         const expiresAt = new Date(now);
         expiresAt.setDate(expiresAt.getDate() + 30);
 
-        console.log("Activating plan:", planType, "Expires:", expiresAt);
-
         // Store transaction in database
         const { error: transactionError } = await supabase.from("payments").upsert(
           {
@@ -123,8 +113,7 @@ function PaymentSuccess() {
         );
 
         if (transactionError) {
-          console.error("Failed to store transaction:", transactionError);
-          // Continue anyway - payment was successful on eSewa
+          throw new Error(transactionError.message);
         }
 
         // Update or create subscription
@@ -147,8 +136,6 @@ function PaymentSuccess() {
         );
 
         if (subscriptionError) {
-          console.error("Failed to update subscription:", subscriptionError);
-          // Try to create if update failed
           const { error: insertError } = await supabase.from("subscriptions").insert({
             user_id: user.id,
             plan_type: planType,
@@ -162,7 +149,7 @@ function PaymentSuccess() {
           });
 
           if (insertError) {
-            console.error("Failed to insert subscription:", insertError);
+            throw new Error(insertError.message);
           }
         }
 
@@ -181,11 +168,8 @@ function PaymentSuccess() {
         );
 
         if (profileError) {
-          console.error("Failed to update profile:", profileError);
-          // Non-critical error, continue
+          throw new Error(profileError.message);
         }
-
-        console.log("Payment verified and activated successfully");
 
         setState({
           status: "verified",
@@ -197,7 +181,6 @@ function PaymentSuccess() {
           `${planType.charAt(0).toUpperCase() + planType.slice(1)} plan activated! AI features unlocked.`,
         );
       } catch (err) {
-        console.error("Verification error:", err);
         setState({
           status: "failed",
           error: err instanceof Error ? err.message : String(err),

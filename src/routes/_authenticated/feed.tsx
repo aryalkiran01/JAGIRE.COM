@@ -314,8 +314,8 @@ function FeedPage() {
               const storagePath = url.pathname.slice(pathStart + 7);
               await supabase.storage.from("posts").remove([storagePath]);
             }
-          } catch (error) {
-            console.error("Failed to delete post image from storage:", error);
+          } catch {
+            // Non-blocking cleanup failure for media removal.
           }
         }
         const { error } = await supabase.from("posts").delete().eq("id", postId);

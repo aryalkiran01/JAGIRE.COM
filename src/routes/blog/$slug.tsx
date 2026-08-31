@@ -87,7 +87,15 @@ function BlogPost() {
         .eq("blog_id", post!.id)
         .order("created_at", { ascending: false });
 
-      return (data ?? []).map((comment: any) => ({ ...comment, author: null }));
+      return (data ?? []).map(
+        (comment: {
+          id: string;
+          blog_id: string;
+          author_id: string;
+          content: string;
+          created_at: string | null;
+        }) => ({ ...comment, author: null }),
+      );
     },
   });
 

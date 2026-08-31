@@ -158,7 +158,6 @@ function ResumeBuilder() {
 
       toast.success("PDF exported successfully!");
     } catch (error) {
-      console.error("PDF export error:", error);
       toast.error("Failed to export PDF. Please try again.");
     } finally {
       setIsExporting(false);

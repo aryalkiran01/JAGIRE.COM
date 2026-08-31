@@ -102,8 +102,8 @@ async function extractFromPdf(buf: Uint8Array): Promise<string> {
     const pdfData = await pdfParse(Buffer.from(buf));
     text = pdfData.text ?? "";
     success = text.trim().length >= MIN_TEXT_LENGTH;
-  } catch (err) {
-    console.warn("pdf-parse failed:", (err as Error).message);
+  } catch {
+    // Fallback to other PDF extraction strategies.
   }
 
   if (!success) {
@@ -113,15 +113,14 @@ async function extractFromPdf(buf: Uint8Array): Promise<string> {
       const out = await extractText(pdf, { mergePages: true });
       text = Array.isArray(out.text) ? out.text.join("\n") : (out.text as string);
       success = (text ?? "").trim().length >= MIN_TEXT_LENGTH;
-    } catch (err) {
-      console.warn("unpdf failed:", (err as Error).message);
+    } catch {
+      // Fallback to OCR or heuristic extraction.
     }
   }
 
   if (!success) {
     text = await extractFromPdfOcr(buf);
     success = text.trim().length >= MIN_TEXT_LENGTH;
-    if (success) console.log(`OCR extracted ${text.trim().length} chars`);
   }
 
   if (!success) {
@@ -175,7 +174,6 @@ async function extractFromPdfOcr(buf: Uint8Array): Promise<string> {
 
     return ocrText.join("\n\n");
   } catch (err) {
-    console.warn("OCR fallback failed:", (err as Error).message);
     return "";
   }
 }

@@ -1,13 +1,13 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 import { createServerFn } from "@tanstack/react-start";
 import { randomBytes, createHash } from "node:crypto";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth.middleware";
 import { requirePremium } from "@/lib/premium.server";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
+const adminClient: any = supabaseAdmin;
+
 async function getCompanyIdForUser(userId: string): Promise<string> {
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await adminClient
     .from("companies")
     .select("id")
     .eq("owner_id", userId)
@@ -22,7 +22,7 @@ export const listDepartments = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const companyId = await getCompanyIdForUser(context.userId);
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await adminClient
       .from("departments")
       .select("*, head:profiles(id,full_name,avatar_url), members:department_members(count)")
       .eq("company_id", companyId)
@@ -46,7 +46,7 @@ export const createDepartment = createServerFn({ method: "POST" })
     await requirePremium(context.userId);
     const companyId = await getCompanyIdForUser(context.userId);
 
-    const { data: dept, error } = await supabaseAdmin
+    const { data: dept, error } = await adminClient
       .from("departments")
       .insert({
         company_id: companyId,
@@ -59,7 +59,7 @@ export const createDepartment = createServerFn({ method: "POST" })
 
     if (error) throw new Error("Failed to create department");
 
-    await supabaseAdmin.rpc("log_audit_entry", {
+    await adminClient.rpc("log_audit_entry", {
       p_company_id: companyId,
       p_user_id: context.userId,
       p_action: "department.created",
@@ -80,14 +80,14 @@ export const deleteDepartment = createServerFn({ method: "POST" })
   })
   .handler(async ({ data, context }) => {
     const companyId = await getCompanyIdForUser(context.userId);
-    const { error } = await supabaseAdmin
+    const { error } = await adminClient
       .from("departments")
       .delete()
       .eq("id", data.departmentId)
       .eq("company_id", companyId);
     if (error) throw new Error("Failed to delete department");
 
-    await supabaseAdmin.rpc("log_audit_entry", {
+    await adminClient.rpc("log_audit_entry", {
       p_company_id: companyId,
       p_user_id: context.userId,
       p_action: "department.deleted",
@@ -108,7 +108,7 @@ export const listAuditLogs = createServerFn({ method: "GET" })
   })
   .handler(async ({ data, context }) => {
     const companyId = await getCompanyIdForUser(context.userId);
-    const { data: logs, error } = await supabaseAdmin
+    const { data: logs, error } = await adminClient
       .from("audit_logs")
       .select("*, user:profiles!audit_logs_user_id_fkey(full_name,avatar_url)")
       .eq("company_id", companyId)
@@ -124,7 +124,7 @@ export const listApiKeys = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const companyId = await getCompanyIdForUser(context.userId);
-    const { data: keys, error } = await supabaseAdmin
+    const { data: keys, error } = await adminClient
       .from("api_keys")
       .select("id,name,key_prefix,permissions,last_used_at,expires_at,created_at,revoked_at")
       .eq("company_id", companyId)
@@ -152,7 +152,7 @@ export const createApiKey = createServerFn({ method: "POST" })
     const keyHash = createHash("sha256").update(rawKey).digest("hex");
     const keyPrefix = rawKey.slice(0, 12);
 
-    const { data: apiKey, error } = await supabaseAdmin
+    const { data: apiKey, error } = await adminClient
       .from("api_keys")
       .insert({
         company_id: companyId,
@@ -168,7 +168,7 @@ export const createApiKey = createServerFn({ method: "POST" })
 
     if (error) throw new Error("Failed to create API key");
 
-    await supabaseAdmin.rpc("log_audit_entry", {
+    await adminClient.rpc("log_audit_entry", {
       p_company_id: companyId,
       p_user_id: context.userId,
       p_action: "api_key.created",
@@ -189,14 +189,14 @@ export const revokeApiKey = createServerFn({ method: "POST" })
   })
   .handler(async ({ data, context }) => {
     const companyId = await getCompanyIdForUser(context.userId);
-    const { error } = await supabaseAdmin
+    const { error } = await adminClient
       .from("api_keys")
       .update({ revoked_at: new Date().toISOString() })
       .eq("id", data.keyId)
       .eq("company_id", companyId);
     if (error) throw new Error("Failed to revoke API key");
 
-    await supabaseAdmin.rpc("log_audit_entry", {
+    await adminClient.rpc("log_audit_entry", {
       p_company_id: companyId,
       p_user_id: context.userId,
       p_action: "api_key.revoked",

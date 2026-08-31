@@ -190,8 +190,21 @@ function parseEducationItem(item: string) {
   return { title, subtitle, details };
 }
 
+type ResumePDFData = {
+  [key: string]: unknown;
+  full_name?: string;
+  headline?: string;
+  email?: string;
+  phone?: string;
+  summary?: string;
+  experience?: { items: string[] };
+  education?: { items: string[] };
+  projects?: { items: string[] };
+  skills?: { items: string[] };
+};
+
 interface ResumePDFProps {
-  data: any;
+  data: ResumePDFData;
   title: string;
   template: string;
 }
@@ -201,6 +214,10 @@ export const ResumePDF: React.FC<ResumePDFProps> = ({ data, title, template }) =
   const parseExperience = parseExperienceItem;
   const parseProject = parseProjectItem;
   const parseEducation = parseEducationItem;
+  const experienceItems = data.experience?.items ?? [];
+  const educationItems = data.education?.items ?? [];
+  const projectItems = data.projects?.items ?? [];
+  const skillItems = data.skills?.items ?? [];
 
   return (
     <Document title={title}>
@@ -223,10 +240,10 @@ export const ResumePDF: React.FC<ResumePDFProps> = ({ data, title, template }) =
         )}
 
         {/* Experience - matches preview exactly */}
-        {data.experience.items.some((i: string) => i.trim()) && (
+        {experienceItems.some((i: string) => i.trim()) && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Experience</Text>
-            {data.experience.items
+            {experienceItems
               .filter((i: string) => i.trim())
               .map((item: string, idx: number) => {
                 const { title, subtitle, bullets } = parseExperience(item);
@@ -251,10 +268,10 @@ export const ResumePDF: React.FC<ResumePDFProps> = ({ data, title, template }) =
         )}
 
         {/* Education - matches preview exactly */}
-        {data.education.items.some((i: string) => i.trim()) && (
+        {educationItems.some((i: string) => i.trim()) && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Education</Text>
-            {data.education.items
+            {educationItems
               .filter((i: string) => i.trim())
               .map((item: string, idx: number) => {
                 const { title, subtitle, details } = parseEducation(item);
@@ -274,10 +291,10 @@ export const ResumePDF: React.FC<ResumePDFProps> = ({ data, title, template }) =
         )}
 
         {/* Projects - matches preview exactly */}
-        {data.projects.items.some((i: string) => i.trim()) && (
+        {projectItems.some((i: string) => i.trim()) && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Projects</Text>
-            {data.projects.items
+            {projectItems
               .filter((i: string) => i.trim())
               .map((item: string, idx: number) => {
                 const { title, subtitle, bullets } = parseProject(item);
@@ -302,11 +319,11 @@ export const ResumePDF: React.FC<ResumePDFProps> = ({ data, title, template }) =
         )}
 
         {/* Skills - matches preview exactly */}
-        {data.skills.items.some((i: string) => i.trim()) && (
+        {skillItems.some((i: string) => i.trim()) && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Skills</Text>
             <View style={styles.skillsContainer}>
-              {data.skills.items
+              {skillItems
                 .flatMap((item: string) => item.split(",").map((s) => s.trim()))
                 .filter(Boolean)
                 .map((skill: string, i: number) => (

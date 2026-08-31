@@ -85,7 +85,6 @@ function LearnPage() {
         .order("completed_at", { ascending: false });
 
       if (error) {
-        console.error("Error fetching progress:", error);
         return [];
       }
       return data || [];
@@ -106,7 +105,6 @@ function LearnPage() {
         .in("id", completedIds);
 
       if (error) {
-        console.error("Error fetching completed items:", error);
         return [];
       }
 
@@ -132,7 +130,6 @@ function LearnPage() {
         .order("created_at", { ascending: false });
 
       if (error) {
-        console.error("Error fetching badges:", error);
         return [];
       }
       return data || [];
@@ -154,24 +151,25 @@ function LearnPage() {
     if (user && !hasGenerated && !loading) {
       generateRecommendations();
     }
-  }, [user]);
+  }, [user, hasGenerated, loading, generateRecommendations]);
 
   async function generateRecommendations() {
     setLoading(true);
     setError(null);
     try {
-      console.log("Generating recommendations...");
       const r = await recommend({});
-      console.log("Received recommendations:", r);
+      const payload =
+        r?.success && r.data ? (r.data as { items?: Array<Record<string, unknown>> } | null) : null;
+      const items = payload?.items ?? [];
 
-      if (r?.items && r.items.length > 0) {
+      if (items.length > 0) {
         // Get existing IDs
         const existingIds = new Set(newItems.map((item) => item.id));
 
         // Filter out duplicates
-        const newUniqueItems = r.items.filter((item: any) => !existingIds.has(item.id));
-
-        console.log(`New unique items: ${newUniqueItems.length}, Existing: ${newItems.length}`);
+        const newUniqueItems = items.filter(
+          (item) => !existingIds.has(String((item as { id?: string }).id ?? "")),
+        );
 
         if (newUniqueItems.length > 0) {
           // Add new items to the TOP of the list
@@ -180,25 +178,23 @@ function LearnPage() {
           toast.success(`Found ${newUniqueItems.length} new resources!`);
         } else if (newItems.length === 0) {
           // No existing items and no new ones (shouldn't happen)
-          setNewItems(r.items);
+          setNewItems(items as typeof newItems);
           setHasGenerated(true);
-          toast.success(`Found ${r.items.length} resources!`);
+          toast.success(`Found ${items.length} resources!`);
         } else {
           // All duplicates - force add with modified IDs
-          const forcedNew = r.items.map((item: any, i: number) => ({
-            ...item,
-            id: `${item.id}-${Date.now()}-${i}`, // Make unique
+          const forcedNew = items.map((item, i) => ({
+            ...(item as Record<string, unknown>),
+            id: `${String((item as { id?: string }).id ?? "item")}-${Date.now()}-${i}`,
           }));
           setNewItems((prev) => [...forcedNew, ...prev].slice(0, 30));
           setHasGenerated(true);
           toast.success(`Refreshed with ${forcedNew.length} resources!`);
         }
       } else {
-        console.warn("No items returned");
         toast.info("No new recommendations available. Try again later.");
       }
     } catch (e: any) {
-      console.error("Failed to generate recommendations:", e);
       setError(e.message || "Failed to generate recommendations");
       toast.error("Failed to generate. Please try again.");
     } finally {
@@ -226,7 +222,7 @@ function LearnPage() {
         .maybeSingle();
 
       if (fetchError) {
-        console.error("Error fetching item:", fetchError);
+        throw fetchError;
       }
 
       // If item doesn't exist in DB, try to insert it
@@ -246,10 +242,7 @@ function LearnPage() {
           .single();
 
         if (insertError) {
-          console.error("Insert error:", insertError);
-          if (insertError.code === "42501") {
-            console.log("RLS prevents insert, using original ID");
-          } else {
+          if (insertError.code !== "42501") {
             throw insertError;
           }
         } else if (ins) {
@@ -267,7 +260,6 @@ function LearnPage() {
       });
 
       if (progressError) {
-        console.error("Progress insert error:", progressError);
         throw progressError;
       }
 
@@ -278,8 +270,8 @@ function LearnPage() {
           kind: item.kind,
           name: item.title.slice(0, 60),
         });
-      } catch (badgeError) {
-        console.warn("Badge insert failed:", badgeError);
+      } catch {
+        // Badge insertion is non-critical; mark the learning item as completed regardless.
       }
 
       toast.success("Marked complete! 🎉");
@@ -289,7 +281,6 @@ function LearnPage() {
       qc.invalidateQueries({ queryKey: ["completed-items", user.id] });
       qc.invalidateQueries({ queryKey: ["badges", user.id] });
     } catch (e: any) {
-      console.error("Error marking complete:", e);
       toast.error("Failed to mark as complete. Please try again.");
     } finally {
       setCompletingIds((prev) => {
