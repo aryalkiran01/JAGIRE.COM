@@ -27,10 +27,16 @@ export function initTheme() {
   const stored = getStoredTheme();
   if (stored) {
     applyTheme(stored);
-    return;
+    return stored;
   }
+
+  // Check system preference
   const prefersDark = window.matchMedia?.("(prefers-color-scheme: dark)").matches;
-  if (prefersDark) applyTheme("dark");
+
+  // Default to light theme if no system preference or system prefers light
+  const theme: Theme = prefersDark ? "dark" : "light";
+  applyTheme(theme);
+  return theme;
 }
 
 export function toggleTheme(): Theme {
