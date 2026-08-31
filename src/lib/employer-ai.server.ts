@@ -52,6 +52,7 @@ type SerializableJson =
   string | number | boolean | null | SerializableJson[] | { [key: string]: SerializableJson };
 
 // ── Prompt Templates ─────────────────────────────────────────────────────────
+// (Keep all PROMPTS as they are - they're fine)
 
 const PROMPTS = {
   CANDIDATE_MATCH: `You are an expert AI recruitment assistant specializing in candidate-job matching for employers on Jagire.com, a Nepal-focused job platform.
@@ -71,6 +72,8 @@ Scoring guidelines:
 - 60-74: Moderate match - may need training
 - Below 60: Weak match - likely not suitable
 
+CRITICAL: If no applications are provided in the context, return an empty matches array. NEVER invent or generate fake candidate names. If there are no applicants, explicitly state that in the summary.
+
 Return JSON:
 {
   "matches": [
@@ -89,7 +92,8 @@ Important:
 - Be objective and data-driven
 - Consider both technical and cultural fit
 - Provide actionable recommendations
-- Use Nepal market context where relevant`,
+- Use Nepal market context where relevant
+- NEVER fabricate candidate data`,
 
   RESUME_SCREENING: `You are an AI resume screening expert who evaluates candidates against specific job requirements.
 
@@ -105,12 +109,7 @@ Classification criteria:
 - BORDERLINE: Meets 60-79% of requirements
 - UNQUALIFIED: Below 60% of requirements
 
-Screening guidelines:
-- Focus on objective criteria
-- Look for evidence of achievements
-- Consider transferable skills
-- Note any inconsistencies or concerns
-- Score based on job description alignment
+CRITICAL: If no applications are provided, return empty results array. NEVER invent candidate data.
 
 Return JSON:
 {
@@ -127,19 +126,7 @@ Return JSON:
 
   RESUME_RANKING: `You are an AI resume ranking specialist who orders candidates from strongest to weakest fit.
 
-Rank candidates based on:
-1. Technical proficiency
-2. Relevant experience depth
-3. Achievement quality and impact
-4. Career progression
-5. Overall presentation quality
-
-Ranking methodology:
-- Use weighted scoring (skills 40%, experience 30%, achievements 20%, education 10%)
-- Consider both hard and soft requirements
-- Account for company culture fit
-- Normalize scores across candidates
-- Justify rankings with specific evidence
+CRITICAL: If no applications are provided, return empty ranking array. NEVER invent candidate data.
 
 Return JSON:
 {
@@ -156,24 +143,7 @@ Return JSON:
 
   SMART_SHORTLISTING: `You are an AI shortlisting expert who identifies top candidates for interviews.
 
-Shortlist candidates considering:
-1. Overall fit for role
-2. Unique value proposition
-3. Growth potential
-4. Availability and logistics
-5. Diversity and team balance
-
-Shortlisting criteria:
-- HIGH priority: Must interview (90%+ fit)
-- MEDIUM priority: Strong backup (75-89% fit)
-- LOW priority: Consider if needed (60-74% fit)
-
-Guidelines:
-- Limit shortlist to top 15-20% of applicants
-- Provide clear rationale for inclusion/exclusion
-- Consider team composition and diversity
-- Flag any potential concerns
-- Recommend interview format (technical, behavioral, etc.)
+CRITICAL: If no applications are provided, return empty shortlisted and not_shortlisted arrays. NEVER invent candidate data.
 
 Return JSON:
 {
@@ -195,20 +165,7 @@ Return JSON:
 
   CANDIDATE_RANKING: `You are an AI candidate comparison expert who evaluates candidates side-by-side.
 
-Compare candidates across:
-1. Technical capabilities
-2. Communication skills
-3. Problem-solving ability
-4. Team fit and collaboration
-5. Leadership potential
-6. Growth trajectory
-
-Comparison methodology:
-- Use consistent evaluation criteria
-- Consider both strengths and concerns
-- Account for different experience levels
-- Evaluate potential vs. current capability
-- Provide actionable hiring insights
+CRITICAL: If no applications are provided, return empty ranking array. NEVER invent candidate data.
 
 Return JSON:
 {
@@ -226,19 +183,7 @@ Return JSON:
 
   CANDIDATE_SUMMARY: `You are an AI candidate summarizer who creates comprehensive professional profiles.
 
-Create summary covering:
-1. Professional background
-2. Key skills and expertise
-3. Notable achievements
-4. Career trajectory
-5. Potential concerns
-
-Summary guidelines:
-- Be objective and factual
-- Highlight relevant experience
-- Note any gaps or concerns
-- Provide context for hiring decisions
-- Include specific, quantifiable achievements
+CRITICAL: If no application is provided, return a summary stating no candidate data available. NEVER invent candidate data.
 
 Return JSON:
 {
@@ -251,24 +196,7 @@ Return JSON:
 
   HIRING_RECOMMENDATION: `You are an AI hiring advisor who provides data-backed hiring recommendations.
 
-Evaluate candidates for hiring decision considering:
-1. Overall qualifications
-2. Interview performance (if available)
-3. Cultural fit indicators
-4. Growth potential
-5. Team needs and dynamics
-6. Market conditions
-
-Recommendation types:
-- HIRE: Strong recommendation to proceed with offer
-- HOLD: Needs additional evaluation or comparison
-- NO-HIRE: Not recommended for this role
-
-Decision factors:
-- Technical competency (40%)
-- Cultural fit (25%)
-- Growth potential (20%)
-- Communication skills (15%)
+CRITICAL: If no applications are provided, return HOLD recommendation with reasoning explaining no candidates available. NEVER invent candidate data.
 
 Return JSON:
 {
@@ -281,25 +209,7 @@ Return JSON:
 
   CANDIDATE_SUCCESS_PREDICTION: `You are an AI predictive analytics expert who forecasts candidate success.
 
-Predict job success based on:
-1. Past performance patterns
-2. Skill match quality
-3. Career trajectory
-4. Learning agility indicators
-5. Motivation alignment
-6. Environmental fit
-
-Prediction levels:
-- HIGH: Strong likelihood of success (>80% probability)
-- MEDIUM: Moderate likelihood (50-80% probability)
-- LOW: Below average likelihood (<50% probability)
-
-Consider:
-- Historical success patterns in similar roles
-- Skill transferability
-- Growth mindset indicators
-- Adaptability signals
-- Team compatibility
+CRITICAL: If no application is provided, return Low prediction with rationale explaining no data available. NEVER invent candidate data.
 
 Return JSON:
 {
@@ -310,21 +220,6 @@ Return JSON:
 }`,
 
   TALENT_SEARCH: `You are an AI talent sourcing expert who creates effective candidate search strategies.
-
-Develop sourcing strategy for:
-1. Ideal candidate profiling
-2. Search keyword optimization
-3. Boolean search construction
-4. Channel selection
-5. Outreach approach
-
-Sourcing channels:
-- Job boards (LinkedIn, Indeed, Merojob, JobsNepal)
-- Social media (LinkedIn, Twitter, Facebook)
-- Professional networks and communities
-- Employee referrals
-- University partnerships
-- Recruitment agencies
 
 Return JSON:
 {
@@ -337,24 +232,7 @@ Return JSON:
 
   DUPLICATE_DETECTION: `You are an AI duplicate detection specialist who identifies duplicate candidate profiles.
 
-Detect duplicates based on:
-1. Name variations
-2. Email/phone matching
-3. Resume content similarity
-4. Skills and experience overlap
-5. Application history patterns
-
-Detection criteria:
-- 90-100% confidence: Almost certainly duplicates
-- 70-89% confidence: Likely duplicates
-- 50-69% confidence: Possible duplicates
-- Below 50%: Insufficient evidence
-
-Consider:
-- Name variations (nicknames, abbreviations)
-- Multiple email addresses
-- Updated resumes
-- Career progression consistency
+CRITICAL: If no applications are provided, return empty duplicates array and unique_count of 0. NEVER invent candidate data.
 
 Return JSON:
 {
@@ -372,18 +250,6 @@ Return JSON:
 
   SKILL_GAP_ANALYSIS: `You are an AI skill gap analyst who evaluates organizational and team skill requirements.
 
-Analyze skill gaps:
-1. Current vs. required skills
-2. Technical competency levels
-3. Soft skills assessment
-4. Industry-specific knowledge
-5. Future skill needs
-
-Priority levels:
-- HIGH: Critical to business operations
-- MEDIUM: Important but not urgent
-- LOW: Nice to have
-
 Return JSON:
 {
   "gaps": [
@@ -400,23 +266,6 @@ Return JSON:
 
   INTERVIEW_QUESTION_GENERATOR: `You are an AI interview question expert who creates comprehensive interview questionnaires.
 
-Generate questions covering:
-1. Technical competency
-2. Behavioral assessment (STAR method)
-3. Situational judgment
-4. Problem-solving ability
-5. Cultural alignment
-
-Question types:
-- TECHNICAL: Role-specific skills and knowledge
-- BEHAVIORAL: Past experience and outcomes
-- SITUATIONAL: Hypothetical scenarios
-
-Difficulty levels:
-- EASY: Basic knowledge check
-- MEDIUM: Applied knowledge and experience
-- HARD: Expert-level problem solving
-
 Return JSON:
 {
   "questions": [
@@ -432,29 +281,6 @@ Return JSON:
 
   JOB_DESCRIPTION_WRITER: `You are an AI job description writer who creates compelling, inclusive job postings.
 
-Write job descriptions that:
-1. Attract qualified candidates
-2. Set clear expectations
-3. Reflect company culture
-4. Are inclusive and unbiased
-5. Are SEO-optimized
-
-Essential components:
-- Clear, specific job title
-- Engaging summary
-- Key responsibilities (5-10 items)
-- Required qualifications
-- Preferred qualifications
-- Benefits and perks
-- Company overview
-
-Writing guidelines:
-- Use inclusive language (avoid gender bias)
-- Be specific about requirements
-- Highlight growth opportunities
-- Include salary range when possible
-- Use active voice and action verbs
-
 Return JSON:
 {
   "title": string,
@@ -468,26 +294,6 @@ Return JSON:
 
   JOB_DESCRIPTION_OPTIMIZER: `You are an AI job description optimization expert who improves job postings for better results.
 
-Optimize for:
-1. Clarity and readability
-2. Inclusivity and diversity
-3. SEO and search visibility
-4. Candidate conversion
-5. Accurate expectations
-
-Optimization areas:
-- Title clarity and searchability
-- Summary engagement
-- Requirements realism
-- Benefits presentation
-- Language inclusivity
-
-Scoring criteria:
-- Clarity: Is it easy to understand?
-- Inclusivity: Does it appeal to diverse candidates?
-- SEO: Will candidates find it?
-- Conversion: Will they apply?
-
 Return JSON:
 {
   "optimized_description": string,
@@ -499,21 +305,7 @@ Return JSON:
 
   HIRING_ANALYTICS: `You are an AI hiring analytics expert who analyzes recruitment metrics and identifies improvements.
 
-Analyze hiring funnel:
-1. Application volume and quality
-2. Screening efficiency
-3. Interview-to-offer ratio
-4. Time-to-hire metrics
-5. Source effectiveness
-6. Cost per hire
-
-Key metrics:
-- Time to fill positions
-- Quality of hire
-- Offer acceptance rate
-- Candidate satisfaction
-- Source performance
-- Pipeline conversion rates
+CRITICAL: If no data is provided, provide insights about having no data. NEVER invent metrics.
 
 Return JSON:
 {
@@ -532,27 +324,6 @@ Return JSON:
 
   EMAIL_ASSISTANT: `You are an AI email assistant specializing in recruitment communications.
 
-Create professional emails for:
-1. Interview invitations
-2. Offer letters
-3. Rejection notifications
-4. Follow-up communications
-5. Status updates
-
-Email guidelines:
-- Professional but warm tone
-- Clear subject line
-- Concise body
-- Specific details (dates, times, next steps)
-- Appropriate closing
-- Include contact information
-
-Tone options:
-- Professional: Formal and structured
-- Friendly: Warm and approachable
-- Urgent: Time-sensitive and direct
-- Informative: Detailed and educational
-
 Return JSON:
 {
   "subject": string,
@@ -561,20 +332,6 @@ Return JSON:
 }`,
 
   MEETING_SCHEDULER: `You are an AI meeting scheduling assistant who coordinates interviews efficiently.
-
-Schedule interviews considering:
-1. Participant availability
-2. Time zone differences
-3. Interview duration requirements
-4. Buffer between meetings
-5. Interviewer workload
-
-Meeting types:
-- Initial screening (30 min)
-- Technical interview (60-90 min)
-- Behavioral interview (45-60 min)
-- Panel interview (60 min)
-- Final round (60-90 min)
 
 Return JSON:
 {
@@ -591,21 +348,6 @@ Return JSON:
 
   ONBOARDING_ASSISTANT: `You are an AI onboarding specialist who creates comprehensive onboarding plans.
 
-Create onboarding plan covering:
-1. Day-by-day schedule
-2. Required training
-3. Key introductions
-4. Documentation and access
-5. Goals and expectations
-6. Company culture integration
-
-First week focus:
-- Day 1: Welcome, setup, introduction
-- Day 2: Team meetings, role overview
-- Day 3: Core tools and processes
-- Day 4: Initial projects and tasks
-- Day 5: Check-in and feedback
-
 Return JSON:
 {
   "first_week_plan": [
@@ -621,17 +363,7 @@ Return JSON:
 
   OFFICE_DASHBOARD: `You are an AI operations assistant who analyzes HR and office metrics.
 
-Analyze metrics:
-1. Team attendance and availability
-2. Project workload distribution
-3. Resource utilization
-4. Employee engagement indicators
-5. Operational efficiency
-
-Action priorities:
-- HIGH: Immediate attention required
-- MEDIUM: Address within week
-- LOW: Monitor and improve
+CRITICAL: If no data is provided, provide insights about having no data. NEVER invent metrics.
 
 Return JSON:
 {
@@ -648,21 +380,6 @@ Return JSON:
 
   RECRUITMENT_AUTOMATION: `You are an AI automation consultant who identifies recruitment process improvements.
 
-Analyze automation opportunities:
-1. Resume screening and parsing
-2. Interview scheduling
-3. Candidate communications
-4. Reference checking
-5. Onboarding workflows
-6. Reporting and analytics
-
-Automation benefits:
-- Time savings (hours per week)
-- Improved consistency
-- Better candidate experience
-- Reduced manual errors
-- Enhanced data collection
-
 Return JSON:
 {
   "opportunities": [
@@ -677,20 +394,6 @@ Return JSON:
 }`,
 
   WORKFLOW_BUILDER: `You are an AI workflow designer who creates optimized hiring processes.
-
-Design workflow including:
-1. Application intake
-2. Initial screening
-3. Technical assessment
-4. Interview rounds
-5. Decision making
-6. Offer and onboarding
-
-Stage components:
-- Trigger: What initiates the stage
-- Owner: Who is responsible
-- SLA: Time target for completion
-- Actions: Specific tasks to complete
 
 Return JSON:
 {
@@ -708,19 +411,7 @@ Return JSON:
 
   PREDICTIVE_HIRING: `You are an AI predictive analytics expert who forecasts hiring outcomes.
 
-Predict metrics:
-1. Time to hire
-2. Offer acceptance rate
-3. Candidate quality
-4. Retention likelihood
-5. Hiring costs
-
-Forecast considerations:
-- Historical hiring data
-- Market conditions
-- Role complexity
-- Competition for talent
-- Seasonality factors
+CRITICAL: If no data is provided, provide forecasts based on market norms. NEVER invent specific company data.
 
 Return JSON:
 {
@@ -736,23 +427,6 @@ Return JSON:
 }`,
 
   WORKFORCE_PLANNING: `You are an AI workforce planning specialist who creates strategic hiring plans.
-
-Plan workforce considering:
-1. Current team composition
-2. Business growth projections
-3. Skill requirements
-4. Budget constraints
-5. Market talent availability
-
-Planning timeframe:
-- Immediate (0-3 months)
-- Short-term (3-6 months)
-- Long-term (6-12 months)
-
-Priority levels:
-- HIGH: Critical to business
-- MEDIUM: Important for growth
-- LOW: Nice to have
 
 Return JSON:
 {
@@ -771,20 +445,6 @@ Return JSON:
 
   PRIVATE_AI_MODELS: `You are an AI infrastructure advisor who recommends enterprise AI deployment strategies.
 
-Recommend models considering:
-1. Use case requirements
-2. Data privacy needs
-3. Performance requirements
-4. Cost considerations
-5. Compliance requirements
-
-Deployment options:
-- Cloud-hosted APIs
-- Self-hosted models
-- Hybrid approaches
-- Fine-tuned models
-- On-premise solutions
-
 Return JSON:
 {
   "recommendations": [
@@ -801,20 +461,6 @@ Return JSON:
 
   COMPANY_KNOWLEDGE_AI: `You are a company knowledge AI assistant who answers using provided context.
 
-Answer based on:
-1. Company policies and procedures
-2. Internal documentation
-3. Historical decisions
-4. Best practices
-5. Institutional knowledge
-
-Response guidelines:
-- Cite sources when possible
-- Be accurate and current
-- Acknowledge limitations
-- Provide relevant context
-- Suggest clarifications when needed
-
 Return JSON:
 {
   "answer": string,
@@ -829,17 +475,7 @@ Return JSON:
 
   TALENT_INTELLIGENCE: `You are an AI talent intelligence analyst who provides organizational insights.
 
-Analyze talent pool:
-1. Skill distribution
-2. Experience levels
-3. Performance patterns
-4. Retention risks
-5. Succession readiness
-
-Coverage levels:
-- STRONG: Well-covered, minimal risk
-- ADEQUATE: Sufficient but could improve
-- WEAK: Significant gap, needs attention
+CRITICAL: If no data is provided, provide insights about having no data. NEVER invent metrics.
 
 Return JSON:
 {
@@ -857,20 +493,6 @@ Return JSON:
 
   WHITE_LABEL: `You are an AI product advisor who recommends white-label configurations.
 
-Configure considering:
-1. Brand identity alignment
-2. Feature requirements
-3. Integration needs
-4. Customization level
-5. User experience
-
-Configuration areas:
-- Branding and UI
-- Feature selection
-- API integrations
-- Data management
-- Security settings
-
 Return JSON:
 {
   "recommendations": [
@@ -884,27 +506,6 @@ Return JSON:
 }`,
 
   AI_SUCCESS_MANAGER: `You are an AI implementation advisor who creates AI adoption strategies.
-
-Create rollout plan including:
-1. Stakeholder alignment
-2. Training and enablement
-3. Pilot program
-4. Scaling strategy
-5. Success metrics
-
-Rollout phases:
-- Phase 1: Preparation and planning
-- Phase 2: Pilot testing
-- Phase 3: Gradual rollout
-- Phase 4: Full deployment
-- Phase 5: Optimization
-
-Success metrics:
-- User adoption rate
-- Time savings
-- Accuracy improvement
-- Cost reduction
-- User satisfaction
 
 Return JSON:
 {
@@ -921,6 +522,7 @@ Return JSON:
 };
 
 // ── Feature Configurations ──────────────────────────────────────────────────
+// (Keep FEATURE_CONFIGS as they are)
 
 const FEATURE_CONFIGS: Record<string, FeatureConfig> = {
   "candidate-match": {
@@ -1106,18 +708,49 @@ async function fetchEmployerData(
   supabase: any,
   userId: string,
   neededFields: string[] = [],
+  specificCompanyId?: string | null,
 ): Promise<EmployerContextData> {
-  const context: EmployerContextData = { companyId: null };
+  const context: EmployerContextData = {
+    companyId: null,
+    jobs: [],
+    applications: [],
+  };
 
-  // Always fetch company first
-  const { data: company } = await supabase
-    .from("companies")
-    .select("id,name,industry,headquarters,description,website,size,founded_year")
-    .eq("owner_id", userId)
-    .maybeSingle();
+  let company = null;
 
-  if (!company) {
-    return context;
+  // Fetch company (specific or default)
+  if (specificCompanyId) {
+    const { data: specificCompany, error: specificCompanyError } = await supabase
+      .from("companies")
+      .select("id,name,industry,headquarters,description,website,size,founded_year")
+      .eq("id", specificCompanyId)
+      .eq("owner_id", userId)
+      .single();
+
+    if (specificCompanyError) {
+      console.error("Specific company fetch error:", specificCompanyError);
+      return context;
+    }
+
+    company = specificCompany;
+  } else {
+    const { data: companies, error: companyError } = await supabase
+      .from("companies")
+      .select("id,name,industry,headquarters,description,website,size,founded_year")
+      .eq("owner_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(1);
+
+    if (companyError) {
+      console.error("Company fetch error:", companyError);
+      return context;
+    }
+
+    if (!companies || companies.length === 0) {
+      return context;
+    }
+
+    company = companies[0];
   }
 
   context.company = company;
@@ -1125,6 +758,7 @@ async function fetchEmployerData(
 
   const fetchPromises: Promise<void>[] = [];
 
+  // Fetch jobs if needed
   if (neededFields.includes("jobs") || neededFields.length === 0) {
     fetchPromises.push(
       supabase
@@ -1135,24 +769,52 @@ async function fetchEmployerData(
         .eq("company_id", company.id)
         .order("created_at", { ascending: false })
         .limit(10)
-        .then(({ data }: any) => {
-          context.jobs = data || [];
+        .then(({ data, error }: any) => {
+          if (error) {
+            console.error("Jobs fetch error:", error);
+            context.jobs = [];
+          } else {
+            context.jobs = data || [];
+          }
         }),
     );
   }
 
+  // Fetch applications if needed
   if (neededFields.includes("applications") || neededFields.length === 0) {
     fetchPromises.push(
       supabase
-        .from("applications")
-        .select(
-          "id,status,created_at,applicant:profiles(full_name,headline,skills,experience_years),job:jobs(title)",
-        )
-        .eq("job.company_id", company.id)
-        .order("created_at", { ascending: false })
-        .limit(15)
-        .then(({ data }: any) => {
-          context.applications = data || [];
+        .from("jobs")
+        .select("id")
+        .eq("company_id", company.id)
+        .then(async ({ data: companyJobs, error: jobsError }: any) => {
+          if (jobsError) {
+            console.error("Company jobs fetch error:", jobsError);
+            context.applications = [];
+            return;
+          }
+
+          if (companyJobs && companyJobs.length > 0) {
+            const jobIds = companyJobs.map((job: any) => job.id);
+
+            const { data: applications, error: applicationsError } = await supabase
+              .from("applications")
+              .select(
+                "id,status,created_at,applicant:profiles(full_name,headline,skills,experience_years),job:jobs(title)",
+              )
+              .in("job_id", jobIds)
+              .order("created_at", { ascending: false })
+              .limit(15);
+
+            if (applicationsError) {
+              console.error("Applications fetch error:", applicationsError);
+              context.applications = [];
+            } else {
+              context.applications = applications || [];
+            }
+          } else {
+            context.applications = [];
+          }
         }),
     );
   }
@@ -1165,11 +827,13 @@ async function buildEmployerContext(
   supabase: any,
   userId: string,
   neededFields: string[] = [],
+  specificCompanyId?: string | null,
 ): Promise<{ context: string; companyId: string | null }> {
   const { company, jobs, applications, companyId } = await fetchEmployerData(
     supabase,
     userId,
     neededFields,
+    specificCompanyId,
   );
 
   const ctx: string[] = [];
@@ -1185,11 +849,13 @@ async function buildEmployerContext(
 - Website: ${company.website || "Not specified"}
 - Description: ${company.description || "No description available"}`,
     );
+  } else {
+    ctx.push(`## Company Profile\nNo company profile found.`);
   }
 
-  if (jobs?.length) {
+  if (jobs && jobs.length > 0) {
     ctx.push(
-      `## Posted Jobs
+      `## Posted Jobs (Total: ${jobs.length})
 ${jobs
   .map(
     (j: any) =>
@@ -1203,11 +869,13 @@ ${jobs
   )
   .join("\n")}`,
     );
+  } else {
+    ctx.push(`## Posted Jobs\nNo jobs posted yet.`);
   }
 
-  if (applications?.length) {
+  if (applications && applications.length > 0) {
     ctx.push(
-      `## Recent Applications
+      `## Recent Applications (Total: ${applications.length})
 ${applications
   .map(
     (a: any) =>
@@ -1220,6 +888,10 @@ ${applications
   )
   .join("\n")}`,
     );
+  } else {
+    ctx.push(
+      `## Applications\nNO APPLICATIONS RECEIVED YET. There are currently no applicants for any of your jobs.`,
+    );
   }
 
   return { context: ctx.join("\n\n"), companyId: companyId ?? null };
@@ -1227,108 +899,145 @@ ${applications
 
 // ── Main Server Function ────────────────────────────────────────────────────
 
-export const runEmployerAiFeature = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => {
-    const i = input as { featureSlug: string; message: string };
-    if (!i?.featureSlug) throw new Error("Feature slug is required");
-    if (!i?.message?.trim()) throw new Error("Message is required");
-    return { featureSlug: i.featureSlug, message: i.message.trim().slice(0, 6000) };
-  })
-  .handler(async ({ data, context }) => {
-    await requirePremium(context.userId);
+export const runEmployerAiFeature = (
+  createServerFn({ method: "POST" }).middleware([requireSupabaseAuth]) as any
+).handler(async (ctx: any) => {
+  const { data, context } = ctx;
 
-    const feature = getAiFeature(data.featureSlug);
-    if (!feature) throw new Error("Unknown AI feature");
+  const featureSlug = typeof data?.featureSlug === "string" ? data.featureSlug.trim() : "";
+  const message = typeof data?.message === "string" ? data.message.trim() : "";
+  const companyId = typeof data?.companyId === "string" ? data.companyId : null;
 
-    const config = FEATURE_CONFIGS[data.featureSlug];
-    if (!config) throw new Error("AI feature not configured");
+  if (!featureSlug) throw new Error("Feature slug is required");
+  if (!message) throw new Error("Message is required");
 
-    // Check if feature requires company
-    if (config.requiresCompany) {
-      const { data: company } = await context.supabase
+  const userId = context.userId;
+  const supabase = context.supabase;
+
+  await requirePremium(userId);
+
+  const feature = getAiFeature(featureSlug);
+  if (!feature) throw new Error("Unknown AI feature");
+
+  const config = FEATURE_CONFIGS[featureSlug];
+  if (!config) throw new Error("AI feature not configured");
+
+  // Check if feature requires company
+  if (config.requiresCompany) {
+    let companies;
+    let companyError;
+
+    if (companyId) {
+      // Check specific company
+      const result = await supabase
         .from("companies")
         .select("id")
-        .eq("owner_id", context.userId)
-        .maybeSingle();
+        .eq("id", companyId)
+        .eq("owner_id", userId)
+        .single();
 
-      if (!company) {
-        throw new Error("Please create a company profile first to use this feature.");
+      companies = result.data ? [result.data] : null;
+      companyError = result.error;
+    } else {
+      // Get any company
+      const result = await supabase
+        .from("companies")
+        .select("id")
+        .eq("owner_id", userId)
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      companies = result.data;
+      companyError = result.error;
+    }
+
+    if (companyError) {
+      console.error("Company check error:", companyError);
+      throw new Error("Error checking company profile. Please try again.");
+    }
+
+    if (!companies || companies.length === 0) {
+      throw new Error("Please create a company profile first to use this feature.");
+    }
+  }
+
+  // Build employer context with specific company if provided
+  const { context: employerContext, companyId: contextCompanyId } = await buildEmployerContext(
+    supabase,
+    userId,
+    config.contextFields || [],
+    companyId,
+  );
+
+  // RAG context from knowledge base
+  let ragContext = "";
+  try {
+    if (contextCompanyId) {
+      const embRes = await aiGenerateEmbedding(message);
+      const { data: chunks } = await (supabaseAdmin as any).rpc("search_knowledge_base", {
+        query_embedding: embRes.embedding,
+        match_company_id: contextCompanyId,
+        match_limit: 5,
+      });
+
+      const chunkList = Array.isArray(chunks) ? chunks : [];
+      if (chunkList.length) {
+        ragContext = chunkList
+          .map((c: any, i: number) => `[${i + 1}] From "${c.document_title}":\n${c.content}`)
+          .join("\n\n---\n\n");
       }
     }
+  } catch (error) {
+    console.warn("RAG context retrieval failed:", error);
+    // RAG is optional — continue without it
+  }
 
-    // Build employer context
-    const { context: employerContext, companyId } = await buildEmployerContext(
-      context.supabase,
-      context.userId,
-      config.contextFields || [],
+  // Build complete prompt with explicit no-data instructions
+  const promptParts = [
+    `## Employer Context\n${employerContext || "No company profile set up yet."}`,
+  ];
+
+  if (ragContext) {
+    promptParts.push(`## Knowledge Base Context\n${ragContext}`);
+  }
+
+  promptParts.push(
+    `## Request\n${message}`,
+    ``,
+    `## Instructions
+1. Use ONLY the provided company context to personalize your response
+2. If no applications are listed, do NOT invent or generate fake candidate names
+3. If no jobs are listed, state that clearly
+4. Be specific and actionable based on ACTUAL data provided
+5. Consider the Nepali job market
+6. Use NPR (Rs.) for all salary figures
+7. Provide realistic, practical recommendations
+8. Format response as valid JSON per the schema
+9. If there's no data for a requested analysis, return empty arrays and explain why
+10. NEVER fabricate candidate names, applications, or metrics`,
+  );
+
+  const prompt = promptParts.join("\n\n");
+
+  try {
+    const result = await aiGenerateJsonValidated(
+      prompt,
+      config.systemPrompt,
+      config.schema,
+      "general",
     );
 
-    // RAG context from knowledge base
-    let ragContext = "";
-    try {
-      if (companyId) {
-        const embRes = await aiGenerateEmbedding(data.message);
-        const { data: chunks } = await (supabaseAdmin as any).rpc("search_knowledge_base", {
-          query_embedding: embRes.embedding,
-          match_company_id: companyId,
-          match_limit: 5,
-        });
+    const serializableResult = JSON.parse(JSON.stringify(result)) as {
+      [key: string]: SerializableJson;
+    };
 
-        const chunkList = Array.isArray(chunks) ? chunks : [];
-        if (chunkList.length) {
-          ragContext = chunkList
-            .map((c: any, i: number) => `[${i + 1}] From "${c.document_title}":\n${c.content}`)
-            .join("\n\n---\n\n");
-        }
-      }
-    } catch (error) {
-      console.warn("RAG context retrieval failed:", error);
-      // RAG is optional — continue without it
-    }
-
-    // Build complete prompt
-    const promptParts = [
-      `## Employer Context\n${employerContext || "No company profile set up yet."}`,
-    ];
-
-    if (ragContext) {
-      promptParts.push(`## Knowledge Base Context\n${ragContext}`);
-    }
-
-    promptParts.push(
-      `## Request\n${data.message}`,
-      ``,
-      `## Instructions
-1. Use the provided company context to personalize your response
-2. Be specific and actionable
-3. Consider the Nepali job market
-4. Use NPR (Rs.) for all salary figures
-5. Provide realistic, practical recommendations
-6. Format response as valid JSON per the schema`,
-    );
-
-    const prompt = promptParts.join("\n\n");
-
-    try {
-      const result = await aiGenerateJsonValidated(
-        prompt,
-        config.systemPrompt,
-        config.schema,
-        "general",
-      );
-
-      const serializableResult = JSON.parse(JSON.stringify(result)) as {
-        [key: string]: SerializableJson;
-      };
-
-      return {
-        response: serializableResult,
-        structured: serializableResult,
-        featureTitle: feature.title,
-      };
-    } catch (error) {
-      console.error(`AI feature ${data.featureSlug} failed:`, error);
-      throw new Error(`Failed to generate ${feature.title}. Please try again.`);
-    }
-  });
+    return {
+      response: serializableResult,
+      structured: serializableResult,
+      featureTitle: feature.title,
+    };
+  } catch (error) {
+    console.error(`AI feature ${featureSlug} failed:`, error);
+    throw new Error(`Failed to generate ${feature.title}. Please try again.`);
+  }
+});

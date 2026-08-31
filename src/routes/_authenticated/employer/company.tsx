@@ -134,13 +134,8 @@ function CompanyForm() {
 
   const upsert = useMutation({
     mutationFn: async () => {
-      const roleRes = await supabase.from("user_roles").insert({
-        user_id: user!.id,
-        role: "employer",
-      });
-
-      if (roleRes.error && roleRes.error.code !== "23505") {
-        throw roleRes.error;
+      if (!user) {
+        throw new Error("You must be signed in");
       }
 
       const editable = {
@@ -173,7 +168,7 @@ function CompanyForm() {
           .from("companies")
           .insert({
             ...editable,
-            owner_id: user!.id,
+            owner_id: user.id,
             slug: slugify(form.name) || `co-${Date.now()}`,
           })
           .select("id")
@@ -181,7 +176,6 @@ function CompanyForm() {
 
         if (error) throw error;
 
-        console.log("Company created with ID:", inserted.id);
         setSelectedCompanyId(inserted.id);
       }
     },
@@ -189,11 +183,13 @@ function CompanyForm() {
     onSuccess: async () => {
       toast.success(selectedCompany ? "Company profile updated" : "Company created successfully");
 
-      await qc.invalidateQueries({ queryKey: ["my-companies", user?.id] });
+      await qc.invalidateQueries({
+        queryKey: ["my-companies", user?.id],
+      });
     },
 
     onError: (e: any) => {
-      toast.error(e.message);
+      toast.error(e.message || "Failed to save company");
     },
   });
 

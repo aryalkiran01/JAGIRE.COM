@@ -384,8 +384,6 @@ drop function if exists "public"."generate_referral_code"();
 
 drop function if exists "public"."prevent_self_apply"();
 drop trigger if exists "on_auth_user_created_referral" on "auth"."users";
-drop trigger if exists "on_auth_user_created_referral" on "auth"."users";
-
 drop function if exists "public"."process_referral_on_signup"();
 
 drop function if exists "public"."tg_post_comments_count"();
@@ -700,8 +698,6 @@ alter table "public"."jobs" alter column experience_level type "public"."experie
 alter table "public"."jobs" alter column job_type type "public"."job_type" using job_type::text::"public"."job_type";
 
 alter table "public"."jobs" alter column status type "public"."job_status" using status::text::"public"."job_status";
-
-drop policy if exists "admin_delete_jobs" on "public"."jobs";
 
 alter table "public"."user_roles" alter column role type "public"."app_role" using role::text::"public"."app_role";
 

@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState, useCallback, useRef, useMemo } from "react";
+import { createFileRoute } from "@tanstack/react-router";
+import { useState, useCallback, useRef, useMemo, useEffect } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,16 +13,13 @@ import { SkeletonCard } from "@/components/ui/skeleton-loader";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   Sparkles,
-  Upload,
   Loader2,
   Briefcase,
   TrendingUp,
   Award,
   Building2,
-  DollarSign,
   Target,
   Rocket,
-  FileDown,
   Lightbulb,
   ScanText,
   FileText,
@@ -32,10 +29,8 @@ import {
   FileUp,
   RefreshCw,
   Download,
-  ChevronRight,
   Wallet,
   MapPin,
-  ExternalLink,
   Send,
   Flag,
   Globe,
@@ -68,6 +63,9 @@ type Roadmap = {
     ninety_days: string[];
     one_eighty_days: string[];
   } | null;
+  strengths?: string[];
+  weaknesses?: string[];
+  keywords?: string[];
 };
 
 type ResumeData = {
@@ -90,22 +88,21 @@ type JobMatch = {
   id: string;
   title: string;
   company: string | null;
+  companyId?: string | null;
   score: number;
   location?: string | null;
-  salaryMin?: number;
-  salaryMax?: number;
+  salaryMin?: number | null;
+  salaryMax?: number | null;
+  salaryCurrency?: string | null;
   companyLocation?: string | null;
   isNepalBased?: boolean;
-  jobType?: string;
+  jobType?: string | null;
   requiredSkills?: string[];
-};
-
-type CompanyHiring = {
-  name: string;
-  sector: string;
-  location?: string;
-  isNepalBased?: boolean;
-  activeJobs?: number;
+  matchingSkills?: string[];
+  missingSkills?: string[];
+  description?: string | null;
+  matchReasoning?: string;
+  recommendedNextSteps?: string[];
 };
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -364,6 +361,11 @@ function JobMatchCard({ match, onApply }: { match: JobMatch; onApply: (match: Jo
         </div>
       </div>
 
+      {/* Match reasoning */}
+      {match.matchReasoning && (
+        <p className="text-xs text-muted-foreground mt-2">{match.matchReasoning}</p>
+      )}
+
       {/* Required Skills */}
       {match.requiredSkills && match.requiredSkills.length > 0 && (
         <div className="flex flex-wrap gap-1 mt-3">
@@ -393,45 +395,97 @@ function ResumeScanner() {
   const [dragActive, setDragActive] = useState(false);
   const [matches, setMatches] = useState<JobMatch[]>([]);
   const [isExporting, setIsExporting] = useState(false);
+  const [hasAttemptedScan, setHasAttemptedScan] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { data: resume, isLoading } = useQuery({
+  // Improved query with better error handling
+  const {
+    data: resume,
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery({
     queryKey: ["my-resume-full", user?.id],
     enabled: !!user,
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    retry: 2,
     queryFn: async () => {
+      if (!user) return null;
+
       const { data, error } = await supabase
         .from("resumes")
         .select("*")
-        .eq("user_id", user!.id)
+        .eq("user_id", user.id)
         .eq("is_default", true)
         .maybeSingle();
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error fetching resume:", error);
+        throw error;
+      }
+
       return data as ResumeData | null;
     },
   });
 
+  // Improved scan mutation
   const scanMutation = useMutation({
     mutationFn: async (resumeId: string) => {
+      console.log("Starting scan for resume:", resumeId);
       return runScan({ data: { resumeId } });
     },
     onSuccess: (result) => {
-      setMatches(
-        (result.matches ?? []).map((match) => ({
-          ...match,
-          jobType: match.jobType ?? undefined,
-          salaryMin: match.salaryMin ?? undefined,
-          salaryMax: match.salaryMax ?? undefined,
-        })),
-      );
+      console.log("Scan result:", result);
+
+      // Normalize matches data
+      const normalizedMatches = (result.matches ?? []).map((match: any) => ({
+        ...match,
+        jobType: match.jobType ?? undefined,
+        salaryMin: match.salaryMin ?? undefined,
+        salaryMax: match.salaryMax ?? undefined,
+        isNepalBased: match.isNepalBased ?? false,
+      }));
+
+      setMatches(normalizedMatches);
+      setHasAttemptedScan(true);
       toast.success("Analysis complete! Career roadmap generated.");
+
+      // Force refetch to get updated data
       qc.invalidateQueries({ queryKey: ["my-resume-full"] });
       qc.invalidateQueries({ queryKey: ["my-resume"] });
+
+      // Add slight delay for UI consistency
+      setTimeout(() => {
+        refetch();
+      }, 100);
     },
     onError: (error) => {
+      console.error("Scan error:", error);
       toast.error((error as Error).message);
+      setHasAttemptedScan(true);
     },
   });
+
+  // Check for existing analysis data
+  useEffect(() => {
+    if (resume?.career_roadmap || resume?.overall_score != null) {
+      setHasAttemptedScan(true);
+    }
+  }, [resume]);
+
+  // Auto-scan if resume exists but hasn't been analyzed
+  useEffect(() => {
+    if (
+      resume &&
+      !resume.career_roadmap &&
+      resume.overall_score == null &&
+      !scanMutation.isPending &&
+      !hasAttemptedScan
+    ) {
+      console.log("Auto-scanning existing resume");
+      scanMutation.mutate(resume.id);
+    }
+  }, [resume, scanMutation, hasAttemptedScan]);
 
   const handleFile = useCallback(
     async (file: File) => {
@@ -468,8 +522,10 @@ function ResumeScanner() {
         if (ins.error) throw ins.error;
 
         toast.success("Resume uploaded — analyzing...", { id: uploadToast });
+        setHasAttemptedScan(true);
         await scanMutation.mutateAsync(ins.data.id);
       } catch (err) {
+        console.error("Upload error:", err);
         toast.error((err as Error).message, { id: uploadToast });
       }
     },
@@ -514,8 +570,10 @@ function ResumeScanner() {
         }
       }
 
+      setHasAttemptedScan(true);
       await scanMutation.mutateAsync(scanId);
     } catch (err) {
+      console.error("Re-analysis error:", err);
       toast.error((err as Error).message);
     }
   }, [resume, user, scanMutation]);
@@ -556,6 +614,7 @@ function ResumeScanner() {
         // Invalidate applications query
         qc.invalidateQueries({ queryKey: ["applications"] });
       } catch (error) {
+        console.error("Application error:", error);
         toast.error(`Failed to apply: ${(error as Error).message}`);
       }
     },
@@ -647,6 +706,7 @@ function ResumeScanner() {
       doc.save("career-roadmap.pdf");
       toast.success("Roadmap exported successfully");
     } catch (error) {
+      console.error("PDF export error:", error);
       toast.error("Failed to export PDF");
     } finally {
       setIsExporting(false);
@@ -790,11 +850,22 @@ function ResumeScanner() {
         </CardContent>
       </Card>
 
+      {/* Error state */}
+      {isError && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error loading resume</AlertTitle>
+          <AlertDescription>
+            There was an error loading your resume data. Please try refreshing the page.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Loading skeleton */}
       {isLoading && <SkeletonCard />}
 
       {/* Scores */}
-      {resume?.overall_score != null && (
+      {resume?.overall_score != null && !isBusy && (
         <Card className="glass animate-fade-in-up">
           <CardContent className="p-6 space-y-5">
             <div className="flex items-center justify-between">
@@ -867,7 +938,7 @@ function ResumeScanner() {
       )}
 
       {/* Career Roadmap */}
-      {roadmap && (
+      {roadmap && !isBusy && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-2xl font-bold flex items-center gap-2">
@@ -1073,7 +1144,7 @@ function ResumeScanner() {
       )}
 
       {/* Job matches */}
-      {sortedMatches.length > 0 && (
+      {sortedMatches.length > 0 && !isBusy && (
         <Card className="glass animate-fade-in-up">
           <CardContent className="p-6 space-y-3">
             <h2 className="text-xl font-bold flex items-center gap-2">
@@ -1090,6 +1161,22 @@ function ResumeScanner() {
           </CardContent>
         </Card>
       )}
+
+      {/* Empty state if no data after scan attempt */}
+      {hasAttemptedScan &&
+        !resume?.overall_score &&
+        !resume?.career_roadmap &&
+        sortedMatches.length === 0 &&
+        !isBusy && (
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>No analysis data available</AlertTitle>
+            <AlertDescription>
+              We couldn't generate analysis data for this resume. Try uploading a different file or
+              re-analyzing.
+            </AlertDescription>
+          </Alert>
+        )}
     </div>
   );
 }
