@@ -35,7 +35,7 @@ function AuthPage() {
   const [tab, setTab] = useState<"signin" | "signup">(search.mode ?? "signin");
 
   useEffect(() => {
-    if (!loading && user) navigate({ to: (search.redirect as any) ?? "/dashboard" });
+    if (!loading && user) navigate({ to: (search.redirect as string | undefined) ?? "/dashboard" });
   }, [user, loading, navigate, search.redirect]);
 
   return (
@@ -51,7 +51,7 @@ function AuthPage() {
             <CardDescription>Sign in or create an account to get started</CardDescription>
           </CardHeader>
           <CardContent>
-            <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
+            <Tabs value={tab} onValueChange={(v) => setTab(v as "signin" | "signup")}>
               <TabsList className="grid grid-cols-2 w-full mb-6">
                 <TabsTrigger value="signin">Sign in</TabsTrigger>
                 <TabsTrigger value="signup">Create account</TabsTrigger>
@@ -167,7 +167,7 @@ function SignUpForm() {
         <Label>I am a</Label>
         <RadioGroup
           value={role}
-          onValueChange={(v) => setRole(v as any)}
+          onValueChange={(v) => setRole(v as "job_seeker" | "employer")}
           className="grid grid-cols-2 gap-2 mt-2"
         >
           <label className="flex items-center gap-2 border rounded-lg p-3 cursor-pointer hover:bg-muted has-checked:border-primary has-checked:bg-primary/5">
