@@ -7,7 +7,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
-// Only these recipients are allowed — prevents open relay abuse
+// Only these recipients are allowed for client-side calls (support form) — prevents open relay abuse
 const ALLOWED_TO = ["admin@jagire.com"];
 
 function escapeHtml(str: string): string {
@@ -32,7 +32,6 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    // Require a valid Supabase JWT — rejects anonymous callers
     const authHeader = req.headers.get("Authorization");
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -43,6 +42,7 @@ Deno.serve(async (req: Request) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     if (!supabaseUrl || !anonKey) {
       return new Response(JSON.stringify({ error: "Server misconfiguration" }), {
         status: 500,
@@ -50,20 +50,31 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // Verify the caller's JWT by making a lightweight getUser call
-    const supabase = createClient(supabaseUrl, anonKey, {
-      auth: { persistSession: false, autoRefreshToken: false },
-      global: { headers: { Authorization: authHeader } },
-    });
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-    if (userError || !user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+    const token = authHeader.slice("Bearer ".length);
+    const isServiceRole = serviceRoleKey !== undefined && token === serviceRoleKey;
+
+    let isTrustedServer = false;
+
+    if (isServiceRole) {
+      // Server-side calls (interview scheduling, etc.) use the service role key
+      // and are allowed to send transactional emails to any recipient.
+      isTrustedServer = true;
+    } else {
+      // Client-side calls (support form) must have a valid user JWT
+      const supabase = createClient(supabaseUrl, anonKey, {
+        auth: { persistSession: false, autoRefreshToken: false },
+        global: { headers: { Authorization: authHeader } },
       });
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+      if (userError || !user) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     const { to, subject, html, text } = await req.json();
@@ -75,18 +86,20 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // Enforce recipient allowlist
     const recipients = Array.isArray(to) ? to : [to];
-    for (const r of recipients) {
-      if (!ALLOWED_TO.includes(r)) {
-        return new Response(JSON.stringify({ error: "Recipient not allowed" }), {
-          status: 403,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+
+    // Enforce recipient allowlist only for untrusted (client-side) callers
+    if (!isTrustedServer) {
+      for (const r of recipients) {
+        if (!ALLOWED_TO.includes(r)) {
+          return new Response(JSON.stringify({ error: "Recipient not allowed" }), {
+            status: 403,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
       }
     }
 
-    // Escape the subject line (it appears in email clients as text)
     const safeSubject = escapeHtml(String(subject)).slice(0, 200);
 
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
@@ -113,6 +126,7 @@ Deno.serve(async (req: Request) => {
 
     if (!res.ok) {
       const err = await res.text();
+      console.error("[send-email] Resend API error:", res.status, err);
       return new Response(JSON.stringify({ error: "Failed to send email" }), {
         status: 502,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -124,6 +138,7 @@ Deno.serve(async (req: Request) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
+    console.error("[send-email] Internal error:", err);
     return new Response(JSON.stringify({ error: "Internal server error" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
