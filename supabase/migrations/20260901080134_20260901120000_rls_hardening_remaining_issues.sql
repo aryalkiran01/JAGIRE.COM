@@ -69,26 +69,41 @@ CREATE POLICY "Applicant or employer update"
 
 -- ── 4. saved_jobs: Split FOR ALL into per-verb policies ─────────────────────────
 
+-- ── 4. saved_jobs: Split FOR ALL into per-verb policies ─────────────────────────
+
 DROP POLICY IF EXISTS "Users manage own saved jobs" ON public.saved_jobs;
+DROP POLICY IF EXISTS "select_own_saved_jobs" ON public.saved_jobs;
+DROP POLICY IF EXISTS "insert_own_saved_jobs" ON public.saved_jobs;
+DROP POLICY IF EXISTS "update_own_saved_jobs" ON public.saved_jobs;
+DROP POLICY IF EXISTS "delete_own_saved_jobs" ON public.saved_jobs;
 
 CREATE POLICY "select_own_saved_jobs"
-  ON public.saved_jobs FOR SELECT TO authenticated
+  ON public.saved_jobs
+  FOR SELECT
+  TO authenticated
   USING (auth.uid() = user_id);
 
 CREATE POLICY "insert_own_saved_jobs"
-  ON public.saved_jobs FOR INSERT TO authenticated
+  ON public.saved_jobs
+  FOR INSERT
+  TO authenticated
   WITH CHECK (auth.uid() = user_id);
 
 CREATE POLICY "update_own_saved_jobs"
-  ON public.saved_jobs FOR UPDATE TO authenticated
+  ON public.saved_jobs
+  FOR UPDATE
+  TO authenticated
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
 
 CREATE POLICY "delete_own_saved_jobs"
-  ON public.saved_jobs FOR DELETE TO authenticated
+  ON public.saved_jobs
+  FOR DELETE
+  TO authenticated
   USING (auth.uid() = user_id);
 
 -- ── 5. companies: Split FOR ALL into per-verb admin policies ────────────────────
+
 
 DROP POLICY IF EXISTS "Admins manage companies" ON public.companies;
 DROP POLICY IF EXISTS "select_companies" ON public.companies;
@@ -97,18 +112,26 @@ DROP POLICY IF EXISTS "admin_update_companies" ON public.companies;
 DROP POLICY IF EXISTS "admin_delete_companies" ON public.companies;
 
 CREATE POLICY "select_companies"
-  ON public.companies FOR SELECT TO authenticated
+  ON public.companies
+  FOR SELECT
+  TO authenticated
   USING (true);
 
 CREATE POLICY "admin_insert_companies"
-  ON public.companies FOR INSERT TO authenticated
+  ON public.companies
+  FOR INSERT
+  TO authenticated
   WITH CHECK (public.has_role(auth.uid(), 'admin'::app_role));
 
 CREATE POLICY "admin_update_companies"
-  ON public.companies FOR UPDATE TO authenticated
+  ON public.companies
+  FOR UPDATE
+  TO authenticated
   USING (public.has_role(auth.uid(), 'admin'::app_role))
   WITH CHECK (public.has_role(auth.uid(), 'admin'::app_role));
 
 CREATE POLICY "admin_delete_companies"
-  ON public.companies FOR DELETE TO authenticated
+  ON public.companies
+  FOR DELETE
+  TO authenticated
   USING (public.has_role(auth.uid(), 'admin'::app_role));
