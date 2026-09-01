@@ -5,7 +5,36 @@ import { SiteFooter } from "@/components/layout/site-footer";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Check, Crown, Calendar, CalendarClock, Sparkles, Brain, FileText, Star, Target, MessageSquare, Circle as HelpCircle, Rocket, Zap, Search, ScanLine, ChartBar as BarChart3, Mail, Clock, Signature as FileSignature, TrendingUp, ClipboardList, Users, Bot, Globe, ShieldCheck, Lock, Sparkle, Loader as Loader2 } from "lucide-react";
+import {
+  Check,
+  Crown,
+  Calendar,
+  CalendarClock,
+  Sparkles,
+  Brain,
+  FileText,
+  Star,
+  Target,
+  MessageSquare,
+  Circle as HelpCircle,
+  Rocket,
+  Zap,
+  Search,
+  ScanLine,
+  ChartBar as BarChart3,
+  Mail,
+  Clock,
+  Signature as FileSignature,
+  TrendingUp,
+  ClipboardList,
+  Users,
+  Bot,
+  Globe,
+  ShieldCheck,
+  Lock,
+  Sparkle,
+  Loader as Loader2,
+} from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useSubscription, PLAN_NAMES } from "@/hooks/use-subscription";
 import { PLANS, SEEKER_PLANS, EMPLOYER_PLANS, type PlanConfig } from "@/lib/plans";

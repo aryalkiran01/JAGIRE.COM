@@ -369,7 +369,8 @@ function ApiKeysTab() {
               <DialogTitle>{createdKey ? "Save Your API Key" : "Create API Key"}</DialogTitle>
               {createdKey && (
                 <DialogDescription>
-                  Copy and store this key securely now. For your security, it cannot be retrieved again after you close this dialog.
+                  Copy and store this key securely now. For your security, it cannot be retrieved
+                  again after you close this dialog.
                 </DialogDescription>
               )}
             </DialogHeader>
