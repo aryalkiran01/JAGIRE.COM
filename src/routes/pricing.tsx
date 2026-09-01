@@ -83,7 +83,7 @@ function PricingPage() {
   useEffect(() => {
     if (userRole === "employer") {
       setTab("employer");
-    } else if (userRole === "seeker" || userRole === "job_seeker") {
+    } else if (userRole === "job_seeker") {
       setTab("seeker");
     }
   }, [userRole]);
@@ -98,7 +98,7 @@ function PricingPage() {
   }
 
   const isEmployer = userRole === "employer";
-  const isSeeker = userRole === "seeker" || userRole === "job_seeker";
+  const isSeeker = userRole === "job_seeker";
 
   return (
     <div className="min-h-screen bg-background">

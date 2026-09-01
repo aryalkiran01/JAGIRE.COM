@@ -173,7 +173,7 @@ function Admin() {
     mutationFn: async ({ userId, newRole }: { userId: string; newRole: string }) => {
       const { error } = await supabase
         .from("user_roles")
-        .update({ role: newRole as "seeker" | "employer" | "admin" | "job_seeker" })
+        .update({ role: newRole as "employer" | "admin" | "job_seeker" })
         .eq("user_id", userId);
       if (error) throw error;
     },

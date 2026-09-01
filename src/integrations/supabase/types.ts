@@ -776,49 +776,6 @@ export type Database = {
         };
         Relationships: [];
       };
-      chat_participants: {
-        Row: {
-          chat_id: string | null;
-          created_at: string | null;
-          id: string;
-          user_id: string | null;
-        };
-        Insert: {
-          chat_id?: string | null;
-          created_at?: string | null;
-          id?: string;
-          user_id?: string | null;
-        };
-        Update: {
-          chat_id?: string | null;
-          created_at?: string | null;
-          id?: string;
-          user_id?: string | null;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "chat_participants_chat_id_fkey";
-            columns: ["chat_id"];
-            isOneToOne: false;
-            referencedRelation: "chats";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "chat_participants_user_id_fkey";
-            columns: ["user_id"];
-            isOneToOne: false;
-            referencedRelation: "admin_users";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "chat_participants_user_id_fkey";
-            columns: ["user_id"];
-            isOneToOne: false;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
       chats: {
         Row: {
           created_at: string | null;
@@ -1302,66 +1259,6 @@ export type Database = {
           },
         ];
       };
-      interview_slots: {
-        Row: {
-          application_id: string | null;
-          booked_by: string | null;
-          calendar_event_id: string | null;
-          created_at: string | null;
-          employer_id: string;
-          end_time: string;
-          id: string;
-          is_booked: boolean | null;
-          job_id: string;
-          meeting_link: string | null;
-          notes: string | null;
-          start_time: string;
-        };
-        Insert: {
-          application_id?: string | null;
-          booked_by?: string | null;
-          calendar_event_id?: string | null;
-          created_at?: string | null;
-          employer_id?: string;
-          end_time: string;
-          id?: string;
-          is_booked?: boolean | null;
-          job_id: string;
-          meeting_link?: string | null;
-          notes?: string | null;
-          start_time: string;
-        };
-        Update: {
-          application_id?: string | null;
-          booked_by?: string | null;
-          calendar_event_id?: string | null;
-          created_at?: string | null;
-          employer_id?: string;
-          end_time?: string;
-          id?: string;
-          is_booked?: boolean | null;
-          job_id?: string;
-          meeting_link?: string | null;
-          notes?: string | null;
-          start_time?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "interview_slots_application_id_fkey";
-            columns: ["application_id"];
-            isOneToOne: false;
-            referencedRelation: "applications";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "interview_slots_job_id_fkey";
-            columns: ["job_id"];
-            isOneToOne: false;
-            referencedRelation: "jobs";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
       interviews: {
         Row: {
           accepted_at: string | null;
@@ -1445,21 +1342,6 @@ export type Database = {
             referencedColumns: ["id"];
           },
         ];
-      };
-      jagire: {
-        Row: {
-          created_at: string;
-          id: number;
-        };
-        Insert: {
-          created_at?: string;
-          id?: number;
-        };
-        Update: {
-          created_at?: string;
-          id?: number;
-        };
-        Relationships: [];
       };
       job_matches: {
         Row: {
@@ -2301,47 +2183,6 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "post_likes_post_id_fkey";
-            columns: ["post_id"];
-            isOneToOne: false;
-            referencedRelation: "posts";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-      post_reports: {
-        Row: {
-          created_at: string | null;
-          details: string | null;
-          id: string;
-          post_id: string;
-          reason: string;
-          reporter_id: string;
-          status: string;
-          updated_at: string | null;
-        };
-        Insert: {
-          created_at?: string | null;
-          details?: string | null;
-          id?: string;
-          post_id: string;
-          reason: string;
-          reporter_id?: string;
-          status?: string;
-          updated_at?: string | null;
-        };
-        Update: {
-          created_at?: string | null;
-          details?: string | null;
-          id?: string;
-          post_id?: string;
-          reason?: string;
-          reporter_id?: string;
-          status?: string;
-          updated_at?: string | null;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "post_reports_post_id_fkey";
             columns: ["post_id"];
             isOneToOne: false;
             referencedRelation: "posts";
@@ -3242,7 +3083,7 @@ export type Database = {
       };
     };
     Enums: {
-      app_role: "seeker" | "employer" | "admin" | "job_seeker";
+      app_role: "employer" | "admin" | "job_seeker";
       application_status:
         | "applied"
         | "viewed"
@@ -3382,7 +3223,7 @@ export const Constants = {
   },
   public: {
     Enums: {
-      app_role: ["seeker", "employer", "admin", "job_seeker"],
+      app_role: ["employer", "admin", "job_seeker"],
       application_status: [
         "applied",
         "viewed",
