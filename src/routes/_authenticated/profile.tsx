@@ -146,7 +146,7 @@ function ProfilePage() {
             className="h-40 md:h-56 bg-gradient-to-br from-primary/30 via-primary/10 to-accent/30 bg-cover bg-center"
             style={form.banner_url ? { backgroundImage: `url(${form.banner_url})` } : undefined}
           />
-          <label className="absolute top-3 right-3 cursor-pointer">
+          <label className="absolute top-3 right-3 cursor-pointer z-10">
             <div className="bg-background/80 backdrop-blur border rounded-md px-3 py-1.5 text-xs flex items-center gap-1.5 hover:bg-background">
               {uploading === "banner" ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />

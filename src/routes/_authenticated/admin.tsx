@@ -360,7 +360,7 @@ function Admin() {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
                       <Badge variant={roleColor(u.role) as any}>{u.role}</Badge>
 
                       {/* Role change */}
@@ -531,8 +531,8 @@ function Admin() {
                         {j.company?.name} · {j.applications_count} applicants
                       </div>
                     </div>
-                    <Badge>{j.status}</Badge>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Badge>{j.status}</Badge>
                       <Button
                         size="sm"
                         variant="outline"
@@ -548,11 +548,6 @@ function Admin() {
                         onConfirm={() => void deleteJob(j.id)}
                       />
                     </div>
-                    <ConfirmDelete
-                      label="Delete job"
-                      description={`Permanently delete "${j.title}"? All applications and interviews for this job will also be removed.`}
-                      onConfirm={() => void deleteJob(j.id)}
-                    />
                   </div>
                 ))}
                 {!jobs?.length && (
@@ -970,8 +965,8 @@ function AdminSubscriptions() {
         ) : !subscriptions?.length ? (
           <div className="p-8 text-center text-muted-foreground">No subscriptions found.</div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+          <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+            <table className="w-full text-sm min-w-[800px]">
               <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">
                 <tr>
                   <th className="text-left p-3 font-medium">User</th>

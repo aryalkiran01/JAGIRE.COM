@@ -8,22 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import {
-  MessageSquare,
-  Send,
-  Loader2,
-  Search,
-  ArrowLeft,
-  Smile,
-  X,
-  Check,
-  Phone,
-  Video,
-  Info,
-  Plus,
-  Paperclip,
-  Mic,
-} from "lucide-react";
+import { MessageSquare, Send, Loader as Loader2, Search, ArrowLeft, Smile, X, Check, Phone, Video, Info, Plus, Paperclip, Mic } from "lucide-react";
 import { toast } from "sonner";
 import { format, isToday, isYesterday } from "date-fns";
 
@@ -400,7 +385,7 @@ function Messages() {
         </div>
       </div>
 
-      <Card className="overflow-hidden border shadow-xl h-[calc(100vh-100px)] sm:h-[calc(100vh-140px)]">
+      <Card className="overflow-hidden border shadow-xl h-[calc(100dvh-100px)] sm:h-[calc(100dvh-140px)]">
         <div className="flex h-full">
           {/* SIDEBAR */}
           <div

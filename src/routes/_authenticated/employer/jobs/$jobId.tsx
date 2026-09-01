@@ -387,61 +387,65 @@ function JobDetail() {
                 </div>
 
                 {/* Action Buttons */}
-                <div className="flex flex-wrap gap-2 pt-3 border-t">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="gap-1.5"
-                    onClick={() => {
-                      setViewingApplicant(app);
-                      setActiveTab("profile");
-                    }}
-                  >
-                    <Eye className="h-3.5 w-3.5" /> Profile
-                  </Button>
-
-                  {app.resume && (
-                    <>
-                      <Button
-                        size="sm"
-                        className="gap-1.5 gradient-brand text-primary-foreground"
-                        onClick={() => openResume(app)}
-                        disabled={loadingResume}
-                      >
-                        {loadingResume ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        ) : (
-                          <FileText className="h-3.5 w-3.5" />
-                        )}
-                        View Resume
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="gap-1.5"
-                        onClick={() => downloadResume(app)}
-                      >
-                        <Download className="h-3.5 w-3.5" /> Download
-                      </Button>
-                    </>
-                  )}
-
-                  {app.cover_letter && (
+                <div className="pt-3 border-t space-y-2">
+                  {/* Primary actions */}
+                  <div className="flex flex-wrap gap-2">
                     <Button
                       size="sm"
                       variant="outline"
                       className="gap-1.5"
                       onClick={() => {
                         setViewingApplicant(app);
-                        setActiveTab("cover");
+                        setActiveTab("profile");
                       }}
                     >
-                      <Mail className="h-3.5 w-3.5" /> Cover Letter
+                      <Eye className="h-3.5 w-3.5" /> Profile
                     </Button>
-                  )}
 
+                    {app.resume && (
+                      <>
+                        <Button
+                          size="sm"
+                          className="gap-1.5 gradient-brand text-primary-foreground"
+                          onClick={() => openResume(app)}
+                          disabled={loadingResume}
+                        >
+                          {loadingResume ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <FileText className="h-3.5 w-3.5" />
+                          )}
+                          View Resume
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-1.5"
+                          onClick={() => downloadResume(app)}
+                        >
+                          <Download className="h-3.5 w-3.5" /> Download
+                        </Button>
+                      </>
+                    )}
+
+                    {app.cover_letter && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-1.5"
+                        onClick={() => {
+                          setViewingApplicant(app);
+                          setActiveTab("cover");
+                        }}
+                      >
+                        <Mail className="h-3.5 w-3.5" /> Cover Letter
+                      </Button>
+                    )}
+                  </div>
+
+                  {/* Secondary actions */}
                   {app.status !== "rejected" && app.status !== "selected" && (
-                    <>
+                    <div className="flex flex-wrap gap-2">
                       <Button
                         size="sm"
                         variant="outline"
@@ -483,7 +487,7 @@ function JobDetail() {
                         candidateName={app.profile?.full_name ?? undefined}
                         candidateEmail={app.profile?.email ?? ""}
                       />
-                    </>
+                    </div>
                   )}
                 </div>
               </CardContent>

@@ -181,7 +181,7 @@ export function SiteHeader() {
                 <ChevronDown className="h-3.5 w-3.5" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="center" className="w-[28rem] p-2">
+            <DropdownMenuContent align="center" className="w-[min(28rem,calc(100vw-2rem))] p-2">
               <div className="grid grid-cols-2 gap-1">
                 {FEATURE_LINKS.map((f) => (
                   <DropdownMenuItem key={f.to} asChild className="p-3 rounded-lg">

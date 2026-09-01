@@ -577,7 +577,7 @@ function FeedPage() {
                       </div>
                     </div>
                   ) : (
-                    <p className="whitespace-pre-wrap text-sm leading-relaxed pl-14 -mt-1">
+                    <p className="whitespace-pre-wrap text-sm leading-relaxed pl-0 sm:pl-14 -mt-1">
                       {p.content ?? p.body}
                     </p>
                   )}
@@ -590,7 +590,7 @@ function FeedPage() {
                   )}
 
                   {/* Engagement bar */}
-                  <div className="flex items-center gap-1 pl-14 -mt-1 border-t pt-2">
+                  <div className="flex items-center gap-1 pl-0 sm:pl-14 -mt-1 border-t pt-2">
                     <Button
                       variant="ghost"
                       size="sm"
@@ -639,7 +639,7 @@ function FeedPage() {
                   </div>
 
                   {/* Comments */}
-                  <div className="space-y-2 pl-14">
+                  <div className="space-y-2 pl-0 sm:pl-14">
                     {p.comments.length > 2 && !showComments && (
                       <Button
                         variant="ghost"
@@ -722,7 +722,7 @@ function FeedPage() {
                   </div>
 
                   {/* Comment input */}
-                  <div className="flex gap-2 pl-14">
+                  <div className="flex gap-2 pl-0 sm:pl-14">
                     <Input
                       placeholder="Write a comment…"
                       value={commentDraft[p.id] ?? ""}

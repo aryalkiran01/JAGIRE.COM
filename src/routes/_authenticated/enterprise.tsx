@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -366,20 +367,26 @@ function ApiKeysTab() {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>{createdKey ? "Save Your API Key" : "Create API Key"}</DialogTitle>
+              {createdKey && (
+                <DialogDescription>
+                  Copy and store this key securely now. For your security, it cannot be retrieved again after you close this dialog.
+                </DialogDescription>
+              )}
             </DialogHeader>
             {createdKey ? (
               <div className="space-y-4">
                 <div className="rounded-lg border-2 border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950 p-4">
                   <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300 mb-2">
-                    <AlertTriangle className="h-4 w-4" />
+                    <AlertTriangle className="h-4 w-4 shrink-0" />
                     <span className="text-sm font-semibold">
                       Copy this key now — you won't see it again.
                     </span>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex flex-col sm:flex-row gap-2">
                     <Input readOnly value={createdKey} className="font-mono text-xs" />
-                    <Button onClick={copyKey} variant="outline" size="sm">
+                    <Button onClick={copyKey} variant="outline" size="sm" className="shrink-0">
                       {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                      {copied ? " Copied!" : " Copy"}
                     </Button>
                   </div>
                 </div>

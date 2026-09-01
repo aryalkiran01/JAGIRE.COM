@@ -5,36 +5,7 @@ import { SiteFooter } from "@/components/layout/site-footer";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Check,
-  Crown,
-  Calendar,
-  CalendarClock,
-  Sparkles,
-  Brain,
-  FileText,
-  Star,
-  Target,
-  MessageSquare,
-  HelpCircle,
-  Rocket,
-  Zap,
-  Search,
-  ScanLine,
-  BarChart3,
-  Mail,
-  Clock,
-  FileSignature,
-  TrendingUp,
-  ClipboardList,
-  Users,
-  Bot,
-  Globe,
-  ShieldCheck,
-  Lock,
-  Sparkle,
-  Loader2,
-} from "lucide-react";
+import { Check, Crown, Calendar, CalendarClock, Sparkles, Brain, FileText, Star, Target, MessageSquare, Circle as HelpCircle, Rocket, Zap, Search, ScanLine, ChartBar as BarChart3, Mail, Clock, Signature as FileSignature, TrendingUp, ClipboardList, Users, Bot, Globe, ShieldCheck, Lock, Sparkle, Loader as Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useSubscription, PLAN_NAMES } from "@/hooks/use-subscription";
 import { PLANS, SEEKER_PLANS, EMPLOYER_PLANS, type PlanConfig } from "@/lib/plans";
@@ -163,7 +134,7 @@ function PricingPage() {
 
       {/* Sticky toggle - Only show for non-logged in users */}
       {!user && (
-        <div className="sticky top-16 z-30 py-3 backdrop-blur-md bg-background/70 border-y">
+        <div className="sticky top-14 z-20 py-3 backdrop-blur-md bg-background/80 border-y">
           <div className="container mx-auto px-4 flex justify-center">
             <div className="inline-flex rounded-full glass p-1 shadow-card-soft">
               <ToggleBtn active={tab === "seeker"} onClick={() => setTab("seeker")}>
@@ -713,8 +684,8 @@ function EmployerComparisonTable() {
           See exactly which AI tools each employer plan includes.
         </p>
       </div>
-      <div className="overflow-x-auto rounded-2xl glass shadow-card-soft">
-        <table className="w-full text-sm">
+      <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 rounded-2xl glass shadow-card-soft">
+        <table className="w-full text-sm min-w-[500px]">
           <thead>
             <tr className="border-b">
               <th className="text-left p-4 font-semibold">AI Feature</th>

@@ -458,13 +458,13 @@ function ResumeBuilder() {
           <CardHeader>
             <CardTitle>Live preview</CardTitle>
           </CardHeader>
-          <CardContent className="p-0 overflow-auto max-h-[600px]">
+          <CardContent className="p-0 overflow-auto max-h-[600px] bg-muted/20 py-4">
             <div
               style={{
-                width: "210mm",
+                width: "min(210mm, 100%)",
                 minHeight: "auto",
                 margin: "0 auto",
-                padding: "15mm 15mm 20mm 15mm",
+                padding: "min(15mm, 6%) min(15mm, 6%) min(20mm, 8%) min(15mm, 6%)",
                 fontFamily: "'Inter', Arial, Helvetica, sans-serif",
                 fontSize: "10pt",
                 lineHeight: 1.4,
