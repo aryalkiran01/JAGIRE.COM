@@ -228,13 +228,13 @@ function SalaryPredictionCard({
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
           {ranges.map((range) => (
             <div
               key={range.label}
               className={`text-center rounded-xl border-2 ${range.borderColor} p-4 hover:shadow-card-soft transition-all`}
             >
-              <div className={`text-lg font-bold ${range.color}`}>
+              <div className={`text-base sm:text-lg font-bold ${range.color}`}>
                 {formatNPRShort(range.value)}
               </div>
               <div className="text-xs text-muted-foreground mt-1">{range.label}</div>
@@ -751,17 +751,17 @@ function ResumeScanner() {
   }, [matches]);
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-5xl space-y-6">
+    <div className="container mx-auto px-3 sm:px-4 py-6 sm:py-8 max-w-5xl space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
+          <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
             <div className="h-10 w-10 rounded-xl gradient-brand flex items-center justify-center shadow-glow">
               <Sparkles className="h-5 w-5 text-primary-foreground" />
             </div>
             AI Resume Scanner
           </h1>
-          <p className="text-muted-foreground mt-1">
+          <p className="text-sm sm:text-muted-foreground mt-1">
             Upload your resume for instant ATS scoring, keyword analysis, and a personalized career
             roadmap.
           </p>
@@ -780,7 +780,7 @@ function ResumeScanner() {
 
       {/* Drag & drop upload */}
       <Card className="glass hover:shadow-card-soft transition-all">
-        <CardContent className="p-6">
+        <CardContent className="p-4 sm:p-6">
           <div
             onDragOver={(e) => {
               e.preventDefault();
@@ -789,7 +789,7 @@ function ResumeScanner() {
             onDragLeave={() => setDragActive(false)}
             onDrop={handleDrop}
             onClick={() => !isBusy && fileInputRef.current?.click()}
-            className={`relative border-2 border-dashed rounded-2xl p-10 text-center cursor-pointer transition-all ${
+            className={`relative border-2 border-dashed rounded-2xl p-6 sm:p-10 text-center cursor-pointer transition-all ${
               dragActive
                 ? "border-primary bg-primary/5 scale-[1.02]"
                 : "border-border hover:border-primary/50 hover:bg-muted/30"
@@ -881,9 +881,9 @@ function ResumeScanner() {
             </div>
 
             {/* Overall score ring */}
-            <div className="flex items-center gap-6">
+            <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
               <ScoreRing value={resume.overall_score ?? 0} />
-              <div className="flex-1">
+              <div className="flex-1 text-center sm:text-left">
                 <p className="text-sm text-muted-foreground">
                   {getScoreMessage(resume.overall_score)}
                 </p>
@@ -891,7 +891,7 @@ function ResumeScanner() {
             </div>
 
             {/* Score breakdown */}
-            <div className="grid md:grid-cols-2 gap-4">
+            <div className="grid sm:grid-cols-2 gap-4">
               {scores.map((s) => {
                 const ScoreIcon = getScoreIcon(s.value);
                 return (
@@ -917,7 +917,7 @@ function ResumeScanner() {
                 <h3 className="font-semibold mb-3 flex items-center gap-2">
                   <Lightbulb className="h-4 w-4 text-amber-500" /> Actionable Recommendations
                 </h3>
-                <div className="grid md:grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {suggestions.map((s, i) => (
                     <div
                       key={i}
@@ -980,7 +980,7 @@ function ResumeScanner() {
             </SectionCard>
           )}
 
-          <div className="grid md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {roadmap.skill_gaps && roadmap.skill_gaps.length > 0 && (
               <SectionCard icon={TrendingUp} title="Skill Gaps">
                 <div className="flex flex-wrap gap-2">
@@ -1012,7 +1012,7 @@ function ResumeScanner() {
 
           {roadmap.recommended_certifications && roadmap.recommended_certifications.length > 0 && (
             <SectionCard icon={Award} title="Recommended Certifications">
-              <div className="grid md:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {roadmap.recommended_certifications.map((c, i) => (
                   <div
                     key={i}
@@ -1047,7 +1047,7 @@ function ResumeScanner() {
 
           {roadmap.salary_prediction && <SalaryPredictionCard salary={roadmap.salary_prediction} />}
 
-          <div className="grid md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {roadmap.recommended_jobs && roadmap.recommended_jobs.length > 0 && (
               <SectionCard icon={Briefcase} title="Recommended Jobs">
                 <div className="space-y-2">
@@ -1099,7 +1099,7 @@ function ResumeScanner() {
 
           {roadmap.interview_prep_plan && (
             <SectionCard icon={Target} title="Interview Preparation Plan">
-              <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {[
                   {
                     label: "30 Days",

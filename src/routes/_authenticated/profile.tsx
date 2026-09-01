@@ -139,7 +139,7 @@ function ProfilePage() {
   const skills = (profile as any)?.skills ?? [];
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl space-y-6">
+    <div className="container mx-auto px-3 sm:px-4 py-6 sm:py-8 max-w-4xl space-y-6">
       <Card className="overflow-hidden">
         <div className="relative">
           <div
@@ -147,13 +147,14 @@ function ProfilePage() {
             style={form.banner_url ? { backgroundImage: `url(${form.banner_url})` } : undefined}
           />
           <label className="absolute top-3 right-3 cursor-pointer z-10">
-            <div className="bg-background/80 backdrop-blur border rounded-md px-3 py-1.5 text-xs flex items-center gap-1.5 hover:bg-background">
+            <div className="bg-background/80 backdrop-blur border rounded-md px-2.5 py-1.5 text-xs flex items-center gap-1.5 hover:bg-background">
               {uploading === "banner" ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
               ) : (
                 <Upload className="h-3.5 w-3.5" />
               )}
-              Change banner
+              <span className="hidden sm:inline">Change banner</span>
+              <span className="sm:hidden">Banner</span>
             </div>
             <input
               type="file"
@@ -162,9 +163,9 @@ function ProfilePage() {
               onChange={(e) => e.target.files?.[0] && uploadImage(e.target.files[0], "banner")}
             />
           </label>
-          <div className="absolute -bottom-12 left-6">
+          <div className="absolute -bottom-10 sm:-bottom-12 left-4 sm:left-6">
             <div className="relative">
-              <Avatar className="h-24 w-24 border-4 border-background">
+              <Avatar className="h-20 w-20 sm:h-24 sm:w-24 border-4 border-background">
                 <AvatarImage src={form.avatar_url ?? undefined} />
                 <AvatarFallback className="text-2xl">
                   {(form.full_name ?? "?").slice(0, 1)}
@@ -186,7 +187,7 @@ function ProfilePage() {
             </div>
           </div>
         </div>
-        <div className="pt-16 pb-6 px-6">
+        <div className="pt-14 sm:pt-16 pb-6 px-4 sm:px-6">
           <h1 className="text-2xl font-bold">{form.full_name || "Your name"}</h1>
           <p className="text-muted-foreground">{form.headline || "Add a headline"}</p>
           <p className="text-sm text-muted-foreground mt-1">{form.location || "Location"}</p>
@@ -208,7 +209,7 @@ function ProfilePage() {
             <Github className="h-5 w-5" /> Import from GitHub
           </CardTitle>
         </CardHeader>
-        <CardContent className="flex gap-2">
+        <CardContent className="flex flex-col sm:flex-row gap-2">
           <Input
             placeholder="your-github-username"
             value={ghUser}

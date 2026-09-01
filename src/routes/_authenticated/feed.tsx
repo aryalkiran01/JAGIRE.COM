@@ -393,12 +393,12 @@ function FeedPage() {
       .slice(0, 5) ?? [];
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-6xl">
+    <div className="container mx-auto px-3 sm:px-4 py-6 sm:py-8 max-w-6xl">
       <div className="grid lg:grid-cols-[1fr_300px] gap-6">
         {/* Main feed */}
         <div className="space-y-4 min-w-0">
           <div className="mb-2">
-            <h1 className="text-3xl font-bold">Community Feed</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold">Community Feed</h1>
             <p className="text-muted-foreground text-sm">
               Share insights, network, and stay updated
             </p>
@@ -406,8 +406,8 @@ function FeedPage() {
 
           {/* Compose box */}
           <Card className="glass hover:shadow-card-soft transition-all">
-            <CardContent className="p-4 space-y-3">
-              <div className="flex gap-3">
+            <CardContent className="p-3 sm:p-4 space-y-3">
+              <div className="flex gap-2 sm:gap-3">
                 <Avatar className="h-10 w-10 shrink-0">
                   <AvatarImage src={user?.user_metadata?.avatar_url} />
                   <AvatarFallback className="gradient-brand text-primary-foreground">
@@ -504,7 +504,7 @@ function FeedPage() {
                 ref={isLast ? lastPostRef : undefined}
                 className="glass hover:shadow-card-soft transition-all animate-fade-in-up"
               >
-                <CardContent className="p-5 space-y-3">
+                <CardContent className="p-3 sm:p-5 space-y-3">
                   {/* Author header */}
                   <div className="flex items-start gap-3">
                     <Avatar className="h-11 w-11 ring-2 ring-border">
@@ -590,7 +590,7 @@ function FeedPage() {
                   )}
 
                   {/* Engagement bar */}
-                  <div className="flex items-center gap-1 pl-0 sm:pl-14 -mt-1 border-t pt-2">
+                  <div className="flex items-center flex-wrap gap-1 pl-0 sm:pl-14 -mt-1 border-t pt-2">
                     <Button
                       variant="ghost"
                       size="sm"
