@@ -34,6 +34,9 @@ function PaymentSuccess() {
         let totalAmount = "";
         let paymentStatus = "";
 
+        let signature = "";
+        let signedFieldNames = "";
+
         // Parse eSewa response
         const encodedData = params.get("data");
         if (encodedData) {
@@ -43,6 +46,8 @@ function PaymentSuccess() {
             transactionUuid = payload.transaction_uuid ?? "";
             totalAmount = payload.total_amount ?? "";
             paymentStatus = payload.status ?? "";
+            signature = payload.signature ?? "";
+            signedFieldNames = payload.signed_field_names ?? "";
           } catch (err) {
             console.error("Failed to parse eSewa callback:", err);
             setState({ status: "failed", error: "Invalid response from eSewa" });
@@ -57,16 +62,23 @@ function PaymentSuccess() {
         if (!totalAmount) {
           totalAmount = params.get("total_amount") ?? params.get("amt") ?? "";
         }
+        if (!signature) {
+          signature = params.get("signature") ?? params.get("esewa_signature") ?? "";
+        }
+        if (!signedFieldNames) {
+          signedFieldNames =
+            params.get("signed_field_names") ?? "total_amount,transaction_uuid,product_code";
+        }
 
         if (!transactionUuid || !totalAmount) {
           setState({ status: "failed", error: "Missing payment details in the callback." });
           return;
         }
 
-        if (paymentStatus !== "COMPLETE") {
+        if (paymentStatus && paymentStatus !== "COMPLETE") {
           setState({
             status: "failed",
-            error: `Payment status: ${paymentStatus || "Unknown"}. Expected COMPLETE.`,
+            error: `Payment status: ${paymentStatus}. Expected COMPLETE.`,
           });
           return;
         }
@@ -76,135 +88,41 @@ function PaymentSuccess() {
           return;
         }
 
-        // Determine plan type from transaction UUID or amount
-        const amount = parseFloat(totalAmount);
-        let planType = getPlanByAmount(amount);
+        // Invoke server-side verify-esewa-payment Edge Function
+        const { data: fnData, error: fnError } = await supabase.functions.invoke(
+          "verify-esewa-payment",
+          {
+            body: {
+              transaction_uuid: transactionUuid,
+              total_amount: totalAmount,
+              esewa_signature: signature,
+              signed_field_names: signedFieldNames,
+            },
+          },
+        );
 
-        // Fallback: try to extract from transaction UUID
-        if (!planType) {
-          const uuidParts = transactionUuid.split("-");
-          if (uuidParts.length >= 2) {
-            const possiblePlan = uuidParts[1];
-            if (PLANS[possiblePlan]) {
-              planType = possiblePlan;
-            }
-          }
-        }
-
-        if (!planType) {
-          console.error("Unknown plan amount:", amount);
-          setState({
-            status: "failed",
-            error: `Cannot determine plan for amount Rs. ${amount}`,
-          });
+        if (fnError || !fnData?.verified) {
+          const errMsg =
+            fnError?.message || fnData?.error || "Payment verification failed server-side.";
+          console.error("Payment verification failed:", errMsg, fnError, fnData);
+          setState({ status: "failed", error: errMsg });
+          toast.error("Payment verification failed.");
           return;
         }
 
+        const planType = fnData.plan_type ?? getPlanByAmount(parseFloat(totalAmount)) ?? "premium";
         const planName = PLANS[planType]?.name || planType;
-        const durationDays = PLANS[planType]?.durationDays || 30;
 
-        const now = new Date();
-        const expiresAt = new Date(now);
-        expiresAt.setDate(expiresAt.getDate() + durationDays);
-
-        console.log("Activating plan:", planType, "Plan name:", planName, "Expires:", expiresAt);
-
-        // Store transaction
-        const { error: transactionError } = await supabase.from("payments").upsert(
-          {
-            user_id: user.id,
-            amount: amount,
-            currency: "NPR",
-            plan_type: planType,
-            status: "completed",
-            esewa_transaction_id: transactionUuid,
-            esewa_ref_id: transactionUuid,
-            updated_at: now.toISOString(),
-          },
-          { onConflict: "esewa_transaction_id" },
-        );
-
-        if (transactionError) {
-          console.error("Failed to store transaction:", transactionError);
-        }
-
-        // CRITICAL FIX: Use update first, then insert if no row exists
-        const { data: existingSub, error: checkError } = await supabase
-          .from("subscriptions")
-          .select("id")
-          .eq("user_id", user.id)
-          .maybeSingle();
-
-        if (checkError) {
-          console.error("Failed to check existing subscription:", checkError);
-        }
-
-        let subscriptionError = null;
-
-        if (existingSub?.id) {
-          // Update existing subscription with new plan
-          const { error: updateError } = await supabase
-            .from("subscriptions")
-            .update({
-              plan_type: planType,
-              status: "active",
-              payment_status: "paid",
-              transaction_id: transactionUuid,
-              amount: amount,
-              currency: "NPR",
-              started_at: now.toISOString(),
-              expires_at: expiresAt.toISOString(),
-              updated_at: now.toISOString(),
-            })
-            .eq("user_id", user.id);
-
-          subscriptionError = updateError;
-        } else {
-          // Insert new subscription
-          const { error: insertError } = await supabase.from("subscriptions").insert({
-            user_id: user.id,
-            plan_type: planType,
-            status: "active",
-            payment_status: "paid",
-            transaction_id: transactionUuid,
-            amount: amount,
-            currency: "NPR",
-            started_at: now.toISOString(),
-            expires_at: expiresAt.toISOString(),
-          });
-
-          subscriptionError = insertError;
-        }
-
-        if (subscriptionError) {
-          console.error("Failed to update subscription:", subscriptionError);
-        }
-
-        // Update profile
-        const { error: profileError } = await supabase.from("profiles").upsert(
-          {
-            id: user.id,
-            subscription_status: "active",
-            subscription_plan: planType,
-            subscription_expires_at: expiresAt.toISOString(),
-            updated_at: now.toISOString(),
-          },
-          { onConflict: "id" },
-        );
-
-        if (profileError) {
-          console.error("Failed to update profile:", profileError);
-        }
-
-        // CRITICAL: Invalidate and refetch subscription query
-        await queryClient.invalidateQueries({ queryKey: ["subscription", user.id] });
+        // Invalidate queries so subscription & profile reflect updated state
+        await queryClient.invalidateQueries({ queryKey: ["subscription"] });
+        await queryClient.invalidateQueries({ queryKey: ["profile"] });
         await queryClient.refetchQueries({ queryKey: ["subscription", user.id] });
 
         setState({
           status: "verified",
           plan_type: planType,
           plan_name: planName,
-          expires_at: expiresAt.toISOString(),
+          expires_at: fnData.expires_at,
         });
 
         toast.success(`${planName} plan activated! AI features unlocked.`);

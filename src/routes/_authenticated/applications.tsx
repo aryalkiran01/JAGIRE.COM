@@ -10,9 +10,50 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
+import { SkeletonCard } from "@/components/ui/skeleton-loader";
+import { Briefcase, Calendar, Video, ArrowRight, ExternalLink } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+
 export const Route = createFileRoute("/_authenticated/applications")({
   component: Applications,
 });
+
+function getStatusBadge(status: string) {
+  const s = status?.toLowerCase() ?? "";
+  if (s.includes("offer") || s.includes("selected") || s.includes("hired")) {
+    return (
+      <Badge variant="success" className="capitalize">
+        {status.replace("_", " ")}
+      </Badge>
+    );
+  }
+  if (s.includes("interview")) {
+    return (
+      <Badge className="bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-500/30 capitalize">
+        {status.replace("_", " ")}
+      </Badge>
+    );
+  }
+  if (s.includes("shortlisted") || s.includes("review")) {
+    return (
+      <Badge className="bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/30 capitalize">
+        {status.replace("_", " ")}
+      </Badge>
+    );
+  }
+  if (s.includes("reject")) {
+    return (
+      <Badge variant="outline" className="text-muted-foreground capitalize">
+        {status.replace("_", " ")}
+      </Badge>
+    );
+  }
+  return (
+    <Badge variant="secondary" className="capitalize">
+      {status.replace("_", " ")}
+    </Badge>
+  );
+}
 
 function Applications() {
   const { user } = useAuth();
@@ -20,7 +61,6 @@ function Applications() {
   const { data, isLoading } = useQuery({
     queryKey: ["apps", user?.id],
     enabled: !!user,
-
     queryFn: async () => {
       const { data, error } = await supabase
         .from("applications")
@@ -60,45 +100,85 @@ function Applications() {
   });
 
   if (isLoading) {
-    return <div className="container mx-auto px-4 py-8">Loading applications...</div>;
+    return (
+      <div className="container mx-auto px-4 py-8 space-y-6 max-w-5xl">
+        <h1 className="text-3xl font-bold tracking-tight">My Job Applications</h1>
+        <div className="grid gap-4">
+          <SkeletonCard />
+          <SkeletonCard />
+          <SkeletonCard />
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-6">My applications</h1>
+    <div className="container mx-auto px-4 py-8 max-w-5xl">
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">My Job Applications</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Track your job application status, interview schedules, and updates.
+          </p>
+        </div>
+        <Button asChild className="gradient-brand text-primary-foreground">
+          <Link to="/jobs">
+            Explore Jobs <ArrowRight className="ml-1.5 h-4 w-4" />
+          </Link>
+        </Button>
+      </div>
 
       <div className="grid gap-4">
         {data?.map((application: any) => (
-          <Card key={application.id}>
+          <Card
+            key={application.id}
+            className="hover:border-primary/40 transition-colors shadow-card-soft"
+          >
             <CardContent className="p-6">
               {/* Job Information */}
-              <div className="flex items-start justify-between mb-4">
+              <div className="flex items-start justify-between gap-4 mb-4">
                 <div>
-                  <h2 className="font-semibold text-lg">{application.job?.title}</h2>
-
-                  <p className="text-sm text-muted-foreground">{application.job?.company?.name}</p>
+                  <h2 className="font-semibold text-lg hover:text-primary transition-colors">
+                    {application.job?.id ? (
+                      <Link to="/jobs/$jobId" params={{ jobId: application.job.id }}>
+                        {application.job?.title}
+                      </Link>
+                    ) : (
+                      application.job?.title
+                    )}
+                  </h2>
+                  <p className="text-sm text-muted-foreground mt-0.5">
+                    {application.job?.company?.name}
+                  </p>
                 </div>
-
-                <Badge>{application.status}</Badge>
+                {getStatusBadge(application.status)}
               </div>
 
               {/* Interview Section */}
               {application.interview?.length > 0 && (
                 <div className="space-y-3 mb-5">
                   {application.interview.map((interview: any) => (
-                    <div key={interview.id} className="rounded-lg border p-4 bg-muted/30">
-                      <h3 className="font-semibold mb-2">🎤 Interview Scheduled</h3>
-
-                      <p className="text-sm">{interview.title}</p>
-
-                      <p className="text-sm text-muted-foreground">
+                    <div
+                      key={interview.id}
+                      className="rounded-xl border border-purple-500/20 p-4 bg-purple-500/5"
+                    >
+                      <div className="flex items-center gap-2 font-semibold text-purple-700 dark:text-purple-300 mb-1">
+                        <Video className="h-4 w-4" />
+                        <span>Interview Scheduled</span>
+                      </div>
+                      <p className="text-sm font-medium">{interview.title}</p>
+                      <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                        <Calendar className="h-3.5 w-3.5" />
                         {new Date(interview.start_time).toLocaleString()}
                       </p>
-
                       {interview.meet_link && (
-                        <Button className="mt-3" asChild>
+                        <Button
+                          size="sm"
+                          className="mt-3 gradient-brand text-primary-foreground gap-1.5"
+                          asChild
+                        >
                           <a href={interview.meet_link} target="_blank" rel="noopener noreferrer">
-                            Join Interview
+                            Join Google Meet <ExternalLink className="h-3.5 w-3.5" />
                           </a>
                         </Button>
                       )}
@@ -109,7 +189,7 @@ function Applications() {
 
               {/* Application Timeline */}
               {application.events?.length > 0 && (
-                <div className="border-l-2 border-muted ml-2 pl-4 space-y-3">
+                <div className="border-l-2 border-primary/30 ml-2 pl-4 space-y-3 mt-4">
                   {application.events
                     .sort(
                       (a: any, b: any) =>
@@ -117,27 +197,15 @@ function Applications() {
                     )
                     .map((event: any, index: number) => (
                       <div key={index} className="text-xs relative">
-                        <div
-                          className="
-                          absolute 
-                          -left-[21px]
-                          top-1
-                          h-3
-                          w-3
-                          rounded-full
-                          gradient-brand
-                          "
-                        />
-
-                        <span className="font-medium capitalize">{event.event_type}</span>
-
-                        <span className="text-muted-foreground">
-                          {" "}
+                        <div className="absolute -left-[21px] top-1 h-3 w-3 rounded-full gradient-brand" />
+                        <span className="font-semibold capitalize text-foreground">
+                          {event.event_type}
+                        </span>
+                        <span className="text-muted-foreground ml-1">
                           — {new Date(event.created_at).toLocaleDateString()}
                         </span>
-
                         {event.message && (
-                          <p className="text-muted-foreground mt-1">{event.message}</p>
+                          <p className="text-muted-foreground mt-0.5 text-xs">{event.message}</p>
                         )}
                       </div>
                     ))}
@@ -148,9 +216,23 @@ function Applications() {
         ))}
 
         {!data?.length && (
-          <Card>
-            <CardContent className="p-12 text-center text-muted-foreground">
-              No applications yet.
+          <Card className="glass">
+            <CardContent className="p-12 text-center space-y-4">
+              <div className="h-14 w-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto">
+                <Briefcase className="h-7 w-7" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-lg">No job applications yet</h3>
+                <p className="text-sm text-muted-foreground max-w-md mx-auto mt-1">
+                  Start applying for open roles matched to your profile and track every stage of
+                  your hiring process here.
+                </p>
+              </div>
+              <Button asChild className="gradient-brand text-primary-foreground">
+                <Link to="/jobs">
+                  Browse Active Jobs <ArrowRight className="ml-1.5 h-4 w-4" />
+                </Link>
+              </Button>
             </CardContent>
           </Card>
         )}

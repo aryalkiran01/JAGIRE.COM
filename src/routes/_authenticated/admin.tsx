@@ -965,98 +965,174 @@ function AdminSubscriptions() {
         ) : !subscriptions?.length ? (
           <div className="p-8 text-center text-muted-foreground">No subscriptions found.</div>
         ) : (
-          <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
-            <table className="w-full text-sm min-w-[800px]">
-              <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">
-                <tr>
-                  <th className="text-left p-3 font-medium">User</th>
-                  <th className="text-left p-3 font-medium">Plan</th>
-                  <th className="text-left p-3 font-medium">Status</th>
-                  <th className="text-left p-3 font-medium">Start</th>
-                  <th className="text-left p-3 font-medium">End</th>
-                  <th className="text-left p-3 font-medium">Amount</th>
-                  <th className="text-left p-3 font-medium">Transaction</th>
-                  <th className="text-left p-3 font-medium">eSewa ref</th>
-                  <th className="text-left p-3 font-medium">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {subscriptions.map((s: any) => {
-                  const profile = profiles?.get(s.user_id) as any;
-                  const expired = s.expires_at && new Date(s.expires_at) < new Date();
-                  return (
-                    <tr key={s.id} className="hover:bg-muted/30">
-                      <td className="p-3">
-                        <div className="font-medium">{profile?.full_name ?? "—"}</div>
+          <>
+            {/* Mobile Cards (sm:hidden) */}
+            <div className="space-y-3 sm:hidden p-3">
+              {subscriptions.map((s: any) => {
+                const profile = profiles?.get(s.user_id) as any;
+                const expired = s.expires_at && new Date(s.expires_at) < new Date();
+                return (
+                  <div key={s.id} className="rounded-xl border p-3.5 space-y-2 bg-card">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <div className="font-medium text-sm">{profile?.full_name ?? "—"}</div>
                         <div className="text-xs text-muted-foreground">
                           {profile?.email ?? s.user_id?.slice(0, 8)}
                         </div>
-                      </td>
-                      <td className="p-3 capitalize">{s.plan_type}</td>
-                      <td className="p-3">
-                        {statusBadge(expired && s.status === "active" ? "expired" : s.status)}
-                      </td>
-                      <td className="p-3 text-xs">
-                        {s.started_at ? new Date(s.started_at).toLocaleDateString() : "—"}
-                      </td>
-                      <td className="p-3 text-xs">
-                        {s.expires_at ? new Date(s.expires_at).toLocaleDateString() : "—"}
-                      </td>
-                      <td className="p-3 text-xs">
-                        {s.amount ? `Rs. ${Number(s.amount).toLocaleString()}` : "—"}
-                      </td>
-                      <td className="p-3 text-xs font-mono truncate max-w-32">
-                        {s.transaction_id ?? "—"}
-                      </td>
-                      <td className="p-3 text-xs font-mono truncate max-w-32">
-                        {s.esewa_ref_id ?? "—"}
-                      </td>
-                      <td className="p-3">
-                        <div className="flex gap-1 flex-wrap">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-7 text-xs"
-                            onClick={() => openAction(s, "activate")}
-                          >
-                            <CheckCircle2 className="h-3 w-3 mr-1" />
-                            Activate
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-7 text-xs"
-                            onClick={() => openAction(s, "extend")}
-                          >
-                            <CalendarClock className="h-3 w-3 mr-1" />
-                            Extend
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-7 text-xs"
-                            onClick={() => openAction(s, "changePlan")}
-                          >
-                            <Crown className="h-3 w-3 mr-1" />
-                            Plan
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-7 text-xs text-destructive"
-                            onClick={() => openAction(s, "cancel")}
-                          >
-                            <XCircle className="h-3 w-3 mr-1" />
-                            Cancel
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                      </div>
+                      {statusBadge(expired && s.status === "active" ? "expired" : s.status)}
+                    </div>
+                    <div className="grid grid-cols-2 gap-1 text-xs text-muted-foreground pt-1 border-t">
+                      <div>
+                        Plan:{" "}
+                        <span className="font-medium text-foreground capitalize">
+                          {s.plan_type}
+                        </span>
+                      </div>
+                      <div>
+                        Amount:{" "}
+                        <span className="font-medium text-foreground">
+                          {s.amount ? `Rs. ${Number(s.amount).toLocaleString()}` : "—"}
+                        </span>
+                      </div>
+                      <div>
+                        Start:{" "}
+                        <span>
+                          {s.started_at ? new Date(s.started_at).toLocaleDateString() : "—"}
+                        </span>
+                      </div>
+                      <div>
+                        End:{" "}
+                        <span>
+                          {s.expires_at ? new Date(s.expires_at).toLocaleDateString() : "—"}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex gap-1 flex-wrap pt-2 border-t">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-xs flex-1"
+                        onClick={() => openAction(s, "activate")}
+                      >
+                        Activate
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-xs flex-1"
+                        onClick={() => openAction(s, "extend")}
+                      >
+                        Extend
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-xs flex-1"
+                        onClick={() => openAction(s, "changePlan")}
+                      >
+                        Plan
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Desktop Table (hidden sm:block) */}
+            <div className="hidden sm:block overflow-x-auto">
+              <table className="w-full text-sm min-w-[800px]">
+                <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">
+                  <tr>
+                    <th className="text-left p-3 font-medium">User</th>
+                    <th className="text-left p-3 font-medium">Plan</th>
+                    <th className="text-left p-3 font-medium">Status</th>
+                    <th className="text-left p-3 font-medium">Start</th>
+                    <th className="text-left p-3 font-medium">End</th>
+                    <th className="text-left p-3 font-medium">Amount</th>
+                    <th className="text-left p-3 font-medium">Transaction</th>
+                    <th className="text-left p-3 font-medium">eSewa ref</th>
+                    <th className="text-left p-3 font-medium">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {subscriptions.map((s: any) => {
+                    const profile = profiles?.get(s.user_id) as any;
+                    const expired = s.expires_at && new Date(s.expires_at) < new Date();
+                    return (
+                      <tr key={s.id} className="hover:bg-muted/30">
+                        <td className="p-3">
+                          <div className="font-medium">{profile?.full_name ?? "—"}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {profile?.email ?? s.user_id?.slice(0, 8)}
+                          </div>
+                        </td>
+                        <td className="p-3 capitalize">{s.plan_type}</td>
+                        <td className="p-3">
+                          {statusBadge(expired && s.status === "active" ? "expired" : s.status)}
+                        </td>
+                        <td className="p-3 text-xs">
+                          {s.started_at ? new Date(s.started_at).toLocaleDateString() : "—"}
+                        </td>
+                        <td className="p-3 text-xs">
+                          {s.expires_at ? new Date(s.expires_at).toLocaleDateString() : "—"}
+                        </td>
+                        <td className="p-3 text-xs">
+                          {s.amount ? `Rs. ${Number(s.amount).toLocaleString()}` : "—"}
+                        </td>
+                        <td className="p-3 text-xs font-mono truncate max-w-32">
+                          {s.transaction_id ?? "—"}
+                        </td>
+                        <td className="p-3 text-xs font-mono truncate max-w-32">
+                          {s.esewa_ref_id ?? "—"}
+                        </td>
+                        <td className="p-3">
+                          <div className="flex gap-1 flex-wrap">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-xs"
+                              onClick={() => openAction(s, "activate")}
+                            >
+                              <CheckCircle2 className="h-3 w-3 mr-1" />
+                              Activate
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-xs"
+                              onClick={() => openAction(s, "extend")}
+                            >
+                              <CalendarClock className="h-3 w-3 mr-1" />
+                              Extend
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-xs"
+                              onClick={() => openAction(s, "changePlan")}
+                            >
+                              <Crown className="h-3 w-3 mr-1" />
+                              Plan
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-xs text-destructive"
+                              onClick={() => openAction(s, "cancel")}
+                            >
+                              <XCircle className="h-3 w-3 mr-1" />
+                              Cancel
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </CardContent>
 

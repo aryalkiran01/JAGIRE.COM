@@ -3971,7 +3971,7 @@ CREATE POLICY "Owner can update" ON "public"."jobs" FOR UPDATE TO "authenticated
 
 
 
-CREATE POLICY "Profiles are viewable by everyone" ON "public"."profiles" FOR SELECT USING (true);
+-- Profiles RLS updated via 20260908190000_fix_p0_security_and_profile_exposure.sql
 
 
 
@@ -4644,7 +4644,7 @@ CREATE POLICY "insert_own_notifications" ON "public"."notifications" FOR INSERT 
 
 
 
-CREATE POLICY "insert_own_payment" ON "public"."payments" FOR INSERT TO "authenticated" WITH CHECK (("auth"."uid"() = "user_id"));
+-- Payments insert policy restricted to service-role / edge functions
 
 
 
@@ -4684,7 +4684,7 @@ CREATE POLICY "insert_own_saved_jobs" ON "public"."saved_jobs" FOR INSERT TO "au
 
 
 
-CREATE POLICY "insert_own_subscriptions" ON "public"."subscriptions" FOR INSERT TO "authenticated" WITH CHECK (("auth"."uid"() = "user_id"));
+-- Subscriptions insert policy restricted to service-role / edge functions
 
 
 
@@ -5076,7 +5076,11 @@ CREATE POLICY "select_posts" ON "public"."posts" FOR SELECT TO "authenticated" U
 
 
 
-CREATE POLICY "select_profiles" ON "public"."profiles" FOR SELECT TO "authenticated" USING (true);
+CREATE POLICY "select_own_profile" ON "public"."profiles" FOR SELECT TO "authenticated" USING (("auth"."uid"() = "id"));
+CREATE POLICY "select_employer_applicants" ON "public"."profiles" FOR SELECT TO "authenticated" USING (EXISTS (SELECT 1 FROM "public"."applications" "a" JOIN "public"."jobs" "j" ON ("a"."job_id" = "j"."id") WHERE (("a"."applicant_id" = "profiles"."id") AND ("j"."posted_by" = "auth"."uid"()))));
+CREATE POLICY "select_chat_participants" ON "public"."profiles" FOR SELECT TO "authenticated" USING (EXISTS (SELECT 1 FROM "public"."chats" "c" WHERE ((("c"."user_a" = "auth"."uid"()) AND ("c"."user_b" = "profiles"."id")) OR (("c"."user_b" = "auth"."uid"()) AND ("c"."user_a" = "profiles"."id")))));
+CREATE POLICY "admin_select_profiles" ON "public"."profiles" FOR SELECT TO "authenticated" USING ("public"."has_role"("auth"."uid"(), 'admin'::"public"."app_role"));
+CREATE POLICY "select_public_profiles" ON "public"."profiles" FOR SELECT TO "authenticated" USING ((("profile_visibility" IS NULL) OR ("profile_visibility" = 'public'::text)));
 
 
 
@@ -5262,7 +5266,7 @@ CREATE POLICY "update_own_notifications" ON "public"."notifications" FOR UPDATE 
 
 
 
-CREATE POLICY "update_own_payment" ON "public"."payments" FOR UPDATE TO "authenticated" USING (("auth"."uid"() = "user_id")) WITH CHECK (("auth"."uid"() = "user_id"));
+-- Payments update policy restricted to service-role / edge functions
 
 
 
@@ -5294,7 +5298,7 @@ CREATE POLICY "update_own_saved_jobs" ON "public"."saved_jobs" FOR UPDATE TO "au
 
 
 
-CREATE POLICY "update_own_subscriptions" ON "public"."subscriptions" FOR UPDATE TO "authenticated" USING (("auth"."uid"() = "user_id")) WITH CHECK (("auth"."uid"() = "user_id"));
+-- Subscriptions update policy restricted to service-role / edge functions
 
 
 

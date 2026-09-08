@@ -159,7 +159,7 @@ export const createApiKey = createServerFn({ method: "POST" })
         name: data.name,
         key_hash: keyHash,
         key_prefix: keyPrefix,
-        permissions: data.permissions,
+        permissions: data.permissions as any,
         expires_at: data.expiresAt ?? null,
         created_by: context.userId,
       })

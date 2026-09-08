@@ -216,7 +216,7 @@ function CareerCoachPage() {
                     setInput(q);
                     ask.mutate(q);
                   }}
-                  className="w-full text-left text-xs px-3 py-2 rounded-md hover:bg-muted transition-colors"
+                  className="w-full text-left text-xs px-3 py-2.5 sm:py-2 rounded-lg hover:bg-muted hover:text-foreground transition-colors min-h-[38px] flex items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   {q}
                 </button>

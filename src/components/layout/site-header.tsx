@@ -205,14 +205,26 @@ export function SiteHeader() {
 
         {/* Right side */}
         <div className="flex items-center gap-1.5">
-          <Button variant="ghost" size="icon" onClick={toggle} className="h-9 w-9">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggle}
+            aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            className="h-9 w-9"
+          >
             {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </Button>
 
           {user ? (
             <>
               <SubscriptionBadge />
-              <Button variant="ghost" size="icon" asChild className="relative h-9 w-9">
+              <Button
+                variant="ghost"
+                size="icon"
+                asChild
+                aria-label="View notifications"
+                className="relative h-9 w-9"
+              >
                 <Link to="/notifications">
                   <Bell className="h-4 w-4" />
                   {unread ? (
@@ -225,7 +237,11 @@ export function SiteHeader() {
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-9 w-9 rounded-full p-0 ml-1">
+                  <Button
+                    variant="ghost"
+                    aria-label="User profile and settings"
+                    className="relative h-9 w-9 rounded-full p-0 ml-1"
+                  >
                     <Avatar className="h-9 w-9">
                       <AvatarImage src={user.user_metadata?.avatar_url} />
                       <AvatarFallback className="gradient-brand text-primary-foreground text-sm font-semibold">
@@ -345,7 +361,12 @@ export function SiteHeader() {
           {/* Mobile menu */}
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="lg:hidden h-9 w-9">
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Open navigation menu"
+                className="lg:hidden h-9 w-9"
+              >
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>
