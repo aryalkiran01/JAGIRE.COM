@@ -7,6 +7,8 @@ import { aiGenerateEmbedding } from "@/integrations/ai/ai-service";
 import { requirePremium } from "@/lib/premium.server";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { getAiFeature } from "@/lib/employer-ai-features";
+import { getAuthoritativeCompanyContextText } from "@/lib/company-intelligence.server";
+import { recordUserActivity } from "@/lib/activity.server";
 import { z } from "zod";
 import {
   candidateMatchSchema,
@@ -838,16 +840,30 @@ async function buildEmployerContext(
 
   const ctx: string[] = [];
 
+  // 1. Authoritative 360-degree Company Intelligence context
+  if (companyId) {
+    try {
+      const authCompanyContext = await getAuthoritativeCompanyContextText(companyId);
+      if (authCompanyContext) {
+        ctx.push(authCompanyContext);
+      }
+    } catch (err) {
+      console.warn("Could not load authoritative company context:", err);
+    }
+  }
+
   if (company) {
     ctx.push(
-      `## Company Profile
+      `## Detailed Company Profile
 - Name: ${company.name}
 - Industry: ${company.industry || "Not specified"}
 - Headquarters: ${company.headquarters || "Not specified"}
 - Size: ${company.size || "Not specified"}
 - Founded: ${company.founded_year || "Not specified"}
 - Website: ${company.website || "Not specified"}
-- Description: ${company.description || "No description available"}`,
+- Description: ${company.description || "No description available"}
+- Technologies: ${Array.isArray(company.technologies) ? company.technologies.join(", ") : company.technologies || "Standard"}
+- Benefits: ${Array.isArray(company.benefits) ? company.benefits.join(", ") : company.benefits || "Competitive"}`,
     );
   } else {
     ctx.push(`## Company Profile\nNo company profile found.`);
@@ -1030,6 +1046,25 @@ export const runEmployerAiFeature = (
     const serializableResult = JSON.parse(JSON.stringify(result)) as {
       [key: string]: SerializableJson;
     };
+
+    // Determine activity type based on feature
+    let activityType = "AI_RECOMMENDATION";
+    if (featureSlug.includes("match") || featureSlug.includes("search")) {
+      activityType = "AI_MATCHING";
+    } else if (featureSlug.includes("screen") || featureSlug.includes("rank")) {
+      activityType = "AI_SCREENING";
+    }
+
+    await recordUserActivity({
+      userId,
+      activityType,
+      entityType: "companies",
+      entityId: contextCompanyId || undefined,
+      metadata: {
+        feature_slug: featureSlug,
+        feature_title: feature.title,
+      },
+    });
 
     return {
       response: serializableResult,

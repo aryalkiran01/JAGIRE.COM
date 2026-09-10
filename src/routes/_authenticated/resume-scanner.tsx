@@ -34,10 +34,16 @@ import {
   Send,
   Flag,
   Globe,
+  History,
+  ArrowUpRight,
+  ArrowDownRight,
+  UserCheck,
   type LucideIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { scanResumeFromStorage } from "@/lib/ai.service";
+import { getUserResumeScans, updatePreferredName } from "@/lib/activity.server";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/resume-scanner")({
@@ -105,10 +111,13 @@ type JobMatch = {
   recommendedNextSteps?: string[];
 };
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_FILE_SIZE = 15 * 1024 * 1024; // 15MB
 const VALID_FILE_TYPES = [
   "application/pdf",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
 ];
 
 // ── Helper Functions ────────────────────────────────────────────────────────
@@ -149,10 +158,13 @@ function getScoreMessage(value: number): string {
 
 function validateFile(file: File): string | null {
   if (file.size > MAX_FILE_SIZE) {
-    return "File must be under 10MB";
+    return "File must be under 15MB";
   }
-  if (!VALID_FILE_TYPES.includes(file.type) && !file.name.match(/\.(pdf|docx)$/i)) {
-    return "Only PDF or DOCX files are supported";
+  const isTypeValid =
+    VALID_FILE_TYPES.includes(file.type) || file.name.match(/\.(pdf|docx|jpg|jpeg|png|webp)$/i);
+
+  if (!isTypeValid) {
+    return "Supported formats: PDF, DOCX, JPG, PNG, and WebP (scanned resumes supported)";
   }
   return null;
 }
@@ -391,12 +403,42 @@ function ResumeScanner() {
   const { user } = useAuth();
   const qc = useQueryClient();
   const runScan = useServerFn(scanResumeFromStorage);
+  const fetchUserScans = useServerFn(getUserResumeScans);
+  const savePreferredName = useServerFn(updatePreferredName);
 
   const [dragActive, setDragActive] = useState(false);
   const [matches, setMatches] = useState<JobMatch[]>([]);
   const [isExporting, setIsExporting] = useState(false);
   const [hasAttemptedScan, setHasAttemptedScan] = useState(false);
+  const [selectedScanId, setSelectedScanId] = useState<string | null>(null);
+  const [preferredNameInput, setPreferredNameInput] = useState("");
+  const [isSavingName, setIsSavingName] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Fetch user profile to check name personalization
+  const { data: profile, refetch: refetchProfile } = useQuery({
+    queryKey: ["user-profile-name", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      if (!user) return null;
+      const { data } = await supabase
+        .from("profiles")
+        .select("full_name")
+        .eq("id", user.id)
+        .maybeSingle();
+      return data;
+    },
+  });
+
+  // Fetch persistent scan history
+  const { data: scanHistory = [], refetch: refetchHistory } = useQuery({
+    queryKey: ["user-resume-scans", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const res = await fetchUserScans();
+      return (res || []) as Array<Record<string, any>>;
+    },
+  });
 
   // Improved query with better error handling
   const {
@@ -434,7 +476,7 @@ function ResumeScanner() {
       console.log("Starting scan for resume:", resumeId);
       return runScan({ data: { resumeId } });
     },
-    onSuccess: (result) => {
+    onSuccess: (result: any) => {
       console.log("Scan result:", result);
 
       // Normalize matches data
@@ -448,16 +490,19 @@ function ResumeScanner() {
 
       setMatches(normalizedMatches);
       setHasAttemptedScan(true);
-      toast.success("Analysis complete! Career roadmap generated.");
+      setSelectedScanId(null); // Return to viewing latest scan
+      toast.success("Analysis complete! Career roadmap and ATS score saved.");
 
       // Force refetch to get updated data
       qc.invalidateQueries({ queryKey: ["my-resume-full"] });
       qc.invalidateQueries({ queryKey: ["my-resume"] });
+      qc.invalidateQueries({ queryKey: ["user-resume-scans"] });
 
       // Add slight delay for UI consistency
       setTimeout(() => {
         refetch();
-      }, 100);
+        refetchHistory();
+      }, 150);
     },
     onError: (error) => {
       console.error("Scan error:", error);
@@ -465,6 +510,23 @@ function ResumeScanner() {
       setHasAttemptedScan(true);
     },
   });
+
+  const handleSaveName = async () => {
+    if (!preferredNameInput.trim()) return;
+    setIsSavingName(true);
+    try {
+      await savePreferredName({ data: { name: preferredNameInput.trim() } });
+      toast.success(
+        `Name saved! AI Career Coach will address you as "${preferredNameInput.trim()}".`,
+      );
+      refetchProfile();
+      setPreferredNameInput("");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to save preferred name");
+    } finally {
+      setIsSavingName(false);
+    }
+  };
 
   // Check for existing analysis data
   useEffect(() => {
@@ -621,9 +683,55 @@ function ResumeScanner() {
     [user, resume, qc],
   );
 
+  const activeHistoricalScan = useMemo(() => {
+    if (!selectedScanId || !scanHistory.length) return null;
+    return scanHistory.find((s: any) => s.id === selectedScanId) || null;
+  }, [selectedScanId, scanHistory]);
+
+  const latestScan = scanHistory[0] || null;
+
+  const currentDisplay = useMemo(() => {
+    if (activeHistoricalScan) {
+      return {
+        isHistorical: true,
+        fileName: activeHistoricalScan.file_name || "Resume",
+        overallScore: activeHistoricalScan.overall_score,
+        atsScore: activeHistoricalScan.ats_score,
+        grammarScore: activeHistoricalScan.skills_score ?? activeHistoricalScan.overall_score,
+        formattingScore: activeHistoricalScan.formatting_score,
+        keywordScore: activeHistoricalScan.keyword_score,
+        professionalismScore:
+          activeHistoricalScan.experience_score ?? activeHistoricalScan.overall_score,
+        suggestions: activeHistoricalScan.recommendations ?? [],
+        roadmap: (activeHistoricalScan.career_roadmap as Roadmap) ?? null,
+        scoreImprovement: activeHistoricalScan.score_improvement,
+        previousAtsScore: activeHistoricalScan.previous_ats_score,
+        scanDate: activeHistoricalScan.created_at,
+        source: activeHistoricalScan.extraction_source,
+      };
+    }
+
+    return {
+      isHistorical: false,
+      fileName: resume?.file_name || "Resume",
+      overallScore: resume?.overall_score,
+      atsScore: resume?.ats_score,
+      grammarScore: resume?.grammar_score,
+      formattingScore: resume?.formatting_score,
+      keywordScore: resume?.keyword_score,
+      professionalismScore: resume?.professionalism_score,
+      suggestions: resume?.suggestions ?? [],
+      roadmap: (resume?.career_roadmap as Roadmap) ?? null,
+      scoreImprovement: latestScan?.score_improvement ?? null,
+      previousAtsScore: latestScan?.previous_ats_score ?? null,
+      scanDate: latestScan?.created_at ?? null,
+      source: latestScan?.extraction_source ?? "parsed_data",
+    };
+  }, [activeHistoricalScan, resume, latestScan]);
+
   const exportRoadmapPDF = useCallback(async () => {
-    const roadmap = resume?.career_roadmap;
-    if (!roadmap) return;
+    const activeRoadmap = currentDisplay?.roadmap;
+    if (!activeRoadmap) return;
 
     setIsExporting(true);
 
@@ -661,46 +769,47 @@ function ResumeScanner() {
         y += 5;
       };
 
-      if (roadmap.career_paths?.length)
+      if (activeRoadmap.career_paths?.length)
         addSection(
           "Career Paths",
-          roadmap.career_paths.map((c) => `${c.title}: ${c.why}`),
+          activeRoadmap.career_paths.map((c) => `${c.title}: ${c.why}`),
         );
-      if (roadmap.skill_gaps?.length) addSection("Skill Gaps", roadmap.skill_gaps);
-      if (roadmap.missing_skills?.length) addSection("Missing Skills", roadmap.missing_skills);
-      if (roadmap.recommended_certifications?.length)
+      if (activeRoadmap.skill_gaps?.length) addSection("Skill Gaps", activeRoadmap.skill_gaps);
+      if (activeRoadmap.missing_skills?.length)
+        addSection("Missing Skills", activeRoadmap.missing_skills);
+      if (activeRoadmap.recommended_certifications?.length)
         addSection(
           "Recommended Certifications",
-          roadmap.recommended_certifications.map((c) => `${c.name} (${c.provider})`),
+          activeRoadmap.recommended_certifications.map((c) => `${c.name} (${c.provider})`),
         );
-      if (roadmap.suggested_projects?.length)
+      if (activeRoadmap.suggested_projects?.length)
         addSection(
           "Suggested Projects",
-          roadmap.suggested_projects.map((p) => `${p.title}: ${p.description}`),
+          activeRoadmap.suggested_projects.map((p) => `${p.title}: ${p.description}`),
         );
-      if (roadmap.recommended_jobs?.length)
+      if (activeRoadmap.recommended_jobs?.length)
         addSection(
           "Recommended Jobs",
-          roadmap.recommended_jobs.map((j) => `${j.title}: ${j.why}`),
+          activeRoadmap.recommended_jobs.map((j) => `${j.title}: ${j.why}`),
         );
-      if (roadmap.companies_hiring?.length)
+      if (activeRoadmap.companies_hiring?.length)
         addSection(
           "Companies Hiring",
-          roadmap.companies_hiring.map((c) => `${c.name} (${c.sector})`),
+          activeRoadmap.companies_hiring.map((c) => `${c.name} (${c.sector})`),
         );
-      if (roadmap.salary_prediction)
+      if (activeRoadmap.salary_prediction)
         addSection("Salary Prediction (Nepal)", [
-          `Entry Level: ${formatNPR(roadmap.salary_prediction.low)}/month`,
-          `Average: ${formatNPR(roadmap.salary_prediction.mid)}/month`,
-          `Experienced: ${formatNPR(roadmap.salary_prediction.high)}/month`,
+          `Entry Level: ${formatNPR(activeRoadmap.salary_prediction.low)}/month`,
+          `Average: ${formatNPR(activeRoadmap.salary_prediction.mid)}/month`,
+          `Experienced: ${formatNPR(activeRoadmap.salary_prediction.high)}/month`,
         ]);
-      if (roadmap.resume_improvements?.length)
-        addSection("Resume Improvements", roadmap.resume_improvements);
-      if (roadmap.interview_prep_plan) {
-        addSection("30-Day Plan", roadmap.interview_prep_plan.thirty_days ?? []);
-        addSection("60-Day Plan", roadmap.interview_prep_plan.sixty_days ?? []);
-        addSection("90-Day Plan", roadmap.interview_prep_plan.ninety_days ?? []);
-        addSection("180-Day Plan", roadmap.interview_prep_plan.one_eighty_days ?? []);
+      if (activeRoadmap.resume_improvements?.length)
+        addSection("Resume Improvements", activeRoadmap.resume_improvements);
+      if (activeRoadmap.interview_prep_plan) {
+        addSection("30-Day Plan", activeRoadmap.interview_prep_plan.thirty_days ?? []);
+        addSection("60-Day Plan", activeRoadmap.interview_prep_plan.sixty_days ?? []);
+        addSection("90-Day Plan", activeRoadmap.interview_prep_plan.ninety_days ?? []);
+        addSection("180-Day Plan", activeRoadmap.interview_prep_plan.one_eighty_days ?? []);
       }
 
       doc.save("career-roadmap.pdf");
@@ -711,33 +820,53 @@ function ResumeScanner() {
     } finally {
       setIsExporting(false);
     }
-  }, [resume]);
+  }, [currentDisplay]);
 
   const scores = useMemo(() => {
-    if (!resume) return [];
+    if (currentDisplay.overallScore == null) return [];
 
     return [
-      { label: "Overall", value: resume.overall_score, icon: Sparkles, color: "text-primary" },
-      { label: "ATS", value: resume.ats_score, icon: ScanText, color: "text-blue-500" },
       {
-        label: "Grammar",
-        value: resume.grammar_score,
+        label: "Overall",
+        value: currentDisplay.overallScore,
+        icon: Sparkles,
+        color: "text-primary",
+      },
+      {
+        label: "ATS Score",
+        value: currentDisplay.atsScore,
+        icon: ScanText,
+        color: "text-blue-500",
+      },
+      {
+        label: "Skills Alignment",
+        value: currentDisplay.grammarScore,
         icon: CheckCircle2,
         color: "text-green-500",
       },
-      { label: "Formatting", value: resume.formatting_score, icon: FileText, color: "text-accent" },
-      { label: "Keywords", value: resume.keyword_score, icon: Target, color: "text-orange-500" },
       {
-        label: "Professionalism",
-        value: resume.professionalism_score,
+        label: "Formatting",
+        value: currentDisplay.formattingScore,
+        icon: FileText,
+        color: "text-accent",
+      },
+      {
+        label: "Keywords",
+        value: currentDisplay.keywordScore,
+        icon: Target,
+        color: "text-orange-500",
+      },
+      {
+        label: "Experience Impact",
+        value: currentDisplay.professionalismScore,
         icon: Award,
         color: "text-purple-500",
       },
     ];
-  }, [resume]);
+  }, [currentDisplay]);
 
-  const suggestions = resume?.suggestions ?? [];
-  const roadmap = resume?.career_roadmap ?? null;
+  const suggestions = currentDisplay.suggestions ?? [];
+  const roadmap = currentDisplay.roadmap ?? null;
   const isBusy = scanMutation.isPending;
 
   // Sort matches: Nepal-based first, then by score
@@ -762,8 +891,14 @@ function ResumeScanner() {
             AI Resume Scanner
           </h1>
           <p className="text-sm sm:text-muted-foreground mt-1">
-            Upload your resume for instant ATS scoring, keyword analysis, and a personalized career
-            roadmap.
+            {profile?.full_name ? (
+              <span>
+                Personalized for <strong className="text-foreground">{profile.full_name}</strong>.
+                Instant ATS scoring, keyword analysis, and career roadmap.
+              </span>
+            ) : (
+              "Upload your resume for instant ATS scoring, keyword analysis, and a personalized career roadmap."
+            )}
           </p>
         </div>
         {resume && (
@@ -777,6 +912,41 @@ function ResumeScanner() {
           </Button>
         )}
       </div>
+
+      {/* AI Name Personalization Banner (If user name is not yet set) */}
+      {user && !profile?.full_name?.trim() && (
+        <Card className="border-primary/30 bg-gradient-to-r from-primary/10 via-primary/5 to-accent/10 animate-fade-in">
+          <CardContent className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-start gap-3">
+              <div className="h-9 w-9 rounded-full bg-primary/20 flex items-center justify-center shrink-0 mt-0.5">
+                <UserCheck className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-sm">What would you like the AI to call you?</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Let Jagire AI address you personally in feedback, ATS tips, and career roadmaps.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <Input
+                placeholder="Enter your name (e.g., Kiran)"
+                value={preferredNameInput}
+                onChange={(e) => setPreferredNameInput(e.target.value)}
+                className="h-8 text-xs w-44"
+              />
+              <Button
+                size="sm"
+                className="h-8 text-xs gradient-brand text-primary-foreground"
+                onClick={handleSaveName}
+                disabled={isSavingName || !preferredNameInput.trim()}
+              >
+                {isSavingName ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Save"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Drag & drop upload */}
       <Card className="glass hover:shadow-card-soft transition-all">
@@ -799,7 +969,7 @@ function ResumeScanner() {
               ref={fileInputRef}
               type="file"
               className="hidden"
-              accept=".pdf,.docx"
+              accept=".pdf,.docx,.jpg,.jpeg,.png,.webp,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png,image/webp"
               onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (file) handleFile(file);
@@ -812,8 +982,14 @@ function ResumeScanner() {
                 <Loader2 className="h-12 w-12 mx-auto mb-4 animate-spin text-primary" />
                 <div className="font-semibold text-lg">Analyzing your resume…</div>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Extracting text, scoring, and generating your career roadmap
+                  Extracting text, running OCR on scanned pages/images, scoring ATS, and building
+                  your career roadmap…
                 </p>
+                <div className="flex justify-center gap-2 mt-3 text-xs text-primary font-medium">
+                  <span className="inline-flex items-center gap-1">
+                    <Sparkles className="h-3.5 w-3.5 animate-pulse" /> AI & OCR Processing
+                  </span>
+                </div>
               </>
             ) : resume ? (
               <>
@@ -824,13 +1000,33 @@ function ResumeScanner() {
                 <p className="text-sm text-muted-foreground mt-1">
                   Click to upload a new resume or drag & drop to replace
                 </p>
-                <div className="flex justify-center gap-2 mt-3">
+                <p className="text-xs text-muted-foreground/80 mt-1">
+                  Supports PDF, DOCX, JPG, PNG, and WebP (scanned resumes supported)
+                </p>
+                <div className="flex justify-center gap-2 mt-3 flex-wrap">
                   <Badge variant="secondary">
                     {((resume.file_size ?? 0) / 1024).toFixed(0)} KB
                   </Badge>
                   {resume.overall_score != null && (
                     <Badge className="gradient-brand text-primary-foreground">
-                      Score: {resume.overall_score}/100
+                      ATS Score: {resume.ats_score ?? resume.overall_score}/100
+                    </Badge>
+                  )}
+                  {latestScan?.score_improvement != null && (
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        "text-xs font-semibold",
+                        latestScan.score_improvement > 0
+                          ? "text-emerald-600 border-emerald-500/30 bg-emerald-500/10"
+                          : latestScan.score_improvement < 0
+                            ? "text-red-500 border-red-500/30 bg-red-500/10"
+                            : "text-muted-foreground",
+                      )}
+                    >
+                      {latestScan.score_improvement > 0
+                        ? `+${latestScan.score_improvement} from previous scan`
+                        : `${latestScan.score_improvement} from previous scan`}
                     </Badge>
                   )}
                 </div>
@@ -842,7 +1038,10 @@ function ResumeScanner() {
                 </div>
                 <div className="font-semibold text-lg">Drop your resume here</div>
                 <p className="text-sm text-muted-foreground mt-1">
-                  or click to browse — PDF or DOCX, max 10MB
+                  or click to browse — PDF, DOCX, JPG, PNG, or WebP
+                </p>
+                <p className="text-xs text-primary/80 font-medium mt-1">
+                  ✓ Scanned PDFs & image resumes supported (Max 15MB)
                 </p>
               </>
             )}
@@ -864,36 +1063,94 @@ function ResumeScanner() {
       {/* Loading skeleton */}
       {isLoading && <SkeletonCard />}
 
-      {/* Scores */}
-      {resume?.overall_score != null && !isBusy && (
+      {/* Historical View Warning Banner */}
+      {currentDisplay.isHistorical && (
+        <div className="flex items-center justify-between p-3.5 rounded-xl border border-primary/30 bg-primary/5">
+          <div className="flex items-center gap-2 text-sm">
+            <History className="h-4 w-4 text-primary" />
+            <span>
+              Viewing historical scan: <strong>{currentDisplay.fileName}</strong> (
+              {currentDisplay.scanDate
+                ? new Date(currentDisplay.scanDate).toLocaleDateString()
+                : "Past scan"}
+              )
+            </span>
+          </div>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7 text-xs text-primary hover:text-primary"
+            onClick={() => setSelectedScanId(null)}
+          >
+            Back to Latest Resume
+          </Button>
+        </div>
+      )}
+
+      {/* Scores & ATS Breakdown */}
+      {currentDisplay.overallScore != null && !isBusy && (
         <Card className="glass animate-fade-in-up">
           <CardContent className="p-6 space-y-5">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold flex items-center gap-2">
-                <Target className="h-5 w-5 text-primary" /> Your Scores
-              </h2>
-              <Badge
-                className={`text-lg font-bold ${getScoreColor(resume.overall_score)}`}
-                variant="outline"
-              >
-                {resume.overall_score}/100
-              </Badge>
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-2">
+                <Target className="h-5 w-5 text-primary" />
+                <h2 className="text-xl font-bold">ATS & Resume Intelligence</h2>
+              </div>
+              <div className="flex items-center gap-2">
+                {currentDisplay.scoreImprovement != null && (
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      "text-xs font-semibold px-2.5 py-1",
+                      currentDisplay.scoreImprovement > 0
+                        ? "text-emerald-600 border-emerald-500/30 bg-emerald-500/10"
+                        : currentDisplay.scoreImprovement < 0
+                          ? "text-red-500 border-red-500/30 bg-red-500/10"
+                          : "text-muted-foreground",
+                    )}
+                  >
+                    {currentDisplay.scoreImprovement > 0 ? (
+                      <span className="flex items-center gap-1">
+                        <ArrowUpRight className="h-3.5 w-3.5 text-emerald-600" />+
+                        {currentDisplay.scoreImprovement} score improvement
+                      </span>
+                    ) : currentDisplay.scoreImprovement < 0 ? (
+                      <span className="flex items-center gap-1">
+                        <ArrowDownRight className="h-3.5 w-3.5 text-red-500" />
+                        {currentDisplay.scoreImprovement} change
+                      </span>
+                    ) : (
+                      "Same as previous scan"
+                    )}
+                  </Badge>
+                )}
+                <Badge
+                  className={`text-base font-bold ${getScoreColor(currentDisplay.atsScore ?? currentDisplay.overallScore)}`}
+                  variant="outline"
+                >
+                  ATS: {currentDisplay.atsScore ?? currentDisplay.overallScore}/100
+                </Badge>
+              </div>
             </div>
 
             {/* Overall score ring */}
             <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
-              <ScoreRing value={resume.overall_score ?? 0} />
+              <ScoreRing value={currentDisplay.atsScore ?? currentDisplay.overallScore ?? 0} />
               <div className="flex-1 text-center sm:text-left">
                 <p className="text-sm text-muted-foreground">
-                  {getScoreMessage(resume.overall_score)}
+                  {getScoreMessage(currentDisplay.atsScore ?? currentDisplay.overallScore ?? 0)}
                 </p>
+                {currentDisplay.previousAtsScore != null && (
+                  <div className="text-xs text-muted-foreground mt-2">
+                    Previous scan score: <strong>{currentDisplay.previousAtsScore}/100</strong>
+                  </div>
+                )}
               </div>
             </div>
 
             {/* Score breakdown */}
             <div className="grid sm:grid-cols-2 gap-4">
               {scores.map((s) => {
-                const ScoreIcon = getScoreIcon(s.value);
                 return (
                   <div key={s.label} className="space-y-1.5">
                     <div className="flex items-center justify-between text-sm">
@@ -918,7 +1175,7 @@ function ResumeScanner() {
                   <Lightbulb className="h-4 w-4 text-amber-500" /> Actionable Recommendations
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {suggestions.map((s, i) => (
+                  {suggestions.map((s: string, i: number) => (
                     <div
                       key={i}
                       className="flex items-start gap-2 rounded-lg border p-3 hover:bg-muted/30 transition-colors animate-fade-in"
@@ -933,6 +1190,129 @@ function ResumeScanner() {
                 </div>
               </div>
             )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Resume Version History & Improvement Timeline */}
+      {scanHistory.length > 0 && !isBusy && (
+        <Card className="glass animate-fade-in-up">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <History className="h-5 w-5 text-primary" />
+                Resume Version History & Score Improvement
+              </CardTitle>
+              <Badge variant="secondary" className="text-xs">
+                {scanHistory.length} {scanHistory.length === 1 ? "Version" : "Versions"}
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="p-4 sm:p-6 pt-0">
+            <div className="space-y-2.5">
+              {scanHistory.map((scan: any, idx: number) => {
+                const versionNumber = scanHistory.length - idx;
+                const isSelected = selectedScanId === scan.id || (!selectedScanId && idx === 0);
+                const scoreDiff = scan.score_improvement;
+
+                return (
+                  <div
+                    key={scan.id}
+                    onClick={() => setSelectedScanId(scan.id)}
+                    className={cn(
+                      "flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-xl border transition-all cursor-pointer gap-2",
+                      isSelected
+                        ? "border-primary bg-primary/5 shadow-sm"
+                        : "hover:bg-muted/30 hover:border-border",
+                    )}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div
+                        className={cn(
+                          "h-8 w-8 rounded-lg flex items-center justify-center font-bold text-xs shrink-0",
+                          isSelected
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted text-muted-foreground",
+                        )}
+                      >
+                        v{versionNumber}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-semibold text-sm truncate">{scan.file_name}</span>
+                          {idx === 0 && (
+                            <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                              Latest
+                            </Badge>
+                          )}
+                          {scan.extraction_source && (
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 uppercase">
+                              {scan.extraction_source.replace("_", " ")}
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-0.5">
+                          Scanned:{" "}
+                          {new Date(scan.created_at).toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 shrink-0 self-end sm:self-center">
+                      <div className="text-right">
+                        <div className="text-sm font-bold flex items-center gap-1 justify-end">
+                          <span>ATS: {scan.ats_score ?? scan.overall_score ?? "—"}</span>
+                        </div>
+                        {scoreDiff != null ? (
+                          <div
+                            className={cn(
+                              "text-[11px] font-medium flex items-center gap-0.5 justify-end",
+                              scoreDiff > 0
+                                ? "text-emerald-600"
+                                : scoreDiff < 0
+                                  ? "text-red-500"
+                                  : "text-muted-foreground",
+                            )}
+                          >
+                            {scoreDiff > 0 ? (
+                              <>
+                                <ArrowUpRight className="h-3 w-3" /> +{scoreDiff} improvement
+                              </>
+                            ) : scoreDiff < 0 ? (
+                              <>
+                                <ArrowDownRight className="h-3 w-3" /> {scoreDiff} change
+                              </>
+                            ) : (
+                              "No score change"
+                            )}
+                          </div>
+                        ) : (
+                          <div className="text-[10px] text-muted-foreground">Baseline scan</div>
+                        )}
+                      </div>
+
+                      <Button
+                        size="sm"
+                        variant={isSelected ? "default" : "outline"}
+                        className="h-7 text-xs"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedScanId(scan.id);
+                        }}
+                      >
+                        {isSelected ? "Viewing" : "View"}
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </CardContent>
         </Card>
       )}

@@ -287,9 +287,19 @@ function AuditLogsTab() {
                     {log.user?.full_name ?? "System"} · {new Date(log.created_at).toLocaleString()}
                   </div>
                   {log.metadata && Object.keys(log.metadata).length > 0 && (
-                    <pre className="text-xs text-muted-foreground mt-1 bg-muted/50 rounded p-1.5 overflow-x-auto">
-                      {JSON.stringify(log.metadata, null, 0)}
-                    </pre>
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {Object.entries(log.metadata).map(([k, v]) => (
+                        <span
+                          key={k}
+                          className="inline-flex items-center gap-1 text-[11px] bg-muted/80 border border-border/50 rounded-md px-2 py-0.5 text-muted-foreground"
+                        >
+                          <span className="font-semibold text-foreground/80">
+                            {k.replace(/_/g, " ")}:
+                          </span>
+                          <span>{typeof v === "object" ? "Object" : String(v)}</span>
+                        </span>
+                      ))}
+                    </div>
                   )}
                 </div>
               </div>

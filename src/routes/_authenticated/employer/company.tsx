@@ -36,7 +36,10 @@ import {
   Instagram,
   Mail,
   Award,
+  TrendingUp,
 } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
+import { syncCompanyIntelligence } from "@/lib/company-intelligence.server";
 import {
   Select,
   SelectContent,
@@ -94,6 +97,7 @@ const emptyForm = {
 function CompanyForm() {
   const { user } = useAuth();
   const qc = useQueryClient();
+  const syncCI = useServerFn(syncCompanyIntelligence);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [companyToDelete, setCompanyToDelete] = useState<string | null>(null);
@@ -280,6 +284,16 @@ function CompanyForm() {
       await qc.invalidateQueries({
         queryKey: ["my-companies", user?.id],
       });
+
+      const cid = selectedCompany?.id || selectedCompanyId;
+      if (cid) {
+        try {
+          await syncCI({ data: { companyId: cid } });
+          await qc.invalidateQueries({ queryKey: ["employer-company-intelligence"] });
+        } catch (syncErr) {
+          console.warn("Background intelligence sync notice:", syncErr);
+        }
+      }
     },
 
     onError: (e: any) => {
@@ -429,6 +443,12 @@ function CompanyForm() {
 
             {selectedCompany && (
               <div className="flex items-center gap-2.5 flex-wrap">
+                <Button asChild variant="outline" size="sm" className="h-9 gap-1.5 shadow-sm">
+                  <Link to="/employer/intelligence">
+                    <TrendingUp className="h-3.5 w-3.5 text-primary" />
+                    <span>360° Intelligence</span>
+                  </Link>
+                </Button>
                 <Button asChild variant="outline" size="sm" className="h-9 gap-1.5 shadow-sm">
                   <Link to="/companies/$slug" params={{ slug: selectedCompany.slug }}>
                     <span>View Public Profile</span>

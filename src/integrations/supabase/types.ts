@@ -368,6 +368,69 @@ export type Database = {
           },
         ];
       };
+      applications_backup_fix: {
+        Row: {
+          ai_match_data: Json | null;
+          ai_match_score: number | null;
+          applicant_id: string | null;
+          applied_at: string | null;
+          cover_letter: string | null;
+          created_at: string | null;
+          employer_notes: string | null;
+          id: string | null;
+          job_id: string | null;
+          match_breakdown: Json | null;
+          match_score: number | null;
+          rejection_remark: string | null;
+          resume_id: string | null;
+          seeker_id: string | null;
+          status: Database["public"]["Enums"]["application_status"] | null;
+          status_text: string | null;
+          timeline: Json | null;
+          updated_at: string | null;
+        };
+        Insert: {
+          ai_match_data?: Json | null;
+          ai_match_score?: number | null;
+          applicant_id?: string | null;
+          applied_at?: string | null;
+          cover_letter?: string | null;
+          created_at?: string | null;
+          employer_notes?: string | null;
+          id?: string | null;
+          job_id?: string | null;
+          match_breakdown?: Json | null;
+          match_score?: number | null;
+          rejection_remark?: string | null;
+          resume_id?: string | null;
+          seeker_id?: string | null;
+          status?: Database["public"]["Enums"]["application_status"] | null;
+          status_text?: string | null;
+          timeline?: Json | null;
+          updated_at?: string | null;
+        };
+        Update: {
+          ai_match_data?: Json | null;
+          ai_match_score?: number | null;
+          applicant_id?: string | null;
+          applied_at?: string | null;
+          cover_letter?: string | null;
+          created_at?: string | null;
+          employer_notes?: string | null;
+          id?: string | null;
+          job_id?: string | null;
+          match_breakdown?: Json | null;
+          match_score?: number | null;
+          rejection_remark?: string | null;
+          resume_id?: string | null;
+          seeker_id?: string | null;
+          status?: Database["public"]["Enums"]["application_status"] | null;
+          status_text?: string | null;
+          timeline?: Json | null;
+          updated_at?: string | null;
+        };
+        Relationships: [];
+      };
       assessment_attempts: {
         Row: {
           answers: Json | null;
@@ -755,6 +818,78 @@ export type Database = {
         };
         Relationships: [];
       };
+      career_intelligence_snapshots: {
+        Row: {
+          ai_career_roadmap: Json | null;
+          ai_recommendations: Json | null;
+          application_stats: Json | null;
+          ats_score: number | null;
+          candidate_name: string | null;
+          career_readiness_score: number | null;
+          created_at: string;
+          education: Json | null;
+          experience: Json | null;
+          github_data: Json | null;
+          headline: string | null;
+          id: string;
+          linkedin_data: Json | null;
+          profile_completeness: number | null;
+          projects: Json | null;
+          resume_summary: Json | null;
+          score_change: number | null;
+          skills: Json | null;
+          snapshot_type: string;
+          user_id: string;
+          version: number;
+        };
+        Insert: {
+          ai_career_roadmap?: Json | null;
+          ai_recommendations?: Json | null;
+          application_stats?: Json | null;
+          ats_score?: number | null;
+          candidate_name?: string | null;
+          career_readiness_score?: number | null;
+          created_at?: string;
+          education?: Json | null;
+          experience?: Json | null;
+          github_data?: Json | null;
+          headline?: string | null;
+          id?: string;
+          linkedin_data?: Json | null;
+          profile_completeness?: number | null;
+          projects?: Json | null;
+          resume_summary?: Json | null;
+          score_change?: number | null;
+          skills?: Json | null;
+          snapshot_type?: string;
+          user_id: string;
+          version?: number;
+        };
+        Update: {
+          ai_career_roadmap?: Json | null;
+          ai_recommendations?: Json | null;
+          application_stats?: Json | null;
+          ats_score?: number | null;
+          candidate_name?: string | null;
+          career_readiness_score?: number | null;
+          created_at?: string;
+          education?: Json | null;
+          experience?: Json | null;
+          github_data?: Json | null;
+          headline?: string | null;
+          id?: string;
+          linkedin_data?: Json | null;
+          profile_completeness?: number | null;
+          projects?: Json | null;
+          resume_summary?: Json | null;
+          score_change?: number | null;
+          skills?: Json | null;
+          snapshot_type?: string;
+          user_id?: string;
+          version?: number;
+        };
+        Relationships: [];
+      };
       categories: {
         Row: {
           created_at: string | null;
@@ -775,6 +910,49 @@ export type Database = {
           slug?: string;
         };
         Relationships: [];
+      };
+      chat_participants: {
+        Row: {
+          chat_id: string | null;
+          created_at: string | null;
+          id: string;
+          user_id: string | null;
+        };
+        Insert: {
+          chat_id?: string | null;
+          created_at?: string | null;
+          id?: string;
+          user_id?: string | null;
+        };
+        Update: {
+          chat_id?: string | null;
+          created_at?: string | null;
+          id?: string;
+          user_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "chat_participants_chat_id_fkey";
+            columns: ["chat_id"];
+            isOneToOne: false;
+            referencedRelation: "chats";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "chat_participants_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "admin_users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "chat_participants_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       chats: {
         Row: {
@@ -1003,6 +1181,151 @@ export type Database = {
           work_model?: string | null;
         };
         Relationships: [];
+      };
+      company_intelligence: {
+        Row: {
+          ai_hiring_roadmap: Json | null;
+          ai_recommendations: Json | null;
+          benefits: Json | null;
+          company_id: string;
+          company_name: string;
+          created_at: string | null;
+          culture_highlights: Json | null;
+          employer_id: string;
+          hiring_readiness_score: number | null;
+          id: string;
+          industry: string | null;
+          job_stats: Json | null;
+          last_synced_at: string | null;
+          location: string | null;
+          profile_completeness: number | null;
+          projects_services: Json | null;
+          score_change: number | null;
+          size: string | null;
+          social_links: Json | null;
+          technologies: Json | null;
+          updated_at: string | null;
+          version_number: number | null;
+          website: string | null;
+        };
+        Insert: {
+          ai_hiring_roadmap?: Json | null;
+          ai_recommendations?: Json | null;
+          benefits?: Json | null;
+          company_id: string;
+          company_name: string;
+          created_at?: string | null;
+          culture_highlights?: Json | null;
+          employer_id: string;
+          hiring_readiness_score?: number | null;
+          id?: string;
+          industry?: string | null;
+          job_stats?: Json | null;
+          last_synced_at?: string | null;
+          location?: string | null;
+          profile_completeness?: number | null;
+          projects_services?: Json | null;
+          score_change?: number | null;
+          size?: string | null;
+          social_links?: Json | null;
+          technologies?: Json | null;
+          updated_at?: string | null;
+          version_number?: number | null;
+          website?: string | null;
+        };
+        Update: {
+          ai_hiring_roadmap?: Json | null;
+          ai_recommendations?: Json | null;
+          benefits?: Json | null;
+          company_id?: string;
+          company_name?: string;
+          created_at?: string | null;
+          culture_highlights?: Json | null;
+          employer_id?: string;
+          hiring_readiness_score?: number | null;
+          id?: string;
+          industry?: string | null;
+          job_stats?: Json | null;
+          last_synced_at?: string | null;
+          location?: string | null;
+          profile_completeness?: number | null;
+          projects_services?: Json | null;
+          score_change?: number | null;
+          size?: string | null;
+          social_links?: Json | null;
+          technologies?: Json | null;
+          updated_at?: string | null;
+          version_number?: number | null;
+          website?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "company_intelligence_company_id_fkey";
+            columns: ["company_id"];
+            isOneToOne: true;
+            referencedRelation: "companies";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      company_intelligence_snapshots: {
+        Row: {
+          ai_hiring_roadmap: Json | null;
+          ai_recommendations: Json | null;
+          company_id: string;
+          created_at: string | null;
+          employer_id: string;
+          hiring_readiness_score: number | null;
+          id: string;
+          job_stats: Json | null;
+          metadata: Json | null;
+          profile_completeness: number | null;
+          score_change: number | null;
+          snapshot_type: string;
+          technologies: Json | null;
+          version_number: number;
+        };
+        Insert: {
+          ai_hiring_roadmap?: Json | null;
+          ai_recommendations?: Json | null;
+          company_id: string;
+          created_at?: string | null;
+          employer_id: string;
+          hiring_readiness_score?: number | null;
+          id?: string;
+          job_stats?: Json | null;
+          metadata?: Json | null;
+          profile_completeness?: number | null;
+          score_change?: number | null;
+          snapshot_type: string;
+          technologies?: Json | null;
+          version_number: number;
+        };
+        Update: {
+          ai_hiring_roadmap?: Json | null;
+          ai_recommendations?: Json | null;
+          company_id?: string;
+          created_at?: string | null;
+          employer_id?: string;
+          hiring_readiness_score?: number | null;
+          id?: string;
+          job_stats?: Json | null;
+          metadata?: Json | null;
+          profile_completeness?: number | null;
+          score_change?: number | null;
+          snapshot_type?: string;
+          technologies?: Json | null;
+          version_number?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "company_intelligence_snapshots_company_id_fkey";
+            columns: ["company_id"];
+            isOneToOne: false;
+            referencedRelation: "companies";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       company_reviews: {
         Row: {
@@ -1259,6 +1582,66 @@ export type Database = {
           },
         ];
       };
+      interview_slots: {
+        Row: {
+          application_id: string | null;
+          booked_by: string | null;
+          calendar_event_id: string | null;
+          created_at: string | null;
+          employer_id: string;
+          end_time: string;
+          id: string;
+          is_booked: boolean | null;
+          job_id: string;
+          meeting_link: string | null;
+          notes: string | null;
+          start_time: string;
+        };
+        Insert: {
+          application_id?: string | null;
+          booked_by?: string | null;
+          calendar_event_id?: string | null;
+          created_at?: string | null;
+          employer_id?: string;
+          end_time: string;
+          id?: string;
+          is_booked?: boolean | null;
+          job_id: string;
+          meeting_link?: string | null;
+          notes?: string | null;
+          start_time: string;
+        };
+        Update: {
+          application_id?: string | null;
+          booked_by?: string | null;
+          calendar_event_id?: string | null;
+          created_at?: string | null;
+          employer_id?: string;
+          end_time?: string;
+          id?: string;
+          is_booked?: boolean | null;
+          job_id?: string;
+          meeting_link?: string | null;
+          notes?: string | null;
+          start_time?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "interview_slots_application_id_fkey";
+            columns: ["application_id"];
+            isOneToOne: false;
+            referencedRelation: "applications";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "interview_slots_job_id_fkey";
+            columns: ["job_id"];
+            isOneToOne: false;
+            referencedRelation: "jobs";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       interviews: {
         Row: {
           accepted_at: string | null;
@@ -1342,6 +1725,21 @@ export type Database = {
             referencedColumns: ["id"];
           },
         ];
+      };
+      jagire: {
+        Row: {
+          created_at: string;
+          id: number;
+        };
+        Insert: {
+          created_at?: string;
+          id?: number;
+        };
+        Update: {
+          created_at?: string;
+          id?: number;
+        };
+        Relationships: [];
       };
       job_matches: {
         Row: {
@@ -2190,6 +2588,47 @@ export type Database = {
           },
         ];
       };
+      post_reports: {
+        Row: {
+          created_at: string | null;
+          details: string | null;
+          id: string;
+          post_id: string;
+          reason: string;
+          reporter_id: string;
+          status: string;
+          updated_at: string | null;
+        };
+        Insert: {
+          created_at?: string | null;
+          details?: string | null;
+          id?: string;
+          post_id: string;
+          reason: string;
+          reporter_id?: string;
+          status?: string;
+          updated_at?: string | null;
+        };
+        Update: {
+          created_at?: string | null;
+          details?: string | null;
+          id?: string;
+          post_id?: string;
+          reason?: string;
+          reporter_id?: string;
+          status?: string;
+          updated_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "post_reports_post_id_fkey";
+            columns: ["post_id"];
+            isOneToOne: false;
+            referencedRelation: "posts";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       post_saves: {
         Row: {
           created_at: string | null;
@@ -2563,6 +3002,104 @@ export type Database = {
         };
         Relationships: [];
       };
+      resume_scans: {
+        Row: {
+          ai_model: string | null;
+          ai_provider: string | null;
+          ats_score: number | null;
+          candidate_name: string | null;
+          career_roadmap: Json | null;
+          created_at: string;
+          duration_ms: number | null;
+          extracted_skills: Json | null;
+          failure_reason: string | null;
+          file_name: string | null;
+          file_path: string | null;
+          file_size: number | null;
+          file_type: string | null;
+          formatting_score: number | null;
+          grammar_score: number | null;
+          id: string;
+          keyword_score: number | null;
+          overall_score: number | null;
+          parsed_data: Json | null;
+          professionalism_score: number | null;
+          resume_id: string | null;
+          scan_status: string | null;
+          score_improvement: number | null;
+          source: string | null;
+          suggestions: Json | null;
+          updated_at: string;
+          user_id: string;
+        };
+        Insert: {
+          ai_model?: string | null;
+          ai_provider?: string | null;
+          ats_score?: number | null;
+          candidate_name?: string | null;
+          career_roadmap?: Json | null;
+          created_at?: string;
+          duration_ms?: number | null;
+          extracted_skills?: Json | null;
+          failure_reason?: string | null;
+          file_name?: string | null;
+          file_path?: string | null;
+          file_size?: number | null;
+          file_type?: string | null;
+          formatting_score?: number | null;
+          grammar_score?: number | null;
+          id?: string;
+          keyword_score?: number | null;
+          overall_score?: number | null;
+          parsed_data?: Json | null;
+          professionalism_score?: number | null;
+          resume_id?: string | null;
+          scan_status?: string | null;
+          score_improvement?: number | null;
+          source?: string | null;
+          suggestions?: Json | null;
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: {
+          ai_model?: string | null;
+          ai_provider?: string | null;
+          ats_score?: number | null;
+          candidate_name?: string | null;
+          career_roadmap?: Json | null;
+          created_at?: string;
+          duration_ms?: number | null;
+          extracted_skills?: Json | null;
+          failure_reason?: string | null;
+          file_name?: string | null;
+          file_path?: string | null;
+          file_size?: number | null;
+          file_type?: string | null;
+          formatting_score?: number | null;
+          grammar_score?: number | null;
+          id?: string;
+          keyword_score?: number | null;
+          overall_score?: number | null;
+          parsed_data?: Json | null;
+          professionalism_score?: number | null;
+          resume_id?: string | null;
+          scan_status?: string | null;
+          score_improvement?: number | null;
+          source?: string | null;
+          suggestions?: Json | null;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "resume_scans_resume_id_fkey";
+            columns: ["resume_id"];
+            isOneToOne: false;
+            referencedRelation: "resumes";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       resumes: {
         Row: {
           ats_score: number | null;
@@ -2884,6 +3421,114 @@ export type Database = {
         };
         Relationships: [];
       };
+      user_activities: {
+        Row: {
+          activity_type: string;
+          created_at: string;
+          entity_id: string | null;
+          entity_type: string | null;
+          id: string;
+          metadata: Json | null;
+          user_id: string;
+        };
+        Insert: {
+          activity_type: string;
+          created_at?: string;
+          entity_id?: string | null;
+          entity_type?: string | null;
+          id?: string;
+          metadata?: Json | null;
+          user_id: string;
+        };
+        Update: {
+          activity_type?: string;
+          created_at?: string;
+          entity_id?: string | null;
+          entity_type?: string | null;
+          id?: string;
+          metadata?: Json | null;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
+      user_career_intelligence: {
+        Row: {
+          ai_career_roadmap: Json | null;
+          ai_recommendations: Json | null;
+          application_stats: Json | null;
+          ats_score: number | null;
+          candidate_name: string | null;
+          career_readiness_score: number | null;
+          created_at: string;
+          current_position: string | null;
+          education: Json | null;
+          experience: Json | null;
+          experience_years: number | null;
+          github_data: Json | null;
+          headline: string | null;
+          id: string;
+          linkedin_data: Json | null;
+          location: string | null;
+          profile_completeness: number | null;
+          projects: Json | null;
+          resume_summary: Json | null;
+          skills: Json | null;
+          updated_at: string;
+          user_id: string;
+          version: number;
+        };
+        Insert: {
+          ai_career_roadmap?: Json | null;
+          ai_recommendations?: Json | null;
+          application_stats?: Json | null;
+          ats_score?: number | null;
+          candidate_name?: string | null;
+          career_readiness_score?: number | null;
+          created_at?: string;
+          current_position?: string | null;
+          education?: Json | null;
+          experience?: Json | null;
+          experience_years?: number | null;
+          github_data?: Json | null;
+          headline?: string | null;
+          id?: string;
+          linkedin_data?: Json | null;
+          location?: string | null;
+          profile_completeness?: number | null;
+          projects?: Json | null;
+          resume_summary?: Json | null;
+          skills?: Json | null;
+          updated_at?: string;
+          user_id: string;
+          version?: number;
+        };
+        Update: {
+          ai_career_roadmap?: Json | null;
+          ai_recommendations?: Json | null;
+          application_stats?: Json | null;
+          ats_score?: number | null;
+          candidate_name?: string | null;
+          career_readiness_score?: number | null;
+          created_at?: string;
+          current_position?: string | null;
+          education?: Json | null;
+          experience?: Json | null;
+          experience_years?: number | null;
+          github_data?: Json | null;
+          headline?: string | null;
+          id?: string;
+          linkedin_data?: Json | null;
+          location?: string | null;
+          profile_completeness?: number | null;
+          projects?: Json | null;
+          resume_summary?: Json | null;
+          skills?: Json | null;
+          updated_at?: string;
+          user_id?: string;
+          version?: number;
+        };
+        Relationships: [];
+      };
       user_roles: {
         Row: {
           created_at: string;
@@ -2989,6 +3634,7 @@ export type Database = {
         };
         Returns: string;
       };
+      ensure_my_employer_role: { Args: never; Returns: undefined };
       get_assessment_questions: {
         Args: { _assessment_id: string };
         Returns: Json;
@@ -3083,7 +3729,7 @@ export type Database = {
       };
     };
     Enums: {
-      app_role: "employer" | "admin" | "job_seeker";
+      app_role: "seeker" | "employer" | "admin" | "job_seeker";
       application_status:
         | "applied"
         | "viewed"
@@ -3223,7 +3869,7 @@ export const Constants = {
   },
   public: {
     Enums: {
-      app_role: ["employer", "admin", "job_seeker"],
+      app_role: ["seeker", "employer", "admin", "job_seeker"],
       application_status: [
         "applied",
         "viewed",

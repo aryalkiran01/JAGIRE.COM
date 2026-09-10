@@ -25,7 +25,7 @@ import {
 } from "lucide-react";
 import { getAiFeature, EMPLOYER_AI_GROUPS } from "@/lib/employer-ai-features";
 import { runEmployerAiFeature } from "@/lib/employer-ai.server";
-import { AiResultRenderer } from "@/components/ai-result-renderer";
+import { AiResultRenderer, CleanMarkdownView } from "@/components/ai-result-renderer";
 import { useSubscription } from "@/hooks/use-subscription";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -717,8 +717,8 @@ function AiFeaturePage() {
                         </div>
                       ) : (
                         <div className="relative">
-                          <div className="rounded-2xl rounded-bl-sm bg-muted px-4 py-2 text-sm whitespace-pre-wrap shadow-md">
-                            {turn.content}
+                          <div className="rounded-2xl rounded-bl-sm bg-muted px-4 py-3 text-sm shadow-md">
+                            <CleanMarkdownView text={turn.content} />
                           </div>
                           <button
                             onClick={() => handleCopyResult(turn)}

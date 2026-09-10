@@ -15,6 +15,7 @@ import {
   Shield,
   BrainCircuit,
   Sparkles,
+  TrendingUp,
   ChevronDown,
   X,
   type LucideIcon,
@@ -56,6 +57,7 @@ const ADMIN_NAV: NavItem[] = [
 
 const EMPLOYER_NAV: NavItem[] = [
   { to: "/employer", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/employer/intelligence", label: "Intelligence", icon: TrendingUp },
   { to: "/employer/jobs/new", label: "Job Posts", icon: Briefcase },
   { to: "/employer/interviews", label: "Interviews", icon: Video },
   { to: "/employer/company", label: "Company", icon: Building2 },

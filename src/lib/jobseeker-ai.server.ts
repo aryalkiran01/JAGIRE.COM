@@ -5,6 +5,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth.middleware";
 import { aiGenerateJsonValidated } from "@/integrations/ai/ai-service";
 import { requirePremium } from "@/lib/premium.server";
 import { getJobSeekerAiFeature } from "@/lib/jobseeker-ai-features";
+import { getAuthoritativeCareerContextText } from "@/lib/career-intelligence.server";
 import { z } from "zod";
 import {
   coverLetterGeneratorSchema,
@@ -1041,6 +1042,14 @@ async function buildJobSeekerContext(
   userId: string,
   neededFields: string[] = [],
 ): Promise<string> {
+  // Fetch combined 360-degree career intelligence context (profile + resume + GitHub + LinkedIn + applications)
+  let authoritativeContext = "";
+  try {
+    authoritativeContext = await getAuthoritativeCareerContextText(supabase, userId);
+  } catch (err) {
+    console.warn("Could not load authoritative career context:", err);
+  }
+
   const { profile, resume, applications, savedJobs, activeJobs } = await fetchUserContext(
     supabase,
     userId,
@@ -1049,8 +1058,9 @@ async function buildJobSeekerContext(
 
   const ctx: string[] = [];
 
-  // Profile Context
-  if (profile) {
+  if (authoritativeContext) {
+    ctx.push(authoritativeContext);
+  } else if (profile) {
     ctx.push(
       `## Candidate Profile
 - Name: ${profile.full_name || "N/A"}

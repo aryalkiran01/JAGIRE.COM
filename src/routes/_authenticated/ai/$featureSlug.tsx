@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { getJobSeekerAiFeature, JOBSEEKER_AI_GROUPS } from "@/lib/jobseeker-ai-features";
 import { runJobSeekerAiFeature } from "@/lib/jobseeker-ai.server";
-import { AiResultRenderer } from "@/components/ai-result-renderer";
+import { AiResultRenderer, CleanMarkdownView } from "@/components/ai-result-renderer";
 import { useSubscription } from "@/hooks/use-subscription";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -443,8 +443,8 @@ function JobSeekerAiFeaturePage() {
                         </div>
                       ) : (
                         <div className="relative">
-                          <div className="rounded-2xl rounded-bl-sm bg-muted px-4 py-2 text-sm whitespace-pre-wrap shadow-md">
-                            {turn.content}
+                          <div className="rounded-2xl rounded-bl-sm bg-muted px-4 py-3 text-sm shadow-md">
+                            <CleanMarkdownView text={turn.content} />
                           </div>
                           <button
                             onClick={() => handleCopyResult(turn)}

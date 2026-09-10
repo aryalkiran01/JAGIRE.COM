@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { SkeletonCard } from "@/components/ui/skeleton-loader";
 import {
   AlertDialog,
@@ -32,7 +31,10 @@ import {
   TrendingUp,
   Flame,
   ImagePlus,
-  MoveHorizontal as MoreHorizontal,
+  ChevronDown,
+  ChevronUp,
+  Reply,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
@@ -43,12 +45,18 @@ export const Route = createFileRoute("/_authenticated/feed")({ component: FeedPa
 type CommentRow = {
   id: string;
   post_id: string;
+  parent_id: string | null;
   author_id: string;
   content: string | null;
   body: string | null;
   created_at: string | null;
   likes_count: number | null;
-  author: { id: string; full_name: string | null; avatar_url: string | null } | null;
+  author: {
+    id: string;
+    full_name: string | null;
+    avatar_url: string | null;
+    headline?: string | null;
+  } | null;
 };
 
 type PostRow = {
@@ -56,6 +64,7 @@ type PostRow = {
   author_id: string;
   content: string | null;
   body: string | null;
+  title?: string | null;
   image_url: string | null;
   likes_count: number | null;
   comments_count: number | null;
@@ -78,11 +87,18 @@ function FeedPage() {
   const [imageUrl, setImageUrl] = useState("");
   const [uploading, setUploading] = useState(false);
   const [commentDraft, setCommentDraft] = useState<Record<string, string>>({});
+  const [replyDraft, setReplyDraft] = useState<Record<string, string>>({});
+  const [activeReplyId, setActiveReplyId] = useState<string | null>(null);
   const [editingPost, setEditingPost] = useState<string | null>(null);
   const [editContent, setEditContent] = useState("");
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editCommentText, setEditCommentText] = useState("");
+  const [expandedPosts, setExpandedPosts] = useState<Set<string>>(new Set());
   const [deletePostId, setDeletePostId] = useState<string | null>(null);
   const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set());
   const [visibleCount, setVisibleCount] = useState(10);
+  const [pendingLikePostIds, setPendingLikePostIds] = useState<Set<string>>(new Set());
+  const [pendingLikeCommentIds, setPendingLikeCommentIds] = useState<Set<string>>(new Set());
   const sentinelRef = useRef<HTMLDivElement>(null);
 
   const { data: posts, isLoading } = useQuery<PostRow[]>({
@@ -91,7 +107,7 @@ function FeedPage() {
       const { data, error } = await supabase
         .from("posts")
         .select(
-          "id, author_id, content, body, image_url, likes_count, comments_count, created_at, updated_at, author:profiles!posts_author_id_fkey(id, full_name, avatar_url, headline)",
+          "id, author_id, content, body, title, image_url, likes_count, comments_count, created_at, updated_at, author:profiles!posts_author_id_fkey(id, full_name, avatar_url, headline)",
         )
         .order("created_at", { ascending: false })
         .limit(50);
@@ -103,7 +119,7 @@ function FeedPage() {
       const { data: comments } = await supabase
         .from("post_comments")
         .select(
-          "id, post_id, author_id, content, body, created_at, likes_count, author:profiles!post_comments_author_id_fkey(id, full_name, avatar_url)",
+          "id, post_id, parent_id, author_id, content, body, created_at, likes_count, author:profiles!post_comments_author_id_fkey(id, full_name, avatar_url, headline)",
         )
         .in("post_id", postIds)
         .order("created_at", { ascending: true });
@@ -242,12 +258,60 @@ function FeedPage() {
     }
   }
 
-  async function toggleLike(postId: string, liked: boolean) {
-    if (liked)
-      await supabase.from("post_likes").delete().eq("post_id", postId).eq("user_id", user!.id);
-    else await supabase.from("post_likes").insert({ post_id: postId, user_id: user!.id });
-    qc.invalidateQueries({ queryKey: ["feed"] });
-    qc.invalidateQueries({ queryKey: ["feed-likes"] });
+  async function toggleLike(postId: string, currentlyLiked: boolean) {
+    if (!user) {
+      toast.error("Please log in to like posts");
+      return;
+    }
+    if (pendingLikePostIds.has(postId)) return;
+
+    setPendingLikePostIds((prev) => new Set(prev).add(postId));
+    const willBeLiked = !currentlyLiked;
+
+    // Optimistic cache update
+    qc.setQueryData<Set<string>>(["feed-likes", user.id], (old) => {
+      const next = new Set(old ?? []);
+      if (willBeLiked) next.add(postId);
+      else next.delete(postId);
+      return next;
+    });
+
+    qc.setQueryData<PostRow[]>(["feed"], (old) => {
+      if (!old) return old;
+      return old.map((post) => {
+        if (post.id !== postId) return post;
+        const currentCount = post.likes_count ?? 0;
+        const newCount = willBeLiked ? currentCount + 1 : Math.max(0, currentCount - 1);
+        return { ...post, likes_count: newCount };
+      });
+    });
+
+    try {
+      if (currentlyLiked) {
+        const { error } = await supabase
+          .from("post_likes")
+          .delete()
+          .eq("post_id", postId)
+          .eq("user_id", user.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("post_likes")
+          .insert({ post_id: postId, user_id: user.id });
+        if (error) throw error;
+      }
+    } catch (err) {
+      toast.error((err as Error).message || "Failed to update like");
+      qc.invalidateQueries({ queryKey: ["feed"] });
+      qc.invalidateQueries({ queryKey: ["feed-likes", user.id] });
+    } finally {
+      setPendingLikePostIds((prev) => {
+        const next = new Set(prev);
+        next.delete(postId);
+        return next;
+      });
+      qc.invalidateQueries({ queryKey: ["feed-likes", user.id] });
+    }
   }
 
   async function toggleSave(postId: string) {
@@ -261,10 +325,10 @@ function FeedPage() {
 
   async function addComment(postId: string) {
     const text = (commentDraft[postId] ?? "").trim();
-    if (!text) return;
+    if (!text || !user) return;
     const { error } = await supabase
       .from("post_comments")
-      .insert({ post_id: postId, author_id: user!.id, content: text });
+      .insert({ post_id: postId, author_id: user.id, content: text });
     if (error) {
       toast.error(error.message);
       return;
@@ -273,16 +337,89 @@ function FeedPage() {
     qc.invalidateQueries({ queryKey: ["feed"] });
   }
 
-  async function toggleCommentLike(commentId: string, liked: boolean) {
-    if (liked)
-      await supabase
-        .from("comment_likes")
-        .delete()
-        .eq("comment_id", commentId)
-        .eq("user_id", user!.id);
-    else await supabase.from("comment_likes").insert({ comment_id: commentId, user_id: user!.id });
+  async function addReply(postId: string, parentId: string) {
+    const text = (replyDraft[parentId] ?? "").trim();
+    if (!text || !user) return;
+    const { error } = await supabase
+      .from("post_comments")
+      .insert({
+        post_id: postId,
+        parent_id: parentId,
+        author_id: user.id,
+        content: text,
+      });
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    setReplyDraft((d) => ({ ...d, [parentId]: "" }));
+    setActiveReplyId(null);
+    toast.success("Reply added");
     qc.invalidateQueries({ queryKey: ["feed"] });
-    qc.invalidateQueries({ queryKey: ["feed-comment-likes"] });
+  }
+
+  async function toggleCommentLike(commentId: string, currentlyLiked: boolean) {
+    if (!user) {
+      toast.error("Please log in to like comments");
+      return;
+    }
+    if (pendingLikeCommentIds.has(commentId)) return;
+
+    setPendingLikeCommentIds((prev) => new Set(prev).add(commentId));
+    const willBeLiked = !currentlyLiked;
+
+    // Optimistic update of likedCommentIds set
+    qc.setQueryData<Set<string>>(["feed-comment-likes", user.id], (old) => {
+      const next = new Set(old ?? []);
+      if (willBeLiked) next.add(commentId);
+      else next.delete(commentId);
+      return next;
+    });
+
+    // Optimistic update of comment likes count in feed query data
+    qc.setQueryData<PostRow[]>(["feed"], (old) => {
+      if (!old) return old;
+      return old.map((post) => {
+        const hasComment = post.comments?.some((c) => c.id === commentId);
+        if (!hasComment) return post;
+        return {
+          ...post,
+          comments: post.comments.map((c) => {
+            if (c.id !== commentId) return c;
+            const currentCount = c.likes_count ?? 0;
+            const newCount = willBeLiked ? currentCount + 1 : Math.max(0, currentCount - 1);
+            return { ...c, likes_count: newCount };
+          }),
+        };
+      });
+    });
+
+    try {
+      if (currentlyLiked) {
+        const { error } = await supabase
+          .from("comment_likes")
+          .delete()
+          .eq("comment_id", commentId)
+          .eq("user_id", user.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("comment_likes")
+          .insert({ comment_id: commentId, user_id: user.id });
+        if (error) throw error;
+      }
+    } catch (err) {
+      toast.error((err as Error).message || "Failed to update like");
+      qc.invalidateQueries({ queryKey: ["feed"] });
+      qc.invalidateQueries({ queryKey: ["feed-comment-likes", user.id] });
+    } finally {
+      setPendingLikeCommentIds((prev) => {
+        const next = new Set(prev);
+        next.delete(commentId);
+        return next;
+      });
+      qc.invalidateQueries({ queryKey: ["feed-comment-likes", user.id] });
+    }
   }
 
   async function saveEditPost(postId: string) {
@@ -332,19 +469,29 @@ function FeedPage() {
     }
   }
 
-  async function editComment(commentId: string, currentText: string) {
-    const newText = window.prompt("Edit comment", currentText);
-    if (newText === null || newText.trim() === currentText) return;
+  async function saveEditComment(commentId: string) {
+    if (!editCommentText.trim()) return;
     const { error } = await supabase
       .from("post_comments")
-      .update({ content: newText.trim() })
+      .update({ content: editCommentText.trim() })
       .eq("id", commentId);
     if (error) {
       toast.error(error.message);
       return;
     }
+    setEditingCommentId(null);
+    setEditCommentText("");
     toast.success("Comment updated");
     qc.invalidateQueries({ queryKey: ["feed"] });
+  }
+
+  function toggleExpandPost(postId: string) {
+    setExpandedPosts((prev) => {
+      const next = new Set(prev);
+      if (next.has(postId)) next.delete(postId);
+      else next.add(postId);
+      return next;
+    });
   }
 
   async function deleteComment(commentId: string) {
@@ -488,24 +635,50 @@ function FeedPage() {
             </Card>
           )}
 
-          {/* Posts */}
+          {/* Posts List */}
           {visiblePosts.map((p, idx) => {
             const liked = likedIds?.has(p.id);
             const saved = savedIds?.has(p.id);
             const isAuthor = user?.id === p.author_id;
-            const showComments = expandedComments.has(p.id) || (p.comments?.length ?? 0) <= 2;
-            const visibleComments = showComments ? p.comments : p.comments.slice(-2);
             const isLast = idx === visiblePosts.length - 1;
+
+            const postRawText = (p.content ?? p.body ?? p.title ?? "").trim();
+            const isLongText =
+              postRawText.length > 300 || (postRawText.match(/\n/g) || []).length >= 4;
+            const isTextExpanded = expandedPosts.has(p.id);
+            const isShortTextOnly =
+              !p.image_url && postRawText.length > 0 && postRawText.length <= 140;
+            const displayText =
+              isLongText && !isTextExpanded
+                ? postRawText.slice(0, 280).trim() + "…"
+                : postRawText;
+
+            const postComments = p.comments ?? [];
+            const rootComments = postComments.filter((c) => !c.parent_id);
+            const repliesByParent = new Map<string, CommentRow[]>();
+            for (const c of postComments) {
+              if (c.parent_id) {
+                const arr = repliesByParent.get(c.parent_id) ?? [];
+                arr.push(c);
+                repliesByParent.set(c.parent_id, arr);
+              }
+            }
+
+            const isCommentsExpanded =
+              expandedComments.has(p.id) || rootComments.length <= 2;
+            const visibleRootComments = isCommentsExpanded
+              ? rootComments
+              : rootComments.slice(-2);
 
             return (
               <Card
                 key={p.id}
                 id={`post-${p.id}`}
                 ref={isLast ? lastPostRef : undefined}
-                className="glass hover:shadow-card-soft transition-all animate-fade-in-up"
+                className="glass hover:shadow-card-soft transition-all animate-fade-in-up overflow-hidden"
               >
-                <CardContent className="p-3 sm:p-5 space-y-3">
-                  {/* Author header */}
+                <CardContent className="p-4 sm:p-5 space-y-3.5">
+                  {/* Post Header */}
                   <div className="flex items-start gap-3">
                     <Link
                       to="/profile/$userId"
@@ -513,9 +686,9 @@ function FeedPage() {
                       className="shrink-0 group"
                       title={`View ${p.author?.full_name ?? "User"}'s profile`}
                     >
-                      <Avatar className="h-11 w-11 ring-2 ring-border transition-transform group-hover:scale-105">
+                      <Avatar className="h-10 w-10 sm:h-11 sm:w-11 ring-2 ring-border transition-transform group-hover:scale-105">
                         <AvatarImage src={p.author?.avatar_url ?? undefined} />
-                        <AvatarFallback className="gradient-brand text-primary-foreground">
+                        <AvatarFallback className="gradient-brand text-primary-foreground font-semibold">
                           {(p.author?.full_name ?? "?").slice(0, 1)}
                         </AvatarFallback>
                       </Avatar>
@@ -528,15 +701,24 @@ function FeedPage() {
                       >
                         {p.author?.full_name ?? "Anonymous"}
                       </Link>
-                      <div className="text-xs text-muted-foreground">
-                        {p.author?.headline ?? ""}
-                        {p.author?.headline && " · "}
-                        {formatDistanceToNow(new Date(p.created_at!))} ago
-                        {p.updated_at && p.updated_at !== p.created_at && " · edited"}
+                      <div className="text-xs text-muted-foreground flex items-center gap-1.5 flex-wrap">
+                        {p.author?.headline && (
+                          <span className="truncate max-w-[180px] sm:max-w-xs">
+                            {p.author.headline}
+                          </span>
+                        )}
+                        {p.author?.headline && <span>·</span>}
+                        <span>
+                          {p.created_at ? formatDistanceToNow(new Date(p.created_at)) : "recently"}{" "}
+                          ago
+                        </span>
+                        {p.updated_at && p.updated_at !== p.created_at && (
+                          <span className="text-[11px] opacity-75">(edited)</span>
+                        )}
                       </div>
                     </div>
                     {(isAuthor || isAdmin) && editingPost !== p.id && (
-                      <div className="flex gap-1">
+                      <div className="flex gap-1 shrink-0">
                         {isAuthor && (
                           <Button
                             variant="ghost"
@@ -544,8 +726,9 @@ function FeedPage() {
                             className="h-7 w-7 text-muted-foreground hover:text-foreground"
                             onClick={() => {
                               setEditingPost(p.id);
-                              setEditContent(p.content ?? p.body ?? "");
+                              setEditContent(postRawText);
                             }}
+                            title="Edit post"
                           >
                             <Pencil className="h-3.5 w-3.5" />
                           </Button>
@@ -555,6 +738,7 @@ function FeedPage() {
                           size="icon"
                           className="h-7 w-7 text-muted-foreground hover:text-destructive"
                           onClick={() => setDeletePostId(p.id)}
+                          title="Delete post"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
@@ -562,14 +746,15 @@ function FeedPage() {
                     )}
                   </div>
 
-                  {/* Content */}
+                  {/* Post Content */}
                   {editingPost === p.id ? (
-                    <div className="space-y-2">
+                    <div className="space-y-2 pt-1">
                       <Textarea
-                        rows={3}
+                        rows={4}
                         value={editContent}
                         onChange={(e) => setEditContent(e.target.value)}
-                        className="resize-none"
+                        className="resize-none bg-muted/20 focus-visible:ring-1 text-sm sm:text-base leading-relaxed"
+                        placeholder="Edit post content..."
                       />
                       <div className="flex justify-end gap-2">
                         <Button
@@ -583,19 +768,38 @@ function FeedPage() {
                           Cancel
                         </Button>
                         <Button size="sm" onClick={() => saveEditPost(p.id)}>
-                          Save
+                          Save Changes
                         </Button>
                       </div>
                     </div>
                   ) : (
-                    <p className="whitespace-pre-wrap text-sm leading-relaxed pl-0 sm:pl-14 -mt-1">
-                      {p.content ?? p.body}
-                    </p>
+                    <div className="pt-0.5 space-y-1">
+                      {postRawText ? (
+                        <p
+                          className={`whitespace-pre-wrap leading-relaxed break-words ${
+                            isShortTextOnly
+                              ? "text-base sm:text-[17px] font-normal text-foreground"
+                              : "text-sm sm:text-[15px] font-normal text-foreground/90"
+                          }`}
+                        >
+                          {displayText}
+                          {isLongText && (
+                            <button
+                              type="button"
+                              onClick={() => toggleExpandPost(p.id)}
+                              className="ml-1.5 font-medium text-xs sm:text-sm text-primary hover:underline inline-flex items-center gap-0.5 transition-colors cursor-pointer"
+                            >
+                              {isTextExpanded ? "Show less" : "Read more"}
+                            </button>
+                          )}
+                        </p>
+                      ) : null}
+                    </div>
                   )}
 
-                  {/* Image - full display with automatic height based on original aspect ratio */}
+                  {/* Image attachment - rendered only when an image exists */}
                   {p.image_url && (
-                    <div className="rounded-xl overflow-hidden border bg-muted/10 -mx-1 flex items-center justify-center">
+                    <div className="rounded-xl overflow-hidden border border-border/60 bg-muted/10 flex items-center justify-center">
                       <img
                         src={p.image_url}
                         alt="Post attachment"
@@ -605,166 +809,460 @@ function FeedPage() {
                     </div>
                   )}
 
-                  {/* Engagement bar */}
-                  <div className="flex items-center flex-wrap gap-1 pl-0 sm:pl-14 -mt-1 border-t pt-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className={`gap-1.5 ${liked ? "text-red-500" : "text-muted-foreground"}`}
-                      onClick={() => toggleLike(p.id, !!liked)}
-                    >
-                      <Heart className={`h-4 w-4 ${liked ? "fill-red-500" : ""}`} />
-                      <span className="text-xs">{p.likes_count ?? 0}</span>
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="gap-1.5 text-muted-foreground"
-                      onClick={() => toggleComments(p.id)}
-                    >
-                      <MessageCircle className="h-4 w-4" />
-                      <span className="text-xs">{p.comments_count ?? 0}</span>
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className={`text-muted-foreground ${saved ? "text-primary" : ""}`}
-                      onClick={() => toggleSave(p.id)}
-                    >
-                      <Bookmark className={`h-4 w-4 ${saved ? "fill-primary" : ""}`} />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-muted-foreground"
-                      onClick={async () => {
-                        const url = `${window.location.origin}/feed#post-${p.id}`;
-                        try {
-                          if (navigator.share) await navigator.share({ title: "Jagire post", url });
-                          else {
-                            await navigator.clipboard.writeText(url);
-                            toast.success("Link copied");
-                          }
-                        } catch {
-                          toast.error("Unable to share");
-                        }
-                      }}
-                    >
-                      <Share2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-
-                  {/* Comments */}
-                  <div className="space-y-2 pl-0 sm:pl-14">
-                    {p.comments.length > 2 && !showComments && (
+                  {/* Post Action Bar */}
+                  <div className="flex items-center justify-between border-y border-border/40 py-1 text-muted-foreground text-xs sm:text-sm">
+                    <div className="flex items-center gap-1 sm:gap-2">
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="text-xs text-muted-foreground"
+                        disabled={pendingLikePostIds.has(p.id)}
+                        className={`gap-1.5 h-8 px-2 sm:px-3 ${
+                          liked ? "text-red-500 font-medium" : "hover:text-foreground"
+                        }`}
+                        onClick={() => toggleLike(p.id, !!liked)}
+                      >
+                        <Heart className={`h-4 w-4 ${liked ? "fill-red-500" : ""}`} />
+                        <span>{p.likes_count ?? 0}</span>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="gap-1.5 h-8 px-2 sm:px-3 hover:text-foreground"
                         onClick={() => toggleComments(p.id)}
                       >
-                        View all {p.comments.length} comments
+                        <MessageCircle className="h-4 w-4" />
+                        <span>{postComments.length || p.comments_count || 0}</span>
                       </Button>
-                    )}
-                    {visibleComments.map((c) => {
-                      const commentLiked = likedCommentIds?.has(c.id);
-                      const isCommentAuthor = user?.id === c.author_id;
-                      const text = c.content ?? c.body ?? "";
-                      return (
-                        <div key={c.id} className="flex gap-2 items-start">
-                          <Link
-                            to="/profile/$userId"
-                            params={{ userId: c.author_id }}
-                            className="shrink-0 group"
-                            title={`View ${c.author?.full_name ?? "User"}'s profile`}
-                          >
-                            <Avatar className="h-7 w-7 shrink-0 transition-transform group-hover:scale-105">
-                              <AvatarImage src={c.author?.avatar_url ?? undefined} />
-                              <AvatarFallback className="text-xs">
-                                {(c.author?.full_name ?? "?").slice(0, 1)}
-                              </AvatarFallback>
-                            </Avatar>
-                          </Link>
-                          <div className="flex-1 min-w-0">
-                            <div className="bg-muted/60 rounded-lg px-3 py-2 inline-block">
-                              <Link
-                                to="/profile/$userId"
-                                params={{ userId: c.author_id }}
-                                className="font-medium text-xs hover:underline hover:text-primary transition-colors block"
-                              >
-                                {c.author?.full_name ?? "Anonymous"}
-                              </Link>
-                              <div className="text-sm">{text}</div>
-                            </div>
-                            <div className="flex items-center gap-3 mt-1 ml-1">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className={`h-6 px-2 text-xs ${commentLiked ? "text-red-500" : "text-muted-foreground"}`}
-                                onClick={() => toggleCommentLike(c.id, !!commentLiked)}
-                              >
-                                <Heart
-                                  className={`h-3 w-3 mr-1 ${commentLiked ? "fill-red-500" : ""}`}
-                                />
-                                {c.likes_count ?? 0}
-                              </Button>
-                              {isCommentAuthor && (
-                                <>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-6 px-2 text-xs text-muted-foreground"
-                                    onClick={() => editComment(c.id, text)}
-                                  >
-                                    Edit
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-6 px-2 text-xs text-destructive"
-                                    onClick={() => deleteComment(c.id)}
-                                  >
-                                    Delete
-                                  </Button>
-                                </>
-                              )}
-                              {isAdmin && !isCommentAuthor && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-6 px-2 text-xs text-destructive"
-                                  onClick={() => adminDeleteCommentFn(c.id)}
-                                >
-                                  Delete (Admin)
-                                </Button>
-                              )}
-                              <span className="text-xs text-muted-foreground">
-                                {c.created_at && formatDistanceToNow(new Date(c.created_at))} ago
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
+                    </div>
+
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className={`h-8 px-2.5 hover:text-foreground ${
+                          saved ? "text-primary" : ""
+                        }`}
+                        onClick={() => toggleSave(p.id)}
+                        title={saved ? "Saved" : "Save post"}
+                      >
+                        <Bookmark className={`h-4 w-4 ${saved ? "fill-primary" : ""}`} />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 px-2.5 hover:text-foreground"
+                        onClick={async () => {
+                          const url = `${window.location.origin}/feed#post-${p.id}`;
+                          try {
+                            if (navigator.share)
+                              await navigator.share({ title: "Jagire post", url });
+                            else {
+                              await navigator.clipboard.writeText(url);
+                              toast.success("Link copied");
+                            }
+                          } catch {
+                            toast.error("Unable to share");
+                          }
+                        }}
+                        title="Share post"
+                      >
+                        <Share2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
 
-                  {/* Comment input */}
-                  <div className="flex gap-2 pl-0 sm:pl-14">
-                    <Input
-                      placeholder="Write a comment…"
-                      value={commentDraft[p.id] ?? ""}
-                      onChange={(e) => setCommentDraft((d) => ({ ...d, [p.id]: e.target.value }))}
-                      onKeyDown={(e) => e.key === "Enter" && addComment(p.id)}
-                      className="bg-muted/30 border-0"
-                    />
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={() => addComment(p.id)}
-                      disabled={!(commentDraft[p.id] ?? "").trim()}
-                    >
-                      <Send className="h-4 w-4" />
-                    </Button>
+                  {/* Comments Thread Section (Subordinate inside Post card) */}
+                  <div className="space-y-3 pt-1">
+                    {/* Comments Section Header / Toggle */}
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-muted-foreground tracking-wide uppercase">
+                        Comments {postComments.length > 0 ? `· ${postComments.length}` : ""}
+                      </span>
+                      {rootComments.length > 2 && (
+                        <button
+                          type="button"
+                          className="text-xs text-primary hover:underline font-medium inline-flex items-center gap-1"
+                          onClick={() => toggleComments(p.id)}
+                        >
+                          {isCommentsExpanded ? (
+                            <>
+                              <ChevronUp className="h-3.5 w-3.5" /> Show fewer
+                            </>
+                          ) : (
+                            <>
+                              <ChevronDown className="h-3.5 w-3.5" /> View all ({postComments.length}
+                              )
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Conversation Comment Rows */}
+                    {visibleRootComments.length > 0 && (
+                      <div className="space-y-3 pt-1">
+                        {visibleRootComments.map((c) => {
+                          const commentLiked = likedCommentIds?.has(c.id);
+                          const isCommentAuthor = user?.id === c.author_id;
+                          const text = c.content ?? c.body ?? "";
+                          const replies = repliesByParent.get(c.id) ?? [];
+
+                          return (
+                            <div key={c.id} className="space-y-1.5 group/comment">
+                              {/* Root Comment Item */}
+                              <div className="flex items-start gap-2.5">
+                                <Link
+                                  to="/profile/$userId"
+                                  params={{ userId: c.author_id }}
+                                  className="shrink-0 pt-0.5"
+                                  title={`View ${c.author?.full_name ?? "User"}'s profile`}
+                                >
+                                  <Avatar className="h-7 w-7 ring-1 ring-border/50">
+                                    <AvatarImage src={c.author?.avatar_url ?? undefined} />
+                                    <AvatarFallback className="text-[11px] bg-primary/10 text-primary font-medium">
+                                      {(c.author?.full_name ?? "?").slice(0, 1)}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                </Link>
+
+                                <div className="flex-1 min-w-0">
+                                  {/* Author Name + Timestamp + Edit/Delete Menu */}
+                                  <div className="flex items-baseline justify-between gap-2">
+                                    <div className="flex items-baseline gap-1.5 flex-wrap min-w-0">
+                                      <Link
+                                        to="/profile/$userId"
+                                        params={{ userId: c.author_id }}
+                                        className="font-semibold text-xs text-foreground hover:text-primary hover:underline transition-colors"
+                                      >
+                                        {c.author?.full_name ?? "Anonymous"}
+                                      </Link>
+                                      {c.author?.headline && (
+                                        <span className="text-[11px] text-muted-foreground/80 truncate max-w-[140px] sm:max-w-[200px]">
+                                          · {c.author.headline}
+                                        </span>
+                                      )}
+                                      <span className="text-[11px] text-muted-foreground">
+                                        ·{" "}
+                                        {c.created_at
+                                          ? formatDistanceToNow(new Date(c.created_at))
+                                          : "recently"}{" "}
+                                        ago
+                                      </span>
+                                    </div>
+
+                                    {(isCommentAuthor || isAdmin) && (
+                                      <div className="opacity-0 group-hover/comment:opacity-100 transition-opacity flex items-center gap-1 shrink-0">
+                                        {isCommentAuthor && editingCommentId !== c.id && (
+                                          <button
+                                            type="button"
+                                            className="text-muted-foreground hover:text-foreground p-0.5 rounded transition-colors"
+                                            onClick={() => {
+                                              setEditingCommentId(c.id);
+                                              setEditCommentText(text);
+                                            }}
+                                            title="Edit comment"
+                                          >
+                                            <Pencil className="h-3 w-3" />
+                                          </button>
+                                        )}
+                                        <button
+                                          type="button"
+                                          className="text-muted-foreground hover:text-destructive p-0.5 rounded transition-colors"
+                                          onClick={() =>
+                                            isAdmin && !isCommentAuthor
+                                              ? adminDeleteCommentFn(c.id)
+                                              : deleteComment(c.id)
+                                          }
+                                          title={
+                                            isAdmin && !isCommentAuthor
+                                              ? "Delete (Admin)"
+                                              : "Delete comment"
+                                          }
+                                        >
+                                          <Trash2 className="h-3 w-3" />
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {/* Comment Text or Inline Edit */}
+                                  {editingCommentId === c.id ? (
+                                    <div className="mt-1 space-y-1.5">
+                                      <Input
+                                        value={editCommentText}
+                                        onChange={(e) => setEditCommentText(e.target.value)}
+                                        className="h-8 text-xs bg-muted/40"
+                                        onKeyDown={(e) => {
+                                          if (e.key === "Enter" && !e.shiftKey)
+                                            saveEditComment(c.id);
+                                          if (e.key === "Escape") setEditingCommentId(null);
+                                        }}
+                                        autoFocus
+                                      />
+                                      <div className="flex justify-end gap-1.5">
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-6 text-xs px-2"
+                                          onClick={() => setEditingCommentId(null)}
+                                        >
+                                          Cancel
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          className="h-6 text-xs px-2"
+                                          onClick={() => saveEditComment(c.id)}
+                                          disabled={!editCommentText.trim()}
+                                        >
+                                          Save
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <p className="text-xs sm:text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap break-words mt-0.5">
+                                      {text}
+                                    </p>
+                                  )}
+
+                                  {/* Compact Comment Actions */}
+                                  <div className="flex items-center gap-3 mt-1 text-xs">
+                                    <button
+                                      type="button"
+                                      disabled={pendingLikeCommentIds.has(c.id)}
+                                      onClick={() => toggleCommentLike(c.id, !!commentLiked)}
+                                      className={`inline-flex items-center gap-1 font-medium transition-colors ${
+                                        commentLiked
+                                          ? "text-red-500"
+                                          : "text-muted-foreground hover:text-foreground"
+                                      }`}
+                                    >
+                                      <Heart
+                                        className={`h-3.5 w-3.5 ${
+                                          commentLiked ? "fill-red-500 text-red-500" : ""
+                                        }`}
+                                      />
+                                      <span>{c.likes_count ?? 0}</span>
+                                    </button>
+
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        setActiveReplyId((prev) => (prev === c.id ? null : c.id))
+                                      }
+                                      className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors"
+                                    >
+                                      <Reply className="h-3 w-3" />
+                                      <span>Reply</span>
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Nested Replies */}
+                              {replies.length > 0 && (
+                                <div className="ml-5 sm:ml-7 pl-3 border-l-2 border-border/50 space-y-2 mt-2">
+                                  {replies.map((r) => {
+                                    const replyLiked = likedCommentIds?.has(r.id);
+                                    const isReplyAuthor = user?.id === r.author_id;
+                                    const replyText = r.content ?? r.body ?? "";
+
+                                    return (
+                                      <div key={r.id} className="flex items-start gap-2 group/reply">
+                                        <Link
+                                          to="/profile/$userId"
+                                          params={{ userId: r.author_id }}
+                                          className="shrink-0 pt-0.5"
+                                          title={`View ${r.author?.full_name ?? "User"}'s profile`}
+                                        >
+                                          <Avatar className="h-5 w-5 ring-1 ring-border/40">
+                                            <AvatarImage src={r.author?.avatar_url ?? undefined} />
+                                            <AvatarFallback className="text-[9px] bg-primary/10 text-primary">
+                                              {(r.author?.full_name ?? "?").slice(0, 1)}
+                                            </AvatarFallback>
+                                          </Avatar>
+                                        </Link>
+
+                                        <div className="flex-1 min-w-0">
+                                          <div className="flex items-baseline justify-between gap-1.5">
+                                            <div className="flex items-baseline gap-1.5 flex-wrap min-w-0">
+                                              <Link
+                                                to="/profile/$userId"
+                                                params={{ userId: r.author_id }}
+                                                className="font-semibold text-xs text-foreground hover:text-primary hover:underline transition-colors"
+                                              >
+                                                {r.author?.full_name ?? "Anonymous"}
+                                              </Link>
+                                              <span className="text-[10px] text-muted-foreground">
+                                                ·{" "}
+                                                {r.created_at
+                                                  ? formatDistanceToNow(new Date(r.created_at))
+                                                  : "recently"}{" "}
+                                                ago
+                                              </span>
+                                            </div>
+
+                                            {(isReplyAuthor || isAdmin) && (
+                                              <div className="opacity-0 group-hover/reply:opacity-100 transition-opacity flex items-center gap-1 shrink-0">
+                                                {isReplyAuthor && editingCommentId !== r.id && (
+                                                  <button
+                                                    type="button"
+                                                    className="text-muted-foreground hover:text-foreground p-0.5 rounded transition-colors"
+                                                    onClick={() => {
+                                                      setEditingCommentId(r.id);
+                                                      setEditCommentText(replyText);
+                                                    }}
+                                                    title="Edit reply"
+                                                  >
+                                                    <Pencil className="h-2.5 w-2.5" />
+                                                  </button>
+                                                )}
+                                                <button
+                                                  type="button"
+                                                  className="text-muted-foreground hover:text-destructive p-0.5 rounded transition-colors"
+                                                  onClick={() =>
+                                                    isAdmin && !isReplyAuthor
+                                                      ? adminDeleteCommentFn(r.id)
+                                                      : deleteComment(r.id)
+                                                  }
+                                                  title={
+                                                    isAdmin && !isReplyAuthor
+                                                      ? "Delete (Admin)"
+                                                      : "Delete reply"
+                                                  }
+                                                >
+                                                  <Trash2 className="h-2.5 w-2.5" />
+                                                </button>
+                                              </div>
+                                            )}
+                                          </div>
+
+                                          {editingCommentId === r.id ? (
+                                            <div className="mt-1 space-y-1">
+                                              <Input
+                                                value={editCommentText}
+                                                onChange={(e) => setEditCommentText(e.target.value)}
+                                                className="h-7 text-xs bg-muted/40"
+                                                onKeyDown={(e) => {
+                                                  if (e.key === "Enter" && !e.shiftKey)
+                                                    saveEditComment(r.id);
+                                                  if (e.key === "Escape") setEditingCommentId(null);
+                                                }}
+                                                autoFocus
+                                              />
+                                              <div className="flex justify-end gap-1">
+                                                <Button
+                                                  variant="ghost"
+                                                  size="sm"
+                                                  className="h-5 text-[11px] px-1.5"
+                                                  onClick={() => setEditingCommentId(null)}
+                                                >
+                                                  Cancel
+                                                </Button>
+                                                <Button
+                                                  size="sm"
+                                                  className="h-5 text-[11px] px-1.5"
+                                                  onClick={() => saveEditComment(r.id)}
+                                                  disabled={!editCommentText.trim()}
+                                                >
+                                                  Save
+                                                </Button>
+                                              </div>
+                                            </div>
+                                          ) : (
+                                            <p className="text-xs text-foreground/90 leading-relaxed whitespace-pre-wrap break-words mt-0.5">
+                                              {replyText}
+                                            </p>
+                                          )}
+
+                                          <div className="flex items-center gap-2 mt-0.5 text-[11px]">
+                                            <button
+                                              type="button"
+                                              disabled={pendingLikeCommentIds.has(r.id)}
+                                              onClick={() => toggleCommentLike(r.id, !replyLiked)}
+                                              className={`inline-flex items-center gap-1 font-medium transition-colors ${
+                                                replyLiked
+                                                  ? "text-red-500"
+                                                  : "text-muted-foreground hover:text-foreground"
+                                              }`}
+                                            >
+                                              <Heart
+                                                className={`h-3 w-3 ${
+                                                  replyLiked ? "fill-red-500 text-red-500" : ""
+                                                }`}
+                                              />
+                                              <span>{r.likes_count ?? 0}</span>
+                                            </button>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+
+                              {/* Inline Reply Composer */}
+                              {activeReplyId === c.id && (
+                                <div className="ml-5 sm:ml-7 pl-3 border-l-2 border-primary/40 flex items-center gap-2 pt-1.5">
+                                  <Input
+                                    placeholder={`Reply to ${c.author?.full_name ?? "comment"}…`}
+                                    value={replyDraft[c.id] ?? ""}
+                                    onChange={(e) =>
+                                      setReplyDraft((d) => ({ ...d, [c.id]: e.target.value }))
+                                    }
+                                    onKeyDown={(e) => e.key === "Enter" && addReply(p.id, c.id)}
+                                    className="h-7 text-xs bg-muted/30 flex-1"
+                                    autoFocus
+                                  />
+                                  <Button
+                                    size="sm"
+                                    className="h-7 px-2.5 text-xs gradient-brand text-primary-foreground"
+                                    onClick={() => addReply(p.id, c.id)}
+                                    disabled={!(replyDraft[c.id] ?? "").trim()}
+                                  >
+                                    <Send className="h-3 w-3 mr-1" /> Reply
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-7 px-1.5 text-xs text-muted-foreground"
+                                    onClick={() => setActiveReplyId(null)}
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {/* Post-level Comment Input */}
+                    <div className="flex items-center gap-2 pt-2 border-t border-border/30">
+                      <Avatar className="h-7 w-7 shrink-0 hidden sm:flex">
+                        <AvatarImage src={user?.user_metadata?.avatar_url} />
+                        <AvatarFallback className="text-[10px] bg-muted">
+                          {(user?.email?.[0] ?? "U").toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <Input
+                        placeholder="Write a comment…"
+                        value={commentDraft[p.id] ?? ""}
+                        onChange={(e) =>
+                          setCommentDraft((d) => ({ ...d, [p.id]: e.target.value }))
+                        }
+                        onKeyDown={(e) => e.key === "Enter" && addComment(p.id)}
+                        className="h-8 text-xs sm:text-sm bg-muted/20 border-border/40 flex-1"
+                      />
+                      <Button
+                        size="sm"
+                        className="h-8 px-3 text-xs gradient-brand text-primary-foreground"
+                        onClick={() => addComment(p.id)}
+                        disabled={!(commentDraft[p.id] ?? "").trim()}
+                      >
+                        <Send className="h-3 w-3 mr-1" /> Comment
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>

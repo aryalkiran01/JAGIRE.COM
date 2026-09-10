@@ -127,7 +127,8 @@ function PaymentSuccess() {
       if (!activeUserId) {
         setState({
           status: "failed",
-          error: "You must be signed in with your Jagire account to complete and activate this payment.",
+          error:
+            "You must be signed in with your Jagire account to complete and activate this payment.",
         });
         return;
       }
@@ -152,8 +153,15 @@ function PaymentSuccess() {
             total_amount: totalAmount,
             esewa_signature: signature,
             signed_field_names: signedFieldNames,
-            product_code: String(decodedPayload.product_code ?? params.get("product_code") ?? "EPAYTEST"),
-            transaction_code: String(decodedPayload.transaction_code ?? params.get("transaction_code") ?? params.get("refId") ?? ""),
+            product_code: String(
+              decodedPayload.product_code ?? params.get("product_code") ?? "EPAYTEST",
+            ),
+            transaction_code: String(
+              decodedPayload.transaction_code ??
+                params.get("transaction_code") ??
+                params.get("refId") ??
+                "",
+            ),
             status: paymentStatus || String(decodedPayload.status ?? "COMPLETE"),
             raw_data: encodedData ?? undefined,
             ...decodedPayload,
@@ -224,11 +232,13 @@ function PaymentSuccess() {
             lastErrorMessage = errorMsg;
 
             // Stop retrying immediately if it's a non-transient status or explicit non-retryable error
-            const isNonRetryable =
-              !fnData?.retryable && !fnData?.pending;
+            const isNonRetryable = !fnData?.retryable && !fnData?.pending;
 
             if (isNonRetryable) {
-              console.warn("[PAYMENT_VERIFICATION_FAILED] Non-retryable error, stopping attempts:", errorMsg);
+              console.warn(
+                "[PAYMENT_VERIFICATION_FAILED] Non-retryable error, stopping attempts:",
+                errorMsg,
+              );
               break;
             }
 

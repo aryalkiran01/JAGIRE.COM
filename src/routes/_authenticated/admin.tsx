@@ -54,13 +54,43 @@ import {
   Loader as Loader2,
   Plus,
   ShieldCheck,
+  ScanText,
+  History,
+  TrendingUp,
+  Sparkles,
+  Activity,
+  Clock,
+  ArrowUpRight,
+  ArrowDownRight,
+  Target,
+  FileCheck,
+  AlertCircle,
+  Award,
+  Rocket,
+  Lightbulb,
+  Github,
+  Linkedin,
+  GraduationCap,
+  FolderGit2,
+  ExternalLink,
+  Code2,
+  DollarSign,
+  HeartHandshake,
 } from "lucide-react";
 import { deleteJobAsAdmin } from "@/lib/application.service";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useServerFn } from "@tanstack/react-start";
-import { adminDeleteJob, adminGrantSubscription } from "@/lib/admin.server";
+import {
+  adminDeleteJob,
+  adminGrantSubscription,
+  adminGetResumeIntelligence,
+  adminGetUserResumeHistory,
+} from "@/lib/admin.server";
+import { adminGetUserCareerIntelligence } from "@/lib/career-intelligence.server";
+import { adminGetCompanyIntelligence } from "@/lib/company-intelligence.server";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/admin")({ component: Admin });
 
@@ -397,6 +427,10 @@ function Admin() {
             <CreditCard className="mr-1 h-4 w-4" />
             Subscriptions
           </TabsTrigger>
+          <TabsTrigger value="resume-intelligence">
+            <ScanText className="mr-1 h-4 w-4" />
+            Resume Intelligence
+          </TabsTrigger>
         </TabsList>
 
         {/* ── Users ──────────────────────────────────────────────────── */}
@@ -445,6 +479,9 @@ function Admin() {
 
                       {/* User detail */}
                       <UserDetailDialog user={u} />
+
+                      {/* User Resume Intelligence */}
+                      <UserResumeIntelligenceDialog user={u} />
 
                       {/* Manage Subscription */}
                       <ManageUserSubscriptionDialog user={u} />
@@ -505,6 +542,15 @@ function Admin() {
                             ATS: {a.applicant.ats_score}
                           </div>
                         )}
+                        <div className="mt-1">
+                          <UserResumeIntelligenceDialog
+                            user={{
+                              id: a.applicant_id,
+                              full_name: a.applicant?.full_name,
+                              email: a.applicant?.email,
+                            }}
+                          />
+                        </div>
                       </div>
                     </div>
                     {a.applicant?.skills?.length > 0 && (
@@ -585,6 +631,7 @@ function Admin() {
                           <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" />
                           {isVerified ? "Revoke" : "Verify"}
                         </Button>
+                        <CompanyIntelligenceDialog company={c} />
                         <Button variant="ghost" size="sm" asChild className="h-8 w-8 p-0">
                           <Link to="/companies/$slug" params={{ slug: c.slug }}>
                             <Eye className="h-4 w-4" />
@@ -704,6 +751,11 @@ function Admin() {
         {/* ── Subscriptions ────────────────────────────────────────────── */}
         <TabsContent value="subscriptions">
           <AdminSubscriptions />
+        </TabsContent>
+
+        {/* ── Resume Intelligence ───────────────────────────────────────── */}
+        <TabsContent value="resume-intelligence">
+          <ResumeIntelligenceTabContent />
         </TabsContent>
       </Tabs>
     </div>
@@ -1698,5 +1750,1395 @@ function AdminSubscriptions() {
         </DialogContent>
       </Dialog>
     </Card>
+  );
+}
+
+// ============================================================
+// Admin Resume Intelligence & User Activity Management
+// ============================================================
+
+function ResumeIntelligenceTabContent() {
+  const fetchResumeIntelligence = useServerFn(adminGetResumeIntelligence);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [selectedScanForDetail, setSelectedScanForDetail] = useState<any>(null);
+  const [selectedUserForHistory, setSelectedUserForHistory] = useState<any>(null);
+
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ["admin-resume-intelligence"],
+    queryFn: async () => {
+      const res = await fetchResumeIntelligence();
+      return res;
+    },
+  });
+
+  const stats = (data as any)?.stats || (data as any)?.aggregate || {};
+  const aggregate = {
+    totalScans: stats.totalScans ?? 0,
+    scansToday: stats.scansToday ?? 0,
+    uniqueUsers: stats.uniqueUsers ?? 0,
+    avgAtsScore: stats.avgAts ?? stats.avgAtsScore ?? 0,
+    highestAtsScore: stats.highestAts ?? stats.highestAtsScore ?? 0,
+    avgScoreImprovement: stats.avgImprovement ?? stats.avgScoreImprovement ?? 0,
+  };
+
+  const allScans = (data?.scans || []) as any[];
+
+  const filteredScans = allScans.filter((s) => {
+    const q = search.toLowerCase().trim();
+    const matchQuery =
+      !q ||
+      (s.file_name ?? "").toLowerCase().includes(q) ||
+      (s.profiles?.full_name ?? "").toLowerCase().includes(q) ||
+      (s.profiles?.email ?? "").toLowerCase().includes(q) ||
+      (s.user_id ?? "").toLowerCase().includes(q);
+
+    const matchStatus = statusFilter === "all" || s.scan_status === statusFilter;
+    return matchQuery && matchStatus;
+  });
+
+  return (
+    <div className="space-y-6">
+      {/* Aggregated Overview Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+        <Card className="border-primary/20 bg-card/60 backdrop-blur">
+          <CardContent className="p-4">
+            <div className="text-xs text-muted-foreground">Total Resume Scans</div>
+            <div className="text-2xl font-bold mt-1 text-foreground flex items-center gap-1.5">
+              <ScanText className="h-5 w-5 text-primary" />
+              {aggregate.totalScans}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-border bg-card/60 backdrop-blur">
+          <CardContent className="p-4">
+            <div className="text-xs text-muted-foreground">Unique Users</div>
+            <div className="text-2xl font-bold mt-1 text-foreground flex items-center gap-1.5">
+              <Users className="h-5 w-5 text-blue-500" />
+              {aggregate.uniqueUsers}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-border bg-card/60 backdrop-blur">
+          <CardContent className="p-4">
+            <div className="text-xs text-muted-foreground">Scans Today</div>
+            <div className="text-2xl font-bold mt-1 text-foreground flex items-center gap-1.5">
+              <Clock className="h-5 w-5 text-purple-500" />
+              {aggregate.scansToday}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-border bg-card/60 backdrop-blur">
+          <CardContent className="p-4">
+            <div className="text-xs text-muted-foreground">Avg ATS Score</div>
+            <div className="text-2xl font-bold mt-1 text-foreground flex items-center gap-1.5">
+              <Target className="h-5 w-5 text-amber-500" />
+              {aggregate.avgAtsScore}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-border bg-card/60 backdrop-blur">
+          <CardContent className="p-4">
+            <div className="text-xs text-muted-foreground">Highest ATS</div>
+            <div className="text-2xl font-bold mt-1 text-foreground flex items-center gap-1.5">
+              <Award className="h-5 w-5 text-emerald-500" />
+              {aggregate.highestAtsScore}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-border bg-card/60 backdrop-blur">
+          <CardContent className="p-4">
+            <div className="text-xs text-muted-foreground">Avg Improvement</div>
+            <div className="text-2xl font-bold mt-1 text-foreground flex items-center gap-1.5">
+              <TrendingUp className="h-5 w-5 text-emerald-600" />
+              {aggregate.avgScoreImprovement > 0
+                ? `+${aggregate.avgScoreImprovement}`
+                : aggregate.avgScoreImprovement}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Main Scans Table & Filters */}
+      <Card>
+        <CardHeader>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 flex-wrap">
+            <CardTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              Recent Resume Scans & ATS Activity
+            </CardTitle>
+
+            <div className="flex items-center gap-2 flex-wrap">
+              <Input
+                placeholder="Search user, email, file…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-56 h-9 text-xs"
+              />
+
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-32 h-9 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="failed">Failed</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Button size="sm" variant="outline" className="h-9 text-xs" onClick={() => refetch()}>
+                <Loader2 className="h-3.5 w-3.5 mr-1" />
+                Refresh
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          {isLoading ? (
+            <div className="p-8 text-center text-muted-foreground">
+              Loading Resume Intelligence…
+            </div>
+          ) : !filteredScans.length ? (
+            <div className="p-8 text-center text-muted-foreground">No resume scans found.</div>
+          ) : (
+            <div className="divide-y">
+              {filteredScans.map((scan: any) => {
+                const profile = scan.profiles;
+                const isCompleted = scan.scan_status === "completed";
+                const ats = scan.ats_score ?? scan.overall_score;
+                const scoreDiff = scan.score_improvement;
+
+                return (
+                  <div
+                    key={scan.id}
+                    className="p-4 hover:bg-muted/30 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                  >
+                    <div className="flex items-start gap-3 min-w-0 flex-1">
+                      <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+                        <FileText className="h-5 w-5 text-primary" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-semibold text-sm">
+                            {profile?.full_name || "Unknown Candidate"}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            ({profile?.email || scan.user_id?.slice(0, 8)})
+                          </span>
+                          <Badge
+                            variant={isCompleted ? "default" : "destructive"}
+                            className="text-[10px] uppercase px-1.5 py-0"
+                          >
+                            {scan.scan_status}
+                          </Badge>
+                          {scan.extraction_source && (
+                            <Badge variant="outline" className="text-[10px] uppercase px-1.5 py-0">
+                              {scan.extraction_source.replace("_", " ")}
+                            </Badge>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1 flex-wrap">
+                          <span className="font-medium text-foreground">{scan.file_name}</span>
+                          <span>·</span>
+                          <span>
+                            {new Date(scan.created_at).toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </span>
+                          {scan.duration_ms ? (
+                            <>
+                              <span>·</span>
+                              <span>
+                                {(scan.duration_ms / 1000).toFixed(1)}s (
+                                {scan.ai_provider || "Gemini"})
+                              </span>
+                            </>
+                          ) : null}
+                        </div>
+
+                        {scan.failure_reason && (
+                          <div className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                            <AlertCircle className="h-3 w-3 shrink-0" />
+                            <span>{scan.failure_reason}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 shrink-0 self-end sm:self-center">
+                      {isCompleted && ats != null && (
+                        <div className="text-right">
+                          <div className="text-sm font-bold flex items-center gap-1 justify-end">
+                            <span>ATS: {ats}/100</span>
+                          </div>
+                          {scoreDiff != null ? (
+                            <div
+                              className={cn(
+                                "text-[11px] font-semibold flex items-center gap-0.5 justify-end",
+                                scoreDiff > 0
+                                  ? "text-emerald-600"
+                                  : scoreDiff < 0
+                                    ? "text-red-500"
+                                    : "text-muted-foreground",
+                              )}
+                            >
+                              {scoreDiff > 0 ? (
+                                <>
+                                  <ArrowUpRight className="h-3 w-3" /> +{scoreDiff}
+                                </>
+                              ) : scoreDiff < 0 ? (
+                                <>
+                                  <ArrowDownRight className="h-3 w-3" /> {scoreDiff}
+                                </>
+                              ) : (
+                                "No change"
+                              )}
+                            </div>
+                          ) : (
+                            <div className="text-[10px] text-muted-foreground">Baseline</div>
+                          )}
+                        </div>
+                      )}
+
+                      <div className="flex items-center gap-1.5">
+                        {isCompleted && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 text-xs"
+                            onClick={() => setSelectedScanForDetail(scan)}
+                          >
+                            <Eye className="h-3.5 w-3.5 mr-1" />
+                            Analysis
+                          </Button>
+                        )}
+
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          className="h-8 text-xs"
+                          onClick={() =>
+                            setSelectedUserForHistory({
+                              id: scan.user_id,
+                              full_name: profile?.full_name,
+                              email: profile?.email,
+                            })
+                          }
+                        >
+                          <History className="h-3.5 w-3.5 mr-1" />
+                          User History
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Selected Scan Full Analysis Dialog */}
+      {selectedScanForDetail && (
+        <ScanDetailDialog
+          scan={selectedScanForDetail}
+          open={!!selectedScanForDetail}
+          onClose={() => setSelectedScanForDetail(null)}
+        />
+      )}
+
+      {/* Selected User Full Resume Profile Dialog */}
+      {selectedUserForHistory && (
+        <UserResumeIntelligenceDialog
+          user={selectedUserForHistory}
+          controlledOpen={!!selectedUserForHistory}
+          onControlledClose={() => setSelectedUserForHistory(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+function UserResumeIntelligenceDialog({
+  user,
+  triggerButton,
+  controlledOpen,
+  onControlledClose,
+}: {
+  user: { id: string; full_name?: string; email?: string };
+  triggerButton?: React.ReactNode;
+  controlledOpen?: boolean;
+  onControlledClose?: () => void;
+}) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isOpen = controlledOpen !== undefined ? controlledOpen : internalOpen;
+  const setOpen = (val: boolean) => {
+    if (controlledOpen !== undefined) {
+      if (!val && onControlledClose) onControlledClose();
+    } else {
+      setInternalOpen(val);
+    }
+  };
+
+  const fetchCareerIntelligence = useServerFn(adminGetUserCareerIntelligence);
+  const [selectedScanDetail, setSelectedScanDetail] = useState<any>(null);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["admin-user-career-intelligence", user.id],
+    enabled: isOpen && !!user.id,
+    queryFn: async () => {
+      return await fetchCareerIntelligence({ data: { userId: user.id } });
+    },
+  });
+
+  const profile = data?.profile;
+  const intelligence = data?.intelligence;
+  const scans = (data?.scans || []) as any[];
+  const snapshots = (data?.snapshots || []) as any[];
+  const activities = (data?.activities || []) as any[];
+
+  const readinessScore = intelligence?.career_readiness_score ?? 0;
+  const profileCompleteness = intelligence?.profile_completeness ?? 0;
+  const atsScore = intelligence?.ats_score ?? (scans[0]?.ats_score || scans[0]?.overall_score);
+  const scoreChange = intelligence?.score_change ?? scans[0]?.score_improvement;
+
+  const githubData = (intelligence?.github_data || {
+    username: profile?.github_username,
+    profile_url: profile?.github_username ? `https://github.com/${profile.github_username}` : null,
+    project_count: Array.isArray(profile?.projects) ? profile.projects.length : 0,
+  }) as any;
+  const linkedinData = (intelligence?.linkedin_data || {
+    profile_url: profile?.linkedin_url,
+  }) as any;
+
+  const skills = (intelligence?.skills || profile?.skills || []) as string[];
+  const projects = (intelligence?.projects || profile?.projects || []) as any[];
+  const experience = (intelligence?.experience || profile?.experience || []) as any[];
+  const education = (intelligence?.education || profile?.education || []) as any[];
+  const roadmap = intelligence?.ai_career_roadmap as any;
+  const recommendations = intelligence?.ai_recommendations as any;
+
+  return (
+    <>
+      {triggerButton ? (
+        <div onClick={() => setOpen(true)}>{triggerButton}</div>
+      ) : controlledOpen === undefined ? (
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-8 text-xs gap-1"
+          onClick={() => setOpen(true)}
+          title="Candidate 360° Career Intelligence"
+        >
+          <TrendingUp className="h-3.5 w-3.5 text-primary" />
+          <span>Intelligence</span>
+        </Button>
+      ) : null}
+
+      <Dialog open={isOpen} onOpenChange={setOpen}>
+        <DialogContent className="max-w-5xl max-h-[88vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-xl">
+              <TrendingUp className="h-6 w-6 text-primary" />
+              Candidate 360° Career Intelligence —{" "}
+              {profile?.full_name ||
+                intelligence?.candidate_name ||
+                user?.full_name ||
+                user?.email ||
+                "User Profile"}
+            </DialogTitle>
+            <DialogDescription>
+              Authoritative view of candidate profile, work experience, GitHub/LinkedIn sync, resume
+              ATS versions, and AI career roadmap.
+            </DialogDescription>
+          </DialogHeader>
+
+          {isLoading ? (
+            <div className="py-16 text-center text-muted-foreground flex flex-col items-center justify-center gap-2">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              <span>Loading 360° candidate career intelligence…</span>
+            </div>
+          ) : (
+            <div className="space-y-6 pt-2">
+              {/* Top Metrics Strip */}
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                <div className="p-3 rounded-xl border bg-muted/30">
+                  <div className="text-[11px] text-muted-foreground">Readiness Index</div>
+                  <div className="text-xl font-bold mt-0.5 text-foreground flex items-baseline gap-1">
+                    <span>{readinessScore}</span>
+                    <span className="text-xs text-muted-foreground font-normal">/100</span>
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-xl border bg-muted/30">
+                  <div className="text-[11px] text-muted-foreground">Latest ATS</div>
+                  <div className="text-xl font-bold mt-0.5 text-emerald-600 flex items-baseline gap-1">
+                    <span>{atsScore != null ? atsScore : "—"}</span>
+                    {atsScore != null && (
+                      <span className="text-xs text-muted-foreground font-normal">/100</span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-xl border bg-muted/30">
+                  <div className="text-[11px] text-muted-foreground">Completeness</div>
+                  <div className="text-xl font-bold mt-0.5 text-primary">
+                    {profileCompleteness}%
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-xl border bg-muted/30">
+                  <div className="text-[11px] text-muted-foreground">Resume Scans</div>
+                  <div className="text-xl font-bold mt-0.5 text-foreground">{scans.length}</div>
+                </div>
+
+                <div className="p-3 rounded-xl border bg-muted/30 col-span-2 sm:col-span-1">
+                  <div className="text-[11px] text-muted-foreground">Score Change</div>
+                  <div className="text-xl font-bold mt-0.5 flex items-center gap-1">
+                    {scoreChange != null ? (
+                      <span
+                        className={
+                          scoreChange > 0
+                            ? "text-emerald-600"
+                            : scoreChange < 0
+                              ? "text-red-500"
+                              : "text-foreground"
+                        }
+                      >
+                        {scoreChange > 0 ? `+${scoreChange}` : scoreChange}
+                      </span>
+                    ) : (
+                      "—"
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Sub-tabs */}
+              <Tabs defaultValue="overview" className="w-full">
+                <TabsList className="grid grid-cols-5 w-full">
+                  <TabsTrigger value="overview" className="text-xs">
+                    <Briefcase className="h-3.5 w-3.5 mr-1 text-primary" />
+                    Profile
+                  </TabsTrigger>
+                  <TabsTrigger value="scans" className="text-xs">
+                    <ScanText className="h-3.5 w-3.5 mr-1 text-emerald-500" />
+                    Scans ({scans.length})
+                  </TabsTrigger>
+                  <TabsTrigger value="projects" className="text-xs">
+                    <FolderGit2 className="h-3.5 w-3.5 mr-1 text-blue-500" />
+                    Projects ({projects.length})
+                  </TabsTrigger>
+                  <TabsTrigger value="roadmap" className="text-xs">
+                    <Rocket className="h-3.5 w-3.5 mr-1 text-purple-500" />
+                    AI Roadmap
+                  </TabsTrigger>
+                  <TabsTrigger value="timeline" className="text-xs">
+                    <History className="h-3.5 w-3.5 mr-1" />
+                    Timeline ({activities.length})
+                  </TabsTrigger>
+                </TabsList>
+
+                {/* Tab 1: Profile & Background */}
+                <TabsContent value="overview" className="pt-3 space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Bio & Headline */}
+                    <div className="p-4 rounded-xl border bg-muted/20 space-y-2">
+                      <h4 className="font-semibold text-xs text-foreground uppercase tracking-wider">
+                        Candidate Summary
+                      </h4>
+                      <div className="text-xs space-y-1">
+                        <div>
+                          <strong className="text-foreground">Headline:</strong>{" "}
+                          {profile?.headline || intelligence?.headline || "Not provided"}
+                        </div>
+                        <div>
+                          <strong className="text-foreground">Location:</strong>{" "}
+                          {profile?.location || "Not specified"}
+                        </div>
+                        <div>
+                          <strong className="text-foreground">Experience:</strong>{" "}
+                          {profile?.experience_years ?? 0} years
+                        </div>
+                        <div>
+                          <strong className="text-foreground">Current Position:</strong>{" "}
+                          {profile?.current_position || "Not specified"}
+                        </div>
+                        <div>
+                          <strong className="text-foreground">Expected Salary:</strong>{" "}
+                          {profile?.expected_salary
+                            ? `Rs. ${profile.expected_salary}/month`
+                            : "Not specified"}
+                        </div>
+                      </div>
+                      {(profile?.bio || profile?.about) && (
+                        <div className="pt-2 border-t text-xs text-muted-foreground">
+                          {profile.bio || profile.about}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Connected Accounts */}
+                    <div className="p-4 rounded-xl border bg-muted/20 space-y-3">
+                      <h4 className="font-semibold text-xs text-foreground uppercase tracking-wider">
+                        Connected Integrations
+                      </h4>
+
+                      <div className="flex items-center justify-between p-2.5 rounded-lg border bg-background/50 text-xs">
+                        <div className="flex items-center gap-2">
+                          <Github className="h-4 w-4" />
+                          <span>GitHub:</span>
+                          <span className="font-medium text-foreground">
+                            {githubData?.username ? `@${githubData.username}` : "Not linked"}
+                          </span>
+                        </div>
+                        {githubData?.profile_url && (
+                          <a
+                            href={githubData.profile_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-primary hover:underline flex items-center gap-1"
+                          >
+                            <span>Profile</span>
+                            <ExternalLink className="h-3 w-3" />
+                          </a>
+                        )}
+                      </div>
+
+                      <div className="flex items-center justify-between p-2.5 rounded-lg border bg-background/50 text-xs">
+                        <div className="flex items-center gap-2">
+                          <Linkedin className="h-4 w-4 text-blue-500" />
+                          <span>LinkedIn:</span>
+                          <span className="font-medium text-foreground truncate max-w-[160px]">
+                            {linkedinData?.profile_url ? "Linked" : "Not linked"}
+                          </span>
+                        </div>
+                        {linkedinData?.profile_url && (
+                          <a
+                            href={linkedinData.profile_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-primary hover:underline flex items-center gap-1"
+                          >
+                            <span>Profile</span>
+                            <ExternalLink className="h-3 w-3" />
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Work Experience & Education */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="p-4 rounded-xl border bg-muted/20 space-y-2">
+                      <h4 className="font-semibold text-xs text-foreground uppercase tracking-wider flex items-center gap-1.5">
+                        <Briefcase className="h-4 w-4 text-primary" /> Work Experience (
+                        {experience.length})
+                      </h4>
+                      {!experience.length ? (
+                        <div className="text-xs text-muted-foreground">No experience records.</div>
+                      ) : (
+                        <div className="space-y-2">
+                          {experience.map((exp: any, i: number) => (
+                            <div
+                              key={i}
+                              className="border-l-2 border-primary pl-2.5 text-xs space-y-0.5"
+                            >
+                              <div className="font-semibold text-foreground">
+                                {exp.title || exp.position || "Role"}
+                              </div>
+                              <div className="text-muted-foreground">
+                                {exp.company} ·{" "}
+                                {exp.duration ||
+                                  `${exp.start_date || ""} - ${exp.end_date || "Present"}`}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="p-4 rounded-xl border bg-muted/20 space-y-2">
+                      <h4 className="font-semibold text-xs text-foreground uppercase tracking-wider flex items-center gap-1.5">
+                        <GraduationCap className="h-4 w-4 text-primary" /> Education (
+                        {education.length})
+                      </h4>
+                      {!education.length ? (
+                        <div className="text-xs text-muted-foreground">No education records.</div>
+                      ) : (
+                        <div className="space-y-2">
+                          {education.map((edu: any, i: number) => (
+                            <div
+                              key={i}
+                              className="border-l-2 border-primary pl-2.5 text-xs space-y-0.5"
+                            >
+                              <div className="font-semibold text-foreground">
+                                {edu.degree || "Degree"}
+                              </div>
+                              <div className="text-muted-foreground">
+                                {edu.institution || edu.school} ·{" "}
+                                {edu.year || edu.graduation_year || ""}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </TabsContent>
+
+                {/* Tab 2: Resume Scans History */}
+                <TabsContent value="scans" className="pt-3">
+                  {!scans.length ? (
+                    <div className="p-8 text-center text-sm text-muted-foreground border rounded-xl">
+                      No resume scan versions recorded for this user.
+                    </div>
+                  ) : (
+                    <div className="space-y-2.5">
+                      {scans.map((s, idx) => {
+                        const versionNumber = scans.length - idx;
+                        const isCompleted = s.scan_status === "completed";
+                        const ats = s.ats_score ?? s.overall_score;
+
+                        return (
+                          <div
+                            key={s.id}
+                            className="p-3.5 rounded-xl border hover:bg-muted/30 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                          >
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className="h-8 w-8 rounded-lg bg-primary/10 text-primary font-bold text-xs flex items-center justify-center shrink-0">
+                                v{versionNumber}
+                              </div>
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-semibold text-sm truncate">
+                                    {s.file_name}
+                                  </span>
+                                  {idx === 0 && (
+                                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                                      Active
+                                    </Badge>
+                                  )}
+                                  <Badge
+                                    variant={isCompleted ? "outline" : "destructive"}
+                                    className="text-[10px] uppercase px-1.5 py-0"
+                                  >
+                                    {s.scan_status}
+                                  </Badge>
+                                  {s.extraction_source && (
+                                    <Badge
+                                      variant="secondary"
+                                      className="text-[10px] uppercase px-1.5 py-0"
+                                    >
+                                      {s.extraction_source.replace("_", " ")}
+                                    </Badge>
+                                  )}
+                                </div>
+                                <div className="text-xs text-muted-foreground mt-0.5">
+                                  Scanned:{" "}
+                                  {new Date(s.created_at).toLocaleDateString("en-US", {
+                                    month: "short",
+                                    day: "numeric",
+                                    year: "numeric",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  })}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-3 shrink-0 self-end sm:self-center">
+                              {isCompleted && (
+                                <div className="text-right">
+                                  <div className="text-sm font-bold">ATS: {ats}/100</div>
+                                  {s.score_improvement != null ? (
+                                    <div
+                                      className={cn(
+                                        "text-[11px] font-semibold flex items-center gap-0.5 justify-end",
+                                        s.score_improvement > 0
+                                          ? "text-emerald-600"
+                                          : s.score_improvement < 0
+                                            ? "text-red-500"
+                                            : "text-muted-foreground",
+                                      )}
+                                    >
+                                      {s.score_improvement > 0
+                                        ? `+${s.score_improvement}`
+                                        : s.score_improvement}
+                                    </div>
+                                  ) : (
+                                    <div className="text-[10px] text-muted-foreground">
+                                      Baseline
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
+                              {isCompleted && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 text-xs"
+                                  onClick={() => setSelectedScanDetail(s)}
+                                >
+                                  <Eye className="h-3.5 w-3.5 mr-1" />
+                                  Inspect Analysis
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </TabsContent>
+
+                {/* Tab 3: GitHub & Projects */}
+                <TabsContent value="projects" className="pt-3 space-y-3">
+                  {!projects.length ? (
+                    <div className="p-8 text-center text-sm text-muted-foreground border rounded-xl">
+                      No projects recorded for this user.
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {projects.map((proj: any, i: number) => (
+                        <div
+                          key={i}
+                          className="p-3.5 rounded-xl border bg-muted/20 space-y-1.5 text-xs"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-semibold text-foreground truncate">
+                              {proj.name}
+                            </span>
+                            {proj.language && (
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                                {proj.language}
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-muted-foreground line-clamp-2">
+                            {proj.description || "Portfolio project"}
+                          </p>
+                          {proj.url && (
+                            <div className="pt-1">
+                              <a
+                                href={proj.url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-primary hover:underline flex items-center gap-1 text-[11px]"
+                              >
+                                <span>Repository / Link</span>
+                                <ExternalLink className="h-3 w-3" />
+                              </a>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </TabsContent>
+
+                {/* Tab 4: AI Career Roadmap & Insights */}
+                <TabsContent value="roadmap" className="pt-3 space-y-4">
+                  {/* Unified Combined Skills */}
+                  <div>
+                    <h4 className="font-semibold text-xs text-foreground uppercase tracking-wider mb-2">
+                      Unified Skills Cloud ({skills.length})
+                    </h4>
+                    <div className="flex flex-wrap gap-1.5">
+                      {skills.map((sk: string, i: number) => (
+                        <Badge key={i} variant="secondary" className="text-xs">
+                          {sk}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Strengths & Weaknesses */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="p-3.5 rounded-xl border bg-emerald-500/5 border-emerald-500/20">
+                      <h4 className="font-semibold text-xs text-emerald-700 dark:text-emerald-400 mb-2 flex items-center gap-1.5">
+                        <CheckCircle2 className="h-4 w-4" /> Top Strengths
+                      </h4>
+                      <ul className="space-y-1 text-xs text-muted-foreground">
+                        {(
+                          recommendations?.strengths ||
+                          roadmap?.strengths || ["Technical versatility", "Document clarity"]
+                        ).map((st: string, i: number) => (
+                          <li key={i} className="flex items-start gap-1.5">
+                            <span>•</span> <span>{st}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    <div className="p-3.5 rounded-xl border bg-amber-500/5 border-amber-500/20">
+                      <h4 className="font-semibold text-xs text-amber-700 dark:text-amber-400 mb-2 flex items-center gap-1.5">
+                        <AlertCircle className="h-4 w-4" /> Skill Gaps & Focus
+                      </h4>
+                      <ul className="space-y-1 text-xs text-muted-foreground">
+                        {(
+                          recommendations?.skill_gaps ||
+                          roadmap?.missing_skills || ["Advanced Cloud Arch", "Testing automation"]
+                        ).map((wk: string, i: number) => (
+                          <li key={i} className="flex items-start gap-1.5">
+                            <span>•</span> <span>{wk}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+
+                  {/* Career Paths */}
+                  {recommendations?.career_paths?.length > 0 && (
+                    <div>
+                      <h4 className="font-semibold text-xs text-foreground uppercase tracking-wider mb-2">
+                        Recommended Career Paths
+                      </h4>
+                      <div className="space-y-2">
+                        {recommendations.career_paths.map((cp: any, i: number) => (
+                          <div
+                            key={i}
+                            className="p-3 rounded-lg border text-xs space-y-1 bg-muted/20"
+                          >
+                            <div className="font-bold text-foreground">{cp.title}</div>
+                            <div className="text-muted-foreground">{cp.description}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </TabsContent>
+
+                {/* Tab 5: Chronological Activity Timeline */}
+                <TabsContent value="timeline" className="pt-3">
+                  {!activities.length ? (
+                    <div className="p-8 text-center text-sm text-muted-foreground border rounded-xl">
+                      No activity logs recorded.
+                    </div>
+                  ) : (
+                    <div className="relative pl-6 space-y-4 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-border">
+                      {activities.map((act) => {
+                        const dateFormatted = new Date(act.created_at).toLocaleString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          second: "2-digit",
+                        });
+
+                        return (
+                          <div key={act.id} className="relative">
+                            <div className="absolute -left-6 top-1 h-3 w-3 rounded-full bg-primary border-2 border-background" />
+                            <div className="rounded-xl border p-3 bg-muted/20 space-y-1">
+                              <div className="flex items-center justify-between gap-2 flex-wrap">
+                                <span className="font-semibold text-xs text-foreground uppercase tracking-wide">
+                                  {act.activity_type.replace(/_/g, " ")}
+                                </span>
+                                <span className="text-[11px] text-muted-foreground">
+                                  {dateFormatted}
+                                </span>
+                              </div>
+                              {act.metadata && Object.keys(act.metadata).length > 0 && (
+                                <div className="text-xs text-muted-foreground pt-1 border-t border-border/50 flex flex-wrap gap-x-3 gap-y-1">
+                                  {Object.entries(act.metadata).map(([k, v]) => (
+                                    <span key={k}>
+                                      <strong className="text-foreground">{k}:</strong> {String(v)}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </TabsContent>
+              </Tabs>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Deep Inspection Scan Dialog */}
+      {selectedScanDetail && (
+        <ScanDetailDialog
+          scan={selectedScanDetail}
+          open={!!selectedScanDetail}
+          onClose={() => setSelectedScanDetail(null)}
+        />
+      )}
+    </>
+  );
+}
+
+function ScanDetailDialog({
+  scan,
+  open,
+  onClose,
+}: {
+  scan: any;
+  open: boolean;
+  onClose: () => void;
+}) {
+  if (!scan) return null;
+
+  const scoreCategories = [
+    { label: "ATS Score", value: scan.ats_score ?? scan.overall_score },
+    { label: "Overall Score", value: scan.overall_score },
+    { label: "Keywords Match", value: scan.keyword_score },
+    { label: "Formatting Score", value: scan.formatting_score },
+    { label: "Skills Alignment", value: scan.skills_score },
+    { label: "Experience Impact", value: scan.experience_score },
+  ];
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-lg">
+            <FileCheck className="h-5 w-5 text-primary" />
+            Scan Analysis — {scan.file_name}
+          </DialogTitle>
+          <DialogDescription>
+            Scanned on {new Date(scan.created_at).toLocaleString()} · Source:{" "}
+            {scan.extraction_source || "File"}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-5 pt-2 text-sm">
+          {/* Score Metrics Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {scoreCategories.map((sc) => (
+              <div key={sc.label} className="p-3 rounded-xl border bg-muted/20">
+                <div className="text-[11px] text-muted-foreground">{sc.label}</div>
+                <div className="text-lg font-bold mt-0.5 text-foreground">
+                  {sc.value != null ? `${sc.value}/100` : "—"}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Extracted Skills */}
+          {scan.extracted_skills?.length > 0 && (
+            <div>
+              <div className="font-semibold text-xs mb-2">Identified Skills</div>
+              <div className="flex flex-wrap gap-1.5">
+                {(scan.extracted_skills as string[]).map((sk: string, i: number) => (
+                  <Badge key={i} variant="secondary" className="text-xs">
+                    {sk}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Actionable Recommendations */}
+          {scan.recommendations?.length > 0 && (
+            <div>
+              <div className="font-semibold text-xs mb-2 flex items-center gap-1.5 text-amber-600">
+                <Lightbulb className="h-4 w-4" /> AI Recommendations
+              </div>
+              <div className="space-y-1.5">
+                {scan.recommendations.map((rec: string, i: number) => (
+                  <div
+                    key={i}
+                    className="flex items-start gap-2 p-2.5 rounded-lg border text-xs bg-muted/20"
+                  >
+                    <span className="font-bold text-amber-600">{i + 1}.</span>
+                    <span>{rec}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Strengths & Weaknesses */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {scan.strengths?.length > 0 && (
+              <div className="p-3 rounded-xl border bg-emerald-500/5">
+                <div className="font-semibold text-xs text-emerald-600 mb-1.5">Strengths</div>
+                <ul className="text-xs space-y-1 text-muted-foreground">
+                  {scan.strengths.map((s: string, i: number) => (
+                    <li key={i}>• {s}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {scan.weaknesses?.length > 0 && (
+              <div className="p-3 rounded-xl border bg-red-500/5">
+                <div className="font-semibold text-xs text-red-600 mb-1.5">Weaknesses</div>
+                <ul className="text-xs space-y-1 text-muted-foreground">
+                  {scan.weaknesses.map((w: string, i: number) => (
+                    <li key={i}>• {w}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function CompanyIntelligenceDialog({
+  company,
+  triggerButton,
+}: {
+  company: { id: string; name: string; slug?: string };
+  triggerButton?: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  const fetchCI = useServerFn(adminGetCompanyIntelligence);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["admin-company-intelligence", company.id],
+    enabled: open && !!company.id,
+    queryFn: async () => {
+      return await fetchCI({ data: { companyId: company.id } });
+    },
+  });
+
+  const fullCompany = (data?.company || company) as any;
+  const intelligence = data?.intelligence as any;
+  const snapshots = (data?.snapshots || []) as any[];
+  const jobs = (data?.jobs || []) as any[];
+  const activities = (data?.activities || []) as any[];
+
+  const readinessScore = intelligence?.hiring_readiness_score ?? 0;
+  const profileCompleteness = intelligence?.profile_completeness ?? 0;
+  const technologies = (intelligence?.technologies || fullCompany?.technologies || []) as string[];
+  const benefits = (intelligence?.benefits || fullCompany?.benefits || []) as string[];
+  const roadmap = intelligence?.ai_hiring_roadmap as any;
+  const recommendations = intelligence?.ai_recommendations as any;
+  const jobStats = (intelligence?.job_stats || {
+    total_jobs: jobs.length,
+    active_jobs: jobs.filter((j) => j.status === "active").length,
+    total_applicants: jobs.reduce((acc, j) => acc + (j.applications_count || 0), 0),
+  }) as any;
+
+  return (
+    <>
+      {triggerButton ? (
+        <div onClick={() => setOpen(true)}>{triggerButton}</div>
+      ) : (
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-8 text-xs gap-1"
+          onClick={() => setOpen(true)}
+          title="Company 360° Intelligence"
+        >
+          <Building2 className="h-3.5 w-3.5 text-primary" />
+          <span>Intelligence</span>
+        </Button>
+      )}
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-5xl max-h-[88vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-xl">
+              <Building2 className="h-6 w-6 text-primary" />
+              Company 360° Intelligence — {fullCompany?.name || "Company Profile"}
+            </DialogTitle>
+            <DialogDescription>
+              Authoritative view of company profile, tech stack, job openings, applicant pipeline,
+              and AI hiring roadmap.
+            </DialogDescription>
+          </DialogHeader>
+
+          {isLoading ? (
+            <div className="py-16 text-center text-muted-foreground flex flex-col items-center justify-center gap-2">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              <span>Loading 360° company intelligence…</span>
+            </div>
+          ) : (
+            <div className="space-y-6 pt-2">
+              {/* Top Metrics Strip */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="p-3 rounded-xl border bg-muted/30">
+                  <div className="text-[11px] text-muted-foreground">Hiring Readiness</div>
+                  <div className="text-xl font-bold mt-0.5 text-foreground flex items-baseline gap-1">
+                    <span>{readinessScore}</span>
+                    <span className="text-xs text-muted-foreground font-normal">/100</span>
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-xl border bg-muted/30">
+                  <div className="text-[11px] text-muted-foreground">Profile Completeness</div>
+                  <div className="text-xl font-bold mt-0.5 text-primary">
+                    {profileCompleteness}%
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-xl border bg-muted/30">
+                  <div className="text-[11px] text-muted-foreground">Active Openings</div>
+                  <div className="text-xl font-bold mt-0.5 text-foreground">
+                    {jobStats.active_jobs ?? jobs.filter((j) => j.status === "active").length}
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-xl border bg-muted/30">
+                  <div className="text-[11px] text-muted-foreground">Total Applicants</div>
+                  <div className="text-xl font-bold mt-0.5 text-foreground">
+                    {jobStats.total_applicants ?? 0}
+                  </div>
+                </div>
+              </div>
+
+              {/* Sub-tabs */}
+              <Tabs defaultValue="overview" className="w-full">
+                <TabsList className="grid grid-cols-5 w-full">
+                  <TabsTrigger value="overview" className="text-xs">
+                    <Building2 className="h-3.5 w-3.5 mr-1 text-primary" />
+                    Overview
+                  </TabsTrigger>
+                  <TabsTrigger value="tech" className="text-xs">
+                    <Code2 className="h-3.5 w-3.5 mr-1 text-blue-500" />
+                    Tech & Roles
+                  </TabsTrigger>
+                  <TabsTrigger value="jobs" className="text-xs">
+                    <Briefcase className="h-3.5 w-3.5 mr-1 text-emerald-500" />
+                    Jobs ({jobs.length})
+                  </TabsTrigger>
+                  <TabsTrigger value="strategy" className="text-xs">
+                    <Rocket className="h-3.5 w-3.5 mr-1 text-purple-500" />
+                    AI Strategy
+                  </TabsTrigger>
+                  <TabsTrigger value="timeline" className="text-xs">
+                    <History className="h-3.5 w-3.5 mr-1" />
+                    Timeline ({activities.length})
+                  </TabsTrigger>
+                </TabsList>
+
+                {/* Tab 1: Overview & Background */}
+                <TabsContent value="overview" className="pt-3 space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="p-4 rounded-xl border bg-muted/20 space-y-2 text-xs">
+                      <h4 className="font-semibold text-foreground uppercase tracking-wider">
+                        Company Details
+                      </h4>
+                      <div>
+                        <strong className="text-foreground">Industry:</strong>{" "}
+                        {fullCompany?.industry || "—"}
+                      </div>
+                      <div>
+                        <strong className="text-foreground">Headquarters:</strong>{" "}
+                        {fullCompany?.headquarters || fullCompany?.location || "Kathmandu, Nepal"}
+                      </div>
+                      <div>
+                        <strong className="text-foreground">Size:</strong>{" "}
+                        {fullCompany?.size || "—"}
+                      </div>
+                      <div>
+                        <strong className="text-foreground">Website:</strong>{" "}
+                        {fullCompany?.website || "—"}
+                      </div>
+                      <div>
+                        <strong className="text-foreground">Work Model:</strong>{" "}
+                        {fullCompany?.work_model || "Hybrid"}
+                      </div>
+                    </div>
+
+                    <div className="p-4 rounded-xl border bg-muted/20 space-y-2 text-xs">
+                      <h4 className="font-semibold text-foreground uppercase tracking-wider">
+                        Culture & Mission
+                      </h4>
+                      {fullCompany?.mission && (
+                        <div>
+                          <strong className="text-foreground">Mission:</strong>{" "}
+                          {fullCompany.mission}
+                        </div>
+                      )}
+                      {fullCompany?.vision && (
+                        <div>
+                          <strong className="text-foreground">Vision:</strong> {fullCompany.vision}
+                        </div>
+                      )}
+                      {fullCompany?.description && (
+                        <div className="pt-1 text-muted-foreground border-t">
+                          {fullCompany.description}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </TabsContent>
+
+                {/* Tab 2: Tech & Roles */}
+                <TabsContent value="tech" className="pt-3 space-y-4">
+                  <div className="space-y-3">
+                    <div>
+                      <h4 className="font-semibold text-xs text-foreground uppercase tracking-wider mb-2">
+                        Technologies Stack ({technologies.length})
+                      </h4>
+                      <div className="flex flex-wrap gap-1.5">
+                        {technologies.map((t: string, i: number) => (
+                          <Badge key={i} variant="secondary" className="text-xs">
+                            {t}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+
+                    {benefits.length > 0 && (
+                      <div>
+                        <h4 className="font-semibold text-xs text-foreground uppercase tracking-wider mb-2">
+                          Benefits & Perks ({benefits.length})
+                        </h4>
+                        <div className="flex flex-wrap gap-1.5">
+                          {benefits.map((b: string, i: number) => (
+                            <Badge key={i} variant="outline" className="text-xs">
+                              {b}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </TabsContent>
+
+                {/* Tab 3: Jobs & Pipeline */}
+                <TabsContent value="jobs" className="pt-3 space-y-3">
+                  {!jobs.length ? (
+                    <div className="p-8 text-center text-sm text-muted-foreground border rounded-xl">
+                      No job postings recorded for this company.
+                    </div>
+                  ) : (
+                    <div className="divide-y border rounded-xl">
+                      {jobs.map((j: any) => (
+                        <div
+                          key={j.id}
+                          className="p-3.5 flex items-center justify-between gap-3 text-xs"
+                        >
+                          <div>
+                            <div className="font-bold text-foreground text-sm">{j.title}</div>
+                            <div className="text-muted-foreground mt-0.5">
+                              Status:{" "}
+                              <span className="uppercase font-medium text-foreground">
+                                {j.status}
+                              </span>{" "}
+                              · {j.applications_count || 0} applicants
+                            </div>
+                            {j.required_skills?.length > 0 && (
+                              <div className="flex gap-1 mt-1.5 flex-wrap">
+                                {j.required_skills.slice(0, 5).map((sk: string, i: number) => (
+                                  <Badge key={i} variant="secondary" className="text-[10px]">
+                                    {sk}
+                                  </Badge>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                          <Badge
+                            variant={j.status === "active" ? "default" : "outline"}
+                            className="text-[10px] uppercase"
+                          >
+                            {j.status}
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </TabsContent>
+
+                {/* Tab 4: AI Strategy */}
+                <TabsContent value="strategy" className="pt-3 space-y-4">
+                  {roadmap?.hiring_velocity_assessment && (
+                    <div className="p-3 rounded-lg border bg-primary/5 text-xs text-muted-foreground leading-relaxed">
+                      <strong className="text-foreground block mb-1">Velocity Assessment:</strong>
+                      {roadmap.hiring_velocity_assessment}
+                    </div>
+                  )}
+
+                  {recommendations?.candidate_screening_criteria?.length > 0 && (
+                    <div>
+                      <h4 className="font-semibold text-xs text-foreground uppercase tracking-wider mb-2">
+                        AI Screening Rubric
+                      </h4>
+                      <div className="space-y-2">
+                        {recommendations.candidate_screening_criteria.map((sc: any, i: number) => (
+                          <div
+                            key={i}
+                            className="p-3 rounded-lg border bg-muted/20 text-xs space-y-1"
+                          >
+                            <div className="font-bold text-foreground">{sc.category}</div>
+                            <div className="text-emerald-600">Must Have: {sc.must_have}</div>
+                            {sc.good_to_have && (
+                              <div className="text-muted-foreground">
+                                Good to Have: {sc.good_to_have}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {roadmap?.compensation_benchmarks_npr?.length > 0 && (
+                    <div>
+                      <h4 className="font-semibold text-xs text-foreground uppercase tracking-wider mb-2">
+                        Salary Benchmarks (NPR)
+                      </h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {roadmap.compensation_benchmarks_npr.map((cb: any, i: number) => (
+                          <div key={i} className="p-2.5 rounded-lg border bg-muted/20 text-xs">
+                            <span className="font-bold text-foreground">{cb.role}:</span>{" "}
+                            <span className="text-primary font-semibold">
+                              {cb.min_salary} - {cb.max_salary}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </TabsContent>
+
+                {/* Tab 5: Timeline & Activity */}
+                <TabsContent value="timeline" className="pt-3">
+                  {!activities.length && !snapshots.length ? (
+                    <div className="p-8 text-center text-sm text-muted-foreground border rounded-xl">
+                      No employer activity logs recorded.
+                    </div>
+                  ) : (
+                    <div className="relative pl-6 space-y-3 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-border">
+                      {activities.map((act) => (
+                        <div key={act.id} className="relative text-xs">
+                          <div className="absolute -left-6 top-1 h-3 w-3 rounded-full bg-primary border-2 border-background" />
+                          <div className="rounded-xl border p-3 bg-muted/20 space-y-1">
+                            <div className="flex items-center justify-between gap-2 flex-wrap">
+                              <span className="font-semibold text-foreground uppercase">
+                                {act.activity_type.replace(/_/g, " ")}
+                              </span>
+                              <span className="text-[11px] text-muted-foreground">
+                                {new Date(act.created_at).toLocaleString()}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </TabsContent>
+              </Tabs>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

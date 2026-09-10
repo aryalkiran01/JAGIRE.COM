@@ -263,7 +263,8 @@ Deno.serve(async (req: Request) => {
     const isS2SVerified = esewaResponse.ok && isComplete && isAmountMatch;
 
     // Both S2S confirmation or valid callback HMAC signature prove transaction validity
-    const isVerified = isS2SVerified || (isValidSignature && String(body.status ?? "").toUpperCase() === "COMPLETE");
+    const isVerified =
+      isS2SVerified || (isValidSignature && String(body.status ?? "").toUpperCase() === "COMPLETE");
 
     // If eSewa is still processing or returned pending status, inform client with retryable response
     if (esewaStatus === "PENDING" || esewaStatus === "AMBIGUOUS") {
@@ -305,7 +306,9 @@ Deno.serve(async (req: Request) => {
     }
 
     if (!isVerified) {
-      console.warn(`[PAYMENT_VERIFICATION_FAILED] eSewa S2S status: ${esewaStatus}, isValidSignature: ${isValidSignature}`);
+      console.warn(
+        `[PAYMENT_VERIFICATION_FAILED] eSewa S2S status: ${esewaStatus}, isValidSignature: ${isValidSignature}`,
+      );
       return new Response(
         JSON.stringify({
           verified: false,

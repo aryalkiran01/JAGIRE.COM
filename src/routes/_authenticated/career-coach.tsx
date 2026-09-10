@@ -23,6 +23,7 @@ import { toast } from "sonner";
 import { careerCoach } from "@/lib/ai.service";
 import { useSubscription } from "@/hooks/use-subscription";
 import { Link } from "@tanstack/react-router";
+import { CleanMarkdownView } from "@/components/ai-result-renderer";
 
 export const Route = createFileRoute("/_authenticated/career-coach")({
   component: CareerCoachPage,
@@ -310,15 +311,17 @@ function MessageBubble({ message }: { message: Message }) {
   const res = message.content as CoachResponse;
   if (typeof res === "string") {
     return (
-      <div className="bg-muted rounded-2xl rounded-tl-sm px-4 py-3 text-sm max-w-prose">{res}</div>
+      <div className="bg-muted rounded-2xl rounded-tl-sm px-4 py-3 text-sm max-w-prose shadow-sm">
+        <CleanMarkdownView text={res} />
+      </div>
     );
   }
 
   return (
     <div className="space-y-3 max-w-prose">
       {/* Main advice */}
-      <div className="bg-muted rounded-2xl rounded-tl-sm px-4 py-3 text-sm leading-relaxed">
-        {res.advice}
+      <div className="bg-muted rounded-2xl rounded-tl-sm px-4 py-3 text-sm leading-relaxed shadow-sm">
+        <CleanMarkdownView text={res.advice} />
       </div>
 
       {/* Skills */}

@@ -24,91 +24,7 @@ const QUICK_PROMPTS = [
   { icon: "🔄", text: "How can I switch careers?" },
 ];
 
-function MiniMarkdown({ text }: { text: string }) {
-  // Lightweight markdown: headings, bold, bullets, code blocks
-  const lines = text.split("\n");
-  const elements: React.ReactNode[] = [];
-  let inCode = false;
-  let codeBuffer: string[] = [];
-
-  lines.forEach((line, i) => {
-    if (line.startsWith("```")) {
-      if (inCode) {
-        elements.push(
-          <pre
-            key={`code-${i}`}
-            className="bg-zinc-900 text-zinc-100 rounded-lg p-3 text-xs overflow-x-auto my-2"
-          >
-            <code>{codeBuffer.join("\n")}</code>
-          </pre>,
-        );
-        codeBuffer = [];
-        inCode = false;
-      } else {
-        inCode = true;
-      }
-      return;
-    }
-    if (inCode) {
-      codeBuffer.push(line);
-      return;
-    }
-    if (/^#{1,3}\s/.test(line)) {
-      const level = line.match(/^(#+)/)?.[1].length ?? 1;
-      const content = line.replace(/^#+\s/, "");
-      const sizes = ["text-base font-bold", "text-sm font-bold", "text-sm font-semibold"];
-      elements.push(
-        <div key={i} className={`${sizes[level - 1]} mt-3 mb-1`}>
-          {content}
-        </div>,
-      );
-      return;
-    }
-    if (/^\s*[-*]\s/.test(line)) {
-      elements.push(
-        <div key={i} className="flex gap-2 text-sm ml-2 my-0.5">
-          <span className="text-primary shrink-0">•</span>
-          <span
-            dangerouslySetInnerHTML={{ __html: inlineFormat(line.replace(/^\s*[-*]\s/, "")) }}
-          />
-        </div>,
-      );
-      return;
-    }
-    if (/^\s*\d+\.\s/.test(line)) {
-      elements.push(
-        <div
-          key={i}
-          className="text-sm ml-2 my-0.5"
-          dangerouslySetInnerHTML={{ __html: inlineFormat(line) }}
-        />,
-      );
-      return;
-    }
-    if (line.trim() === "") {
-      elements.push(<div key={i} className="h-2" />);
-      return;
-    }
-    elements.push(
-      <p
-        key={i}
-        className="text-sm leading-relaxed my-1"
-        dangerouslySetInnerHTML={{ __html: inlineFormat(line) }}
-      />,
-    );
-  });
-
-  return <div className="space-y-0">{elements}</div>;
-}
-
-function inlineFormat(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-    .replace(/`(.+?)`/g, '<code class="bg-muted px-1 rounded text-xs">$1</code>');
-}
+import { CleanMarkdownView } from "@/components/ai-result-renderer";
 
 export function AIAssistantWidget() {
   const { user, role } = useAuth();
@@ -385,7 +301,7 @@ function MessageRow({ message, userName }: { message: Msg; userName?: string }) 
         {isUser ? (
           <p className="text-sm whitespace-pre-wrap">{message.content}</p>
         ) : (
-          <MiniMarkdown text={message.content} />
+          <CleanMarkdownView text={message.content} />
         )}
       </div>
     </div>

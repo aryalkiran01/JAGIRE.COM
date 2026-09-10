@@ -355,17 +355,17 @@ function PublicProfilePage() {
                     </Link>
                   </div>
 
-                  <p className="text-sm leading-relaxed whitespace-pre-wrap">
-                    {post.content ?? post.body}
+                  <p className="text-sm sm:text-base leading-relaxed whitespace-pre-wrap break-words text-foreground/90">
+                    {post.content ?? post.body ?? post.title}
                   </p>
 
                   {post.image_url && (
-                    <div className="rounded-xl overflow-hidden border bg-muted/20 flex items-center justify-center max-h-80">
+                    <div className="rounded-xl overflow-hidden border border-border/60 bg-muted/20 flex items-center justify-center max-h-96">
                       <img
                         src={post.image_url}
                         alt="Post media"
                         loading="lazy"
-                        className="w-full h-auto max-h-80 object-contain rounded-lg"
+                        className="w-full h-auto max-h-96 object-contain rounded-lg"
                       />
                     </div>
                   )}

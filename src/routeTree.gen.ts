@@ -50,6 +50,7 @@ import { Route as JobsJobIdRouteImport } from './routes/jobs/$jobId'
 import { Route as AuthenticatedAiFeatureSlugRouteImport } from './routes/_authenticated/ai/$featureSlug'
 import { Route as AuthenticatedEmployerIndexRouteImport } from './routes/_authenticated/employer/index'
 import { Route as AuthenticatedEmployerCompanyRouteImport } from './routes/_authenticated/employer/company'
+import { Route as AuthenticatedEmployerIntelligenceRouteImport } from './routes/_authenticated/employer/intelligence'
 import { Route as AuthenticatedEmployerInterviewsRouteImport } from './routes/_authenticated/employer/interviews'
 import { Route as AuthenticatedEmployerKnowledgeBaseRouteImport } from './routes/_authenticated/employer/knowledge-base'
 import { Route as AuthenticatedProfileIndexRouteImport } from './routes/_authenticated/profile/index'
@@ -272,6 +273,12 @@ const AuthenticatedEmployerCompanyRoute =
     path: '/company',
     getParentRoute: () => AuthenticatedEmployerRoute,
   } as any)
+const AuthenticatedEmployerIntelligenceRoute =
+  AuthenticatedEmployerIntelligenceRouteImport.update({
+    id: '/intelligence',
+    path: '/intelligence',
+    getParentRoute: () => AuthenticatedEmployerRoute,
+  } as any)
 const AuthenticatedEmployerInterviewsRoute =
   AuthenticatedEmployerInterviewsRouteImport.update({
     id: '/interviews',
@@ -355,6 +362,7 @@ export interface FileRoutesByFullPath {
   '/jobs/': typeof JobsIndexRoute
   '/ai/$featureSlug': typeof AuthenticatedAiFeatureSlugRoute
   '/employer/company': typeof AuthenticatedEmployerCompanyRoute
+  '/employer/intelligence': typeof AuthenticatedEmployerIntelligenceRoute
   '/employer/interviews': typeof AuthenticatedEmployerInterviewsRoute
   '/employer/knowledge-base': typeof AuthenticatedEmployerKnowledgeBaseRoute
   '/profile/$userId': typeof AuthenticatedProfileUserIdRoute
@@ -403,6 +411,7 @@ export interface FileRoutesByTo {
   '/jobs': typeof JobsIndexRoute
   '/ai/$featureSlug': typeof AuthenticatedAiFeatureSlugRoute
   '/employer/company': typeof AuthenticatedEmployerCompanyRoute
+  '/employer/intelligence': typeof AuthenticatedEmployerIntelligenceRoute
   '/employer/interviews': typeof AuthenticatedEmployerInterviewsRoute
   '/employer/knowledge-base': typeof AuthenticatedEmployerKnowledgeBaseRoute
   '/profile/$userId': typeof AuthenticatedProfileUserIdRoute
@@ -454,6 +463,7 @@ export interface FileRoutesById {
   '/jobs/': typeof JobsIndexRoute
   '/_authenticated/ai/$featureSlug': typeof AuthenticatedAiFeatureSlugRoute
   '/_authenticated/employer/company': typeof AuthenticatedEmployerCompanyRoute
+  '/_authenticated/employer/intelligence': typeof AuthenticatedEmployerIntelligenceRoute
   '/_authenticated/employer/interviews': typeof AuthenticatedEmployerInterviewsRoute
   '/_authenticated/employer/knowledge-base': typeof AuthenticatedEmployerKnowledgeBaseRoute
   '/_authenticated/profile/$userId': typeof AuthenticatedProfileUserIdRoute
@@ -505,6 +515,7 @@ export interface FileRouteTypes {
     | '/jobs/'
     | '/ai/$featureSlug'
     | '/employer/company'
+    | '/employer/intelligence'
     | '/employer/interviews'
     | '/employer/knowledge-base'
     | '/profile/$userId'
@@ -553,6 +564,7 @@ export interface FileRouteTypes {
     | '/jobs'
     | '/ai/$featureSlug'
     | '/employer/company'
+    | '/employer/intelligence'
     | '/employer/interviews'
     | '/employer/knowledge-base'
     | '/profile/$userId'
@@ -603,6 +615,7 @@ export interface FileRouteTypes {
     | '/jobs/'
     | '/_authenticated/ai/$featureSlug'
     | '/_authenticated/employer/company'
+    | '/_authenticated/employer/intelligence'
     | '/_authenticated/employer/interviews'
     | '/_authenticated/employer/knowledge-base'
     | '/_authenticated/profile/$userId'
@@ -924,6 +937,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedEmployerCompanyRouteImport
       parentRoute: typeof AuthenticatedEmployerRoute
     }
+    '/_authenticated/employer/intelligence': {
+      id: '/_authenticated/employer/intelligence'
+      path: '/intelligence'
+      fullPath: '/employer/intelligence'
+      preLoaderRoute: typeof AuthenticatedEmployerIntelligenceRouteImport
+      parentRoute: typeof AuthenticatedEmployerRoute
+    }
     '/_authenticated/employer/interviews': {
       id: '/_authenticated/employer/interviews'
       path: '/interviews'
@@ -978,6 +998,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedEmployerRouteChildren {
   AuthenticatedEmployerCompanyRoute: typeof AuthenticatedEmployerCompanyRoute
+  AuthenticatedEmployerIntelligenceRoute: typeof AuthenticatedEmployerIntelligenceRoute
   AuthenticatedEmployerInterviewsRoute: typeof AuthenticatedEmployerInterviewsRoute
   AuthenticatedEmployerKnowledgeBaseRoute: typeof AuthenticatedEmployerKnowledgeBaseRoute
   AuthenticatedEmployerIndexRoute: typeof AuthenticatedEmployerIndexRoute
@@ -988,6 +1009,8 @@ interface AuthenticatedEmployerRouteChildren {
 
 const AuthenticatedEmployerRouteChildren: AuthenticatedEmployerRouteChildren = {
   AuthenticatedEmployerCompanyRoute: AuthenticatedEmployerCompanyRoute,
+  AuthenticatedEmployerIntelligenceRoute:
+    AuthenticatedEmployerIntelligenceRoute,
   AuthenticatedEmployerInterviewsRoute: AuthenticatedEmployerInterviewsRoute,
   AuthenticatedEmployerKnowledgeBaseRoute:
     AuthenticatedEmployerKnowledgeBaseRoute,

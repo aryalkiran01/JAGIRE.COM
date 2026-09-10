@@ -5,6 +5,11 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth.middleware";
 import { aiGenerateJsonValidated, aiGenerateText } from "@/integrations/ai/ai-service";
 import { requirePremium } from "@/lib/premium.server";
+import { recordUserActivity } from "@/lib/activity.server";
+import {
+  syncAndBuildCareerIntelligence,
+  getAuthoritativeCareerContextText,
+} from "@/lib/career-intelligence.server";
 import {
   resumeAnalysisSchema,
   fullResumeScanSchema,
@@ -344,35 +349,30 @@ Return JSON:
   },
 
   AI_ASSISTANT: {
-    system: `You are Jagire AI Assistant, a knowledgeable career mentor for Jagire.com, a Nepal-focused job platform.
+    system: `You are Jagire AI Assistant, the intelligent career mentor for Jagire.com, Nepal's premier AI-powered job platform.
 
 Your expertise includes:
-- Job search strategies in Nepal
-- Resume and cover letter optimization
-- Interview preparation
-- Skills development
-- Career transitions
-- Salary negotiation (NPR)
-- Professional networking
+- Job search strategies & candidate-job matching in Nepal and globally
+- Resume, portfolio, and cover letter optimization
+- Interview preparation & salary negotiation (NPR)
+- Skills development and personalized career roadmaps
+- Professional networking and career transitions
+
+CRITICAL OUTPUT & PRESENTATION RULES:
+- NEVER return raw JSON, JSON keys, escaped objects, or code fences containing JSON.
+- ALWAYS respond in clean, engaging, beautifully structured markdown with clear headings (##, ###), bullet points (-), numbered lists (1.), and bold highlights.
+- If the user's name is known, address them naturally and warmly.
+- If the user's name is not yet specified and it feels natural, ask once: "What would you like me to call you?"
+- When recommending jobs, roles, or companies, present each as clean bold text with key highlights (e.g., "**1. Senior Frontend Engineer** at **Cotiviti Nepal** (Kathmandu) - Rs. 120,000/mo").
 
 CONTEXT AWARENESS:
-- You have access to the user's profile, resume, applications, and saved jobs
-- Use this context to provide personalized, relevant advice
-- Reference their specific situation in your answers
-- Consider Nepal's job market and industry trends
-
-RESPONSE GUIDELINES:
-- Use clear markdown formatting (headings, bullet points, bold)
-- Keep responses 150-400 words (concise but thorough)
-- Provide specific, actionable recommendations
-- Use Nepali context where relevant (Rs. for salary, local companies)
-- Be encouraging and professional
-- Ask clarifying questions when needed
+- You have access to the user's 360-degree career/company intelligence context.
+- Use this context to deliver hyper-personalized, context-aware answers.
+- Reference their verified skills, ATS progress, and goals directly.
 
 SALARY INFORMATION:
-- Always display in NPR/Rs. format (e.g., Rs. 50,000/month)
-- Provide realistic ranges based on role and experience in Nepal
-- Consider both local and international opportunities`,
+- Always display in NPR/Rs. format (e.g., Rs. 50,000 - Rs. 90,000/month).
+- Provide realistic market-grounded figures for Nepal and international remote roles.`,
   },
 };
 
@@ -594,27 +594,18 @@ export const careerRecommendations = createServerFn({ method: "POST" })
   .handler(async ({ context }) => {
     await requirePremium(context.userId);
 
-    const [{ data: profile }, { data: resume }] = await Promise.all([
-      context.supabase
-        .from("profiles")
-        .select("full_name,headline,bio,location,experience_years")
-        .eq("id", context.userId)
-        .maybeSingle(),
-      context.supabase
-        .from("resumes")
-        .select("parsed_data")
-        .eq("user_id", context.userId)
-        .eq("is_default", true)
-        .maybeSingle(),
-    ]);
-
-    const skills = (resume?.parsed_data as { skills?: string[] } | null)?.skills ?? [];
+    const careerContext = await getAuthoritativeCareerContextText(context.userId);
 
     const parsed = await aiGenerateJsonValidated(
-      `Profile:${JSON.stringify(profile ?? {})}\nSkills:${skills.join(",") || "unknown"}`,
+      careerContext,
       PROMPTS.CAREER_RECOMMENDATIONS.system,
       careerRecommendationsSchema,
       "career-suggestions",
+    );
+
+    // Synchronize Career Intelligence in background
+    syncAndBuildCareerIntelligence(context.userId, "CAREER_RECOMMENDATIONS").catch((e) =>
+      console.warn("Background career intelligence sync error:", e),
     );
 
     return {
@@ -634,222 +625,339 @@ export const scanResumeFromStorage = createServerFn({ method: "POST" })
   })
   .handler(async ({ data, context }) => {
     await requirePremium(context.userId);
+    const startTime = Date.now();
 
     const { data: resume, error: rErr } = await context.supabase
       .from("resumes")
-      .select("id, file_path, mime_type, file_name, user_id, resume_data, parsed_data")
+      .select("id, file_path, mime_type, file_name, file_size, user_id, resume_data, parsed_data")
       .eq("id", data.resumeId)
       .eq("user_id", context.userId)
       .maybeSingle();
 
     if (rErr || !resume) throw new Error("Resume not found");
 
-    let text = "";
-    const parsedData = resume.parsed_data as Record<string, unknown> | null | undefined;
-    const storedRawText = typeof parsedData?.raw_text === "string" ? parsedData.raw_text : "";
+    // Record scan started
+    await recordUserActivity({
+      userId: context.userId,
+      activityType: "RESUME_SCAN_STARTED",
+      entityType: "resume",
+      entityId: resume.id,
+      metadata: { file_name: resume.file_name, file_type: resume.mime_type },
+    });
 
-    if (storedRawText) {
-      text = storedRawText;
-    } else if (resume.resume_data) {
-      const resumeData = resume.resume_data as any;
-      text = [
-        resumeData.full_name,
-        resumeData.headline,
-        resumeData.summary,
-        ...(resumeData.experience?.items || []),
-        ...(resumeData.education?.items || []),
-        ...(resumeData.projects?.items || []),
-        ...(resumeData.skills?.items || []),
-      ]
-        .filter(Boolean)
-        .join("\n");
-    } else if (resume.file_path) {
-      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-      const dl = await supabaseAdmin.storage.from("resumes").download(resume.file_path);
-      if (dl.error || !dl.data) throw new Error(dl.error?.message ?? "Failed to download resume");
-      const buf = new Uint8Array(await dl.data.arrayBuffer());
-
-      const name = (resume.file_name ?? "").toLowerCase();
-      const isDocx = name.endsWith(".docx") || resume.mime_type?.includes("wordprocessingml");
-      const isPdf = name.endsWith(".pdf") || resume.mime_type?.includes("pdf");
-
-      try {
-        if (isDocx) {
-          const mammoth = await import("mammoth");
-          const res = await mammoth.extractRawText({ buffer: Buffer.from(buf) });
-          text = res.value ?? "";
-        } else if (isPdf) {
-          let extractedSuccessfully = false;
-
-          try {
-            const pdfParseModule = await import("pdf-parse");
-            const pdfParse = pdfParseModule.default ?? pdfParseModule;
-            const pdfData = await pdfParse(Buffer.from(buf));
-            text = pdfData.text ?? "";
-            extractedSuccessfully = text.trim().length >= 50;
-          } catch (err) {
-            console.warn("pdf-parse failed:", err);
-          }
-
-          if (!extractedSuccessfully) {
-            try {
-              const { extractText, getDocumentProxy } = await import("unpdf");
-              const pdf = await getDocumentProxy(buf);
-              const out = await extractText(pdf, { mergePages: true });
-              text = Array.isArray(out.text) ? out.text.join("\n") : (out.text as string);
-              extractedSuccessfully = text?.trim().length >= 50;
-            } catch (unpdfError) {
-              console.warn("unpdf failed:", unpdfError);
-            }
-          }
-
-          if (!extractedSuccessfully) {
-            const rawText = new TextDecoder().decode(buf);
-            const readableParts = rawText.match(/[a-zA-Z0-9\s.,!?@#&*()\-–—:;'"/\\]{4,}/g) || [];
-            text = readableParts.join(" ").replace(/\s+/g, " ").trim();
-
-            if (text.length < 50) {
-              throw new Error(
-                "Could not extract enough text from the PDF file. " +
-                  "Please ensure your PDF contains selectable text, not scanned images. " +
-                  "Try uploading a DOCX version instead.",
-              );
-            }
-          }
-        } else {
-          text = new TextDecoder().decode(buf);
-        }
-      } catch (e) {
-        throw new Error(`Failed to parse resume: ${(e as Error).message}`);
-      }
-    } else {
-      throw new Error("No resume data or file found");
-    }
-
-    text = text.replace(/\s+/g, " ").trim();
-    if (text.length < 50) throw new Error("Could not extract enough text from the resume file");
-    if (text.length > 8000) text = text.slice(0, 8000);
-
-    const scan = await aiGenerateJsonValidated(
-      `Resume:\n${text}`,
-      PROMPTS.FULL_SCAN.system,
-      fullResumeScanSchema,
-      "resume-analysis",
-    );
-
-    const scoringUpdate = {
-      overall_score: clamp(scan.overall_score),
-      ats_score: clamp(scan.ats_score),
-      grammar_score: clamp(scan.grammar_score),
-      formatting_score: clamp(scan.formatting_score),
-      keyword_score: clamp(scan.keyword_score),
-      professionalism_score: clamp(scan.professionalism_score),
-      suggestions: scan.suggestions ?? [],
-      parsed_data: {
-        summary: scan.summary,
-        skills: scan.extracted_skills ?? [],
-        raw_text: text.slice(0, 5000),
-      },
-      career_roadmap: {
-        career_paths: scan.career_paths ?? [],
-        skill_gaps: scan.skill_gaps ?? [],
-        missing_skills: scan.missing_skills ?? [],
-        recommended_certifications: scan.recommended_certifications ?? [],
-        suggested_projects: scan.suggested_projects ?? [],
-        recommended_jobs: scan.recommended_jobs ?? [],
-        companies_hiring: scan.companies_hiring ?? [],
-        salary_prediction: scan.salary_prediction ?? null,
-        resume_improvements: scan.resume_improvements ?? [],
-        interview_prep_plan: scan.interview_prep_plan ?? null,
-        strengths: scan.strengths ?? [],
-        weaknesses: scan.weaknesses ?? [],
-        keywords: scan.keywords ?? [],
-      },
-    };
-
-    const { error } = await context.supabase
-      .from("resumes")
-      .update(scoringUpdate)
-      .eq("id", resume.id)
-      .eq("user_id", context.userId);
-    if (error) throw new Error(error.message);
-
-    // ── AI Job Matching ─────────────────────────────────────────────────────
-
-    const skills = (scan.extracted_skills ?? []).map((s) => s.toLowerCase()).filter(Boolean);
-    let matches: JobMatchResult[] = [];
-
-    if (skills.length) {
-      // Fetch user profile for better matching
+    try {
+      // 1. Fetch user profile for name personalization
       const { data: profile } = await context.supabase
         .from("profiles")
-        .select("headline, experience_years, current_position, location")
+        .select("full_name, headline, experience_years, current_position, location, skills")
         .eq("id", context.userId)
         .maybeSingle();
 
-      // Fetch all active jobs
-      const { data: jobs } = await context.supabase
-        .from("jobs")
-        .select(
-          `
-          id,
-          title,
-          required_skills,
-          salary_min,
-          salary_max,
-          salary_currency,
-          location,
-          job_type,
-          description,
-          experience_level,
-          company:companies(
-            id,
-            name,
-            headquarters,
-            location
-          )
-        `,
-        )
-        .eq("status", "active")
-        .limit(50);
+      const candidateName = (profile?.full_name ?? "").trim();
 
-      if (jobs?.length) {
-        matches = await aiMatchJobs(skills, profile, jobs);
+      // 2. Fetch previous latest scan for score improvement comparison
+      const { data: previousScan } = await (context.supabase.from("resume_scans") as any)
+        .select("ats_score, overall_score")
+        .eq("user_id", context.userId)
+        .eq("scan_status", "completed")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const previousAtsScore =
+        typeof previousScan?.ats_score === "number" ? previousScan.ats_score : null;
+
+      let text = "";
+      let extractionSource = "parsed_data";
+      let pagesProcessed = 1;
+      const parsedData = resume.parsed_data as Record<string, unknown> | null | undefined;
+      const storedRawText = typeof parsedData?.raw_text === "string" ? parsedData.raw_text : "";
+
+      if (storedRawText) {
+        text = storedRawText;
+        extractionSource = "stored_raw_text";
+      } else if (resume.resume_data) {
+        extractionSource = "resume_data";
+        const resumeData = resume.resume_data as any;
+        text = [
+          resumeData.full_name,
+          resumeData.headline,
+          resumeData.summary,
+          ...(resumeData.experience?.items || []),
+          ...(resumeData.education?.items || []),
+          ...(resumeData.projects?.items || []),
+          ...(resumeData.skills?.items || []),
+        ]
+          .filter(Boolean)
+          .join("\n");
+      } else if (resume.file_path) {
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        const dl = await supabaseAdmin.storage.from("resumes").download(resume.file_path);
+        if (dl.error || !dl.data) throw new Error(dl.error?.message ?? "Failed to download resume");
+        const buf = new Uint8Array(await dl.data.arrayBuffer());
+
+        try {
+          const { parseResumeDocument } = await import("@/lib/resume-parser.server");
+          const extracted = await parseResumeDocument(
+            buf,
+            resume.file_name ?? undefined,
+            resume.mime_type ?? undefined,
+          );
+          text = extracted.text;
+          extractionSource = extracted.source;
+          pagesProcessed = extracted.pagesProcessed ?? 1;
+        } catch (e) {
+          throw new Error(`Failed to parse resume: ${(e as Error).message}`);
+        }
+      } else {
+        throw new Error("No resume data or file found");
       }
+
+      text = text.replace(/\s+/g, " ").trim();
+      if (text.length < 50) throw new Error("Could not extract enough text from the resume file");
+      if (text.length > 8000) text = text.slice(0, 8000);
+
+      // Safe user name context for natural personalization
+      const nameContext = candidateName
+        ? `Candidate Name: ${candidateName}\n(Note: When generating the professional summary or suggestions, you may address the candidate naturally by their name where appropriate, but avoid awkward repetition.)\n\n`
+        : "";
+
+      const scan = await aiGenerateJsonValidated(
+        `${nameContext}Resume:\n${text}`,
+        PROMPTS.FULL_SCAN.system,
+        fullResumeScanSchema,
+        "resume-analysis",
+      );
+
+      const currentAts = clamp(scan.ats_score);
+      const scoreImprovement = previousAtsScore !== null ? currentAts - previousAtsScore : null;
+      const durationMs = Date.now() - startTime;
+
+      const scoringUpdate = {
+        overall_score: clamp(scan.overall_score),
+        ats_score: currentAts,
+        grammar_score: clamp(scan.grammar_score),
+        formatting_score: clamp(scan.formatting_score),
+        keyword_score: clamp(scan.keyword_score),
+        professionalism_score: clamp(scan.professionalism_score),
+        suggestions: scan.suggestions ?? [],
+        parsed_data: {
+          summary: scan.summary,
+          skills: scan.extracted_skills ?? [],
+          raw_text: text.slice(0, 5000),
+        },
+        career_roadmap: {
+          career_paths: scan.career_paths ?? [],
+          skill_gaps: scan.skill_gaps ?? [],
+          missing_skills: scan.missing_skills ?? [],
+          recommended_certifications: scan.recommended_certifications ?? [],
+          suggested_projects: scan.suggested_projects ?? [],
+          recommended_jobs: scan.recommended_jobs ?? [],
+          companies_hiring: scan.companies_hiring ?? [],
+          salary_prediction: scan.salary_prediction ?? null,
+          resume_improvements: scan.resume_improvements ?? [],
+          interview_prep_plan: scan.interview_prep_plan ?? null,
+          strengths: scan.strengths ?? [],
+          weaknesses: scan.weaknesses ?? [],
+          keywords: scan.keywords ?? [],
+        },
+      };
+
+      // 3. Update active resume in resumes table
+      const { error: updateErr } = await context.supabase
+        .from("resumes")
+        .update(scoringUpdate)
+        .eq("id", resume.id)
+        .eq("user_id", context.userId);
+      if (updateErr) throw new Error(updateErr.message);
+
+      // 4. Create persistent resume_scans version record
+      const { data: insertedScan, error: scanInsertErr } = await (
+        context.supabase.from("resume_scans") as any
+      )
+        .insert({
+          user_id: context.userId,
+          resume_id: resume.id,
+          file_name: resume.file_name ?? "Resume",
+          file_type: resume.mime_type ?? "application/octet-stream",
+          file_size: (resume as any).file_size ?? 0,
+          scan_status: "completed",
+          ats_score: currentAts,
+          keyword_score: clamp(scan.keyword_score),
+          formatting_score: clamp(scan.formatting_score),
+          skills_score: clamp(scan.grammar_score || scan.overall_score),
+          experience_score: clamp(scan.professionalism_score || scan.overall_score),
+          education_score: clamp(scan.overall_score),
+          overall_score: clamp(scan.overall_score),
+          previous_ats_score: previousAtsScore,
+          score_improvement: scoreImprovement,
+          extracted_skills: scan.extracted_skills ?? [],
+          extracted_data: {
+            summary: scan.summary,
+            candidate_name: candidateName || undefined,
+            raw_text: text.slice(0, 5000),
+            pages_processed: pagesProcessed,
+          },
+          strengths: scan.strengths ?? [],
+          weaknesses: scan.weaknesses ?? [],
+          missing_keywords: scan.missing_skills ?? scan.keywords ?? [],
+          recommendations: scan.suggestions ?? [],
+          career_roadmap: scoringUpdate.career_roadmap,
+          ats_improvements: scan.resume_improvements ?? [],
+          extraction_source: extractionSource,
+          ai_provider: "gemini",
+          ai_model: "gemini-1.5-flash",
+          duration_ms: durationMs,
+        })
+        .select("id")
+        .maybeSingle();
+
+      if (scanInsertErr) {
+        console.warn("Failed to insert resume_scans record:", scanInsertErr.message);
+      }
+
+      const scanId = insertedScan?.id ?? resume.id;
+
+      // 5. Record user activities
+      await recordUserActivity({
+        userId: context.userId,
+        activityType: "RESUME_SCAN_COMPLETED",
+        entityType: "resume_scan",
+        entityId: scanId,
+        metadata: {
+          ats_score: currentAts,
+          previous_ats_score: previousAtsScore,
+          score_improvement: scoreImprovement,
+          file_name: resume.file_name,
+          file_type: resume.mime_type,
+          extraction_source: extractionSource,
+        },
+      });
+
+      await recordUserActivity({
+        userId: context.userId,
+        activityType: "ATS_SCORE_UPDATED",
+        entityType: "resume_scan",
+        entityId: scanId,
+        metadata: {
+          ats_score: currentAts,
+          previous_ats_score: previousAtsScore,
+          score_improvement: scoreImprovement,
+        },
+      });
+
+      await recordUserActivity({
+        userId: context.userId,
+        activityType: "CAREER_ROADMAP_GENERATED",
+        entityType: "resume_scan",
+        entityId: scanId,
+        metadata: {
+          career_paths_count: scan.career_paths?.length ?? 0,
+        },
+      });
+
+      // ── AI Job Matching ─────────────────────────────────────────────────────
+      const skills = (scan.extracted_skills ?? []).map((s) => s.toLowerCase()).filter(Boolean);
+      let matches: JobMatchResult[] = [];
+
+      if (skills.length) {
+        const { data: jobs } = await context.supabase
+          .from("jobs")
+          .select(
+            `
+            id,
+            title,
+            required_skills,
+            salary_min,
+            salary_max,
+            salary_currency,
+            location,
+            job_type,
+            description,
+            experience_level,
+            company:companies(
+              id,
+              name,
+              headquarters,
+              location
+            )
+          `,
+          )
+          .eq("status", "active")
+          .limit(50);
+
+        if (jobs?.length) {
+          matches = await aiMatchJobs(skills, profile, jobs);
+        }
+      }
+
+      // Update profile with AI data
+      const profilePatch = {
+        ai_profile_data: {
+          summary: scan.summary,
+          skills: scan.extracted_skills ?? [],
+          strengths: scan.strengths ?? [],
+          keywords: scan.keywords ?? [],
+          missing_skills: scan.missing_skills ?? [],
+        },
+      } as any;
+
+      const existingSkills = Array.isArray(profile?.skills) ? profile.skills : [];
+      if (
+        !existingSkills.length &&
+        Array.isArray(scan.extracted_skills) &&
+        scan.extracted_skills.length
+      ) {
+        profilePatch.skills = scan.extracted_skills.slice(0, 20);
+      }
+
+      await context.supabase
+        .from("profiles")
+        .update(profilePatch as any)
+        .eq("id", context.userId);
+
+      // Update career intelligence in background
+      syncAndBuildCareerIntelligence(context.userId, "RESUME_SCAN").catch((e) =>
+        console.warn("Background career intelligence sync error:", e),
+      );
+
+      return {
+        ...scoringUpdate,
+        scan_id: scanId,
+        previous_ats_score: previousAtsScore,
+        score_improvement: scoreImprovement,
+        matches,
+      };
+    } catch (err: any) {
+      await recordUserActivity({
+        userId: context.userId,
+        activityType: "RESUME_SCAN_FAILED",
+        entityType: "resume",
+        entityId: resume.id,
+        metadata: {
+          failure_reason: (err?.message || "Unknown error").slice(0, 200),
+          file_name: resume.file_name,
+        },
+      });
+
+      try {
+        await (context.supabase.from("resume_scans") as any).insert({
+          user_id: context.userId,
+          resume_id: resume.id,
+          file_name: resume.file_name ?? "Resume",
+          file_type: resume.mime_type ?? "application/octet-stream",
+          scan_status: "failed",
+          failure_reason: (err?.message || "Parsing/AI analysis failed").slice(0, 300),
+          ai_provider: "gemini",
+          ai_model: "gemini-1.5-flash",
+          duration_ms: Date.now() - startTime,
+        });
+      } catch {
+        // ignore failure to log failed scan
+      }
+
+      throw err;
     }
-
-    // Update profile with AI data
-    const profilePatch = {
-      ai_profile_data: {
-        summary: scan.summary,
-        skills: scan.extracted_skills ?? [],
-        strengths: scan.strengths ?? [],
-        keywords: scan.keywords ?? [],
-        missing_skills: scan.missing_skills ?? [],
-      },
-    } as any;
-
-    const { data: existingProfile } = await context.supabase
-      .from("profiles")
-      .select("skills")
-      .eq("id", context.userId)
-      .maybeSingle();
-
-    const existingSkills = Array.isArray(existingProfile?.skills) ? existingProfile.skills : [];
-    if (
-      !existingSkills.length &&
-      Array.isArray(scan.extracted_skills) &&
-      scan.extracted_skills.length
-    ) {
-      profilePatch.skills = scan.extracted_skills.slice(0, 20);
-    }
-
-    await context.supabase
-      .from("profiles")
-      .update(profilePatch as any)
-      .eq("id", context.userId);
-
-    return { ...scoringUpdate, matches };
   });
 
 // ── Import Functions ─────────────────────────────────────────────────────────
@@ -917,6 +1025,10 @@ export const importFromGitHub = createServerFn({ method: "POST" })
       .eq("id", context.userId);
 
     if (error) throw new Error(error.message);
+
+    // Sync Career Intelligence
+    await syncAndBuildCareerIntelligence(context.userId, "GITHUB_SYNC");
+
     return { imported: { projects: projects.length, skills: skills.length } };
   });
 
@@ -957,6 +1069,10 @@ export const importFromLinkedInText = createServerFn({ method: "POST" })
       .eq("id", context.userId);
 
     if (error) throw new Error(error.message);
+
+    // Sync Career Intelligence
+    await syncAndBuildCareerIntelligence(context.userId, "LINKEDIN_SYNC");
+
     return { imported: { fields: Object.keys(patch).length, skills: patch.skills?.length ?? 0 } };
   });
 
@@ -1143,100 +1259,6 @@ async function buildUserContext(supabase: any, userId: string, role: string | nu
   const isEmployer = role === "employer";
   const ctx: string[] = [];
 
-  const [{ data: profile }, { data: resume }, { data: applications }, { data: savedJobs }] =
-    await Promise.all([
-      supabase
-        .from("profiles")
-        .select(
-          "full_name,headline,bio,location,experience_years,current_position,skills,education,experience",
-        )
-        .eq("id", userId)
-        .maybeSingle(),
-      supabase
-        .from("resumes")
-        .select("overall_score,ats_score,grammar_score,suggestions,parsed_data,career_roadmap")
-        .eq("user_id", userId)
-        .eq("is_default", true)
-        .maybeSingle(),
-      supabase
-        .from("applications")
-        .select("id,status,created_at, job:jobs(id,title,company:companies(name))")
-        .eq("applicant_id", userId)
-        .order("created_at", { ascending: false })
-        .limit(10),
-      supabase.from("saved_jobs").select("job:jobs(id,title)").eq("user_id", userId).limit(5),
-    ]);
-
-  if (profile) {
-    ctx.push(
-      `## User Profile\n${JSON.stringify({
-        name: profile.full_name,
-        headline: profile.headline,
-        bio: profile.bio,
-        location: profile.location,
-        years_experience: profile.experience_years,
-        current_position: profile.current_position,
-        skills: profile.skills ?? [],
-        education: profile.education ?? [],
-        experience: profile.experience ?? [],
-        expected_salary: profile.expected_salary,
-        preferred_job_type: profile.preferred_job_type,
-        preferred_location: profile.preferred_location,
-      })}`,
-    );
-  }
-
-  if (resume) {
-    const parsed = resume.parsed_data as any;
-    const roadmap = resume.career_roadmap as any;
-    ctx.push(
-      `## Resume Analysis\n${JSON.stringify({
-        overall_score: resume.overall_score,
-        ats_score: resume.ats_score,
-        grammar_score: resume.grammar_score,
-        suggestions: resume.suggestions ?? [],
-        extracted_skills: parsed?.skills ?? [],
-        summary: parsed?.summary ?? "",
-        missing_skills: roadmap?.missing_skills ?? [],
-        strengths: roadmap?.strengths ?? [],
-        weaknesses: roadmap?.weaknesses ?? [],
-      })}`,
-    );
-  }
-
-  if (applications?.length) {
-    ctx.push(
-      `## Recent Applications\n${applications
-        .map((a: any) => `- ${a.job?.title} at ${a.job?.company?.name ?? "Unknown"} — ${a.status}`)
-        .join("\n")}`,
-    );
-  }
-
-  if (savedJobs?.length) {
-    ctx.push(`## Saved Jobs\n${savedJobs.map((s: any) => `- ${s.job?.title}`).join("\n")}`);
-  }
-
-  ctx.push(`## Active Jobs (sample)`);
-  const { data: activeJobs } = await supabase
-    .from("jobs")
-    .select(
-      "id,title,required_skills,salary_min,salary_max,salary_currency,location,job_type, company:companies(name,headquarters)",
-    )
-    .eq("status", "active")
-    .order("created_at", { ascending: false })
-    .limit(20);
-
-  if (activeJobs?.length) {
-    ctx.push(
-      activeJobs
-        .map(
-          (j: any) =>
-            `- ${j.title} at ${j.company?.name ?? "?"} | Skills: ${(j.required_skills ?? []).join(", ")} | Salary: Rs. ${j.salary_min ?? "?"} - ${j.salary_max ?? "?"} | ${j.location ?? "Remote"}`,
-        )
-        .join("\n"),
-    );
-  }
-
   if (isEmployer) {
     const { data: company } = await supabase
       .from("companies")
@@ -1245,19 +1267,64 @@ async function buildUserContext(supabase: any, userId: string, role: string | nu
       .maybeSingle();
 
     if (company) {
-      ctx.push(`## Your Company\n${JSON.stringify(company)}`);
-      const { data: postedJobs } = await supabase
-        .from("jobs")
-        .select("id,title,status,applications_count")
-        .eq("company_id", company.id)
-        .limit(10);
-
-      if (postedJobs?.length) {
+      try {
+        const { getAuthoritativeCompanyContextText } =
+          await import("@/lib/company-intelligence.server");
+        const authCompanyCtx = await getAuthoritativeCompanyContextText(company.id);
+        ctx.push(authCompanyCtx);
+      } catch {
         ctx.push(
-          `## Posted Jobs\n${postedJobs.map((j: any) => `- ${j.title} (${j.status}, ${j.applications_count} applicants)`).join("\n")}`,
+          `## Company Profile Context\n- Name: ${company.name}\n- Industry: ${company.industry || "Technology"}\n- Location: ${company.headquarters || "Nepal"}\n- Overview: ${company.description || "N/A"}`,
         );
       }
     }
+  } else {
+    // 1. Authoritative Career Context
+    try {
+      const authCareerCtx = await getAuthoritativeCareerContextText(supabase, userId);
+      if (authCareerCtx) {
+        ctx.push(authCareerCtx);
+      }
+    } catch {
+      // Fallback
+    }
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("full_name,headline,location,experience_years,current_position,skills")
+      .eq("id", userId)
+      .maybeSingle();
+
+    const candidateName = profile?.full_name?.trim();
+    if (candidateName) {
+      ctx.push(`## Candidate Identity\n- Preferred Name: ${candidateName}`);
+    } else {
+      ctx.push(
+        `## Candidate Identity\n- Preferred Name: Not specified yet. If helpful and not yet asked, you may ask what they would like to be called.`,
+      );
+    }
+  }
+
+  // Sample active jobs
+  const { data: activeJobs } = await supabase
+    .from("jobs")
+    .select(
+      "id,title,required_skills,salary_min,salary_max,salary_currency,location,job_type, company:companies(name,headquarters)",
+    )
+    .eq("status", "active")
+    .order("created_at", { ascending: false })
+    .limit(10);
+
+  if (activeJobs?.length) {
+    ctx.push(
+      `## Active Jobs on Jagire Platform (Sample)\n` +
+        activeJobs
+          .map(
+            (j: any) =>
+              `- ${j.title} at ${j.company?.name ?? "Company"} | Skills: ${(j.required_skills ?? []).join(", ") || "General"} | Location: ${j.location ?? "Nepal"}`,
+          )
+          .join("\n"),
+    );
   }
 
   return ctx.join("\n\n");
@@ -1276,6 +1343,27 @@ export const aiAssistantChat = createServerFn({ method: "POST" })
   })
   .handler(async ({ data, context }) => {
     await requirePremium(context.userId);
+
+    // Auto-detect preferred name statements (e.g., "call me Kiran", "my name is Kiran")
+    const nameMatch = data.message.match(
+      /(?:call me|my name is|i am|i'm called)\s+([A-Za-z]+(?:\s+[A-Za-z]+)?)/i,
+    );
+    if (nameMatch && nameMatch[1]) {
+      const extractedName = nameMatch[1].trim();
+      if (extractedName.length >= 2 && extractedName.length <= 50) {
+        try {
+          await context.supabase
+            .from("profiles")
+            .update({
+              full_name: extractedName,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", context.userId);
+        } catch {
+          // Ignore name update errors silently
+        }
+      }
+    }
 
     // Resolve or create conversation
     let conversationId = data.conversationId;
@@ -1326,11 +1414,11 @@ export const aiAssistantChat = createServerFn({ method: "POST" })
       .map((m: any) => `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`)
       .join("\n\n");
 
-    // Build RAG context
+    // Build authoritative context
     const userContext = await buildUserContext(context.supabase, context.userId, data.role);
 
     // Generate response
-    const fullPrompt = `## Conversation History\n${historyText}\n\n## User Context (use this to personalise your answer)\n${userContext}\n\n## Current Question\n${data.message}`;
+    const fullPrompt = `## Conversation History\n${historyText}\n\n## Context (use this to personalise your answer)\n${userContext}\n\n## Current User Message\n${data.message}`;
 
     const response = await aiGenerateText(
       fullPrompt,

@@ -79,7 +79,9 @@ export function useSubscription() {
         const expiresAt = activeSub.expires_at ? new Date(activeSub.expires_at).getTime() : null;
         const isActive =
           activeSub.status === "active" &&
-          (activeSub.payment_status === "paid" || activeSub.payment_status === "completed" || !activeSub.payment_status) &&
+          (activeSub.payment_status === "paid" ||
+            activeSub.payment_status === "completed" ||
+            !activeSub.payment_status) &&
           (!expiresAt || expiresAt > now);
 
         if (isActive) {

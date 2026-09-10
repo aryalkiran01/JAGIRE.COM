@@ -325,3 +325,141 @@ export const adminGrantSubscription = createServerFn({ method: "POST" })
 
     return { success: true, message: "Subscription granted successfully" };
   });
+
+/**
+ * Admin: Get aggregated resume analytics and recent scans.
+ */
+export const adminGetResumeIntelligence = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const userId = (context as any)?.userId;
+    if (!userId) throw new Error("Not authenticated");
+
+    const { data: roleData } = await supabaseAdmin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (!roleData || roleData.role !== "admin") {
+      throw new Error("Not authorized: admin role required");
+    }
+
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const [
+      { count: totalScans },
+      { count: scansToday },
+      { data: scans },
+      { data: usersWithScans },
+    ] = await Promise.all([
+      supabaseAdmin.from("resume_scans").select("*", { count: "exact", head: true }),
+      supabaseAdmin
+        .from("resume_scans")
+        .select("*", { count: "exact", head: true })
+        .gte("created_at", todayStart.toISOString()),
+      supabaseAdmin
+        .from("resume_scans")
+        .select(
+          "id, user_id, file_name, file_type, file_size, source, scan_status, ats_score, overall_score, score_improvement, candidate_name, ai_provider, ai_model, duration_ms, created_at",
+        )
+        .order("created_at", { ascending: false })
+        .limit(100),
+      supabaseAdmin.from("resume_scans").select("user_id"),
+    ]);
+
+    const uniqueUserIds = new Set((usersWithScans ?? []).map((s: any) => s.user_id));
+    const validAtsScores = (scans ?? [])
+      .map((s: any) => s.ats_score)
+      .filter((s: any) => typeof s === "number" && s > 0);
+
+    const avgAts =
+      validAtsScores.length > 0
+        ? Math.round(
+            validAtsScores.reduce((a: number, b: number) => a + b, 0) / validAtsScores.length,
+          )
+        : 0;
+
+    const highestAts = validAtsScores.length > 0 ? Math.max(...validAtsScores) : 0;
+
+    const improvements = (scans ?? [])
+      .map((s: any) => s.score_improvement)
+      .filter((i: any) => typeof i === "number" && i > 0);
+
+    const avgImprovement =
+      improvements.length > 0
+        ? Math.round(improvements.reduce((a: number, b: number) => a + b, 0) / improvements.length)
+        : 0;
+
+    return {
+      aggregate: {
+        totalScans: totalScans ?? 0,
+        scansToday: scansToday ?? 0,
+        uniqueUsers: uniqueUserIds.size,
+        avgAtsScore: avgAts,
+        highestAtsScore: highestAts,
+        avgScoreImprovement: avgImprovement,
+      },
+      stats: {
+        totalScans: totalScans ?? 0,
+        scansToday: scansToday ?? 0,
+        uniqueUsers: uniqueUserIds.size,
+        avgAts,
+        highestAts,
+        avgImprovement,
+      },
+      scans: scans ?? [],
+    };
+  });
+
+/**
+ * Admin: Get all resume scans and history for a specific user.
+ */
+export const adminGetUserResumeHistory = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator(z.object({ targetUserId: z.string().uuid() }))
+  .handler(async ({ data, context }) => {
+    const userId = (context as any)?.userId;
+    if (!userId) throw new Error("Not authenticated");
+
+    const { data: roleData } = await supabaseAdmin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (!roleData || roleData.role !== "admin") {
+      throw new Error("Not authorized: admin role required");
+    }
+
+    const [{ data: profile }, { data: scans }, { data: activities }, { data: subscription }] =
+      await Promise.all([
+        supabaseAdmin.from("profiles").select("*").eq("id", data.targetUserId).maybeSingle(),
+        supabaseAdmin
+          .from("resume_scans")
+          .select("*")
+          .eq("user_id", data.targetUserId)
+          .order("created_at", { ascending: false }),
+        supabaseAdmin
+          .from("user_activities")
+          .select("*")
+          .eq("user_id", data.targetUserId)
+          .order("created_at", { ascending: false })
+          .limit(50),
+        supabaseAdmin
+          .from("subscriptions")
+          .select("*")
+          .eq("user_id", data.targetUserId)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+      ]);
+
+    return {
+      profile: profile ?? null,
+      scans: scans ?? [],
+      activities: activities ?? [],
+      subscription: subscription ?? null,
+    };
+  });
