@@ -24,10 +24,23 @@ export function useSubscription() {
   const { user, role } = useAuth();
 
   return useQuery<SubscriptionStatus>({
-    queryKey: ["subscription", user?.id, role],
-    enabled: !!user,
+    queryKey: ["subscription", user?.id],
+    enabled: !!user?.id,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
     queryFn: async () => {
-      // Admins get full access without subscription
+      if (!user?.id) {
+        return {
+          isPremium: false,
+          isActive: false,
+          isExpired: false,
+          isTrialing: false,
+          daysRemaining: null,
+        };
+      }
+
+      // 1. Admins get unrestricted full platform access without payment
       if (role === "admin") {
         return {
           isPremium: true,
@@ -44,82 +57,164 @@ export function useSubscription() {
         };
       }
 
-      const { data, error } = await supabase
+      const now = Date.now();
+
+      // 2. Query for active subscriptions first (highest priority)
+      const { data: activeSub, error: activeSubError } = await supabase
         .from("subscriptions")
         .select(
-          "status, payment_status, plan_type, started_at, expires_at, amount, currency, transaction_id, esewa_ref_id",
+          "status, payment_status, plan_type, started_at, expires_at, amount, currency, transaction_id, esewa_ref_id, created_at",
         )
-        .eq("user_id", user!.id)
+        .eq("user_id", user.id)
+        .eq("status", "active")
+        .order("created_at", { ascending: false })
+        .limit(1)
         .maybeSingle();
 
-      if (error) {
-        console.error("Error fetching subscription:", error);
-        return {
-          isPremium: false,
-          isActive: false,
-          isExpired: false,
-          isTrialing: false,
-          daysRemaining: null,
-        };
+      if (activeSubError) {
+        console.warn("Notice: subscriptions query error:", activeSubError.message);
       }
 
-      // If no subscription found
-      if (!data) {
-        return {
-          isPremium: false,
-          isActive: false,
-          isExpired: false,
-          isTrialing: false,
-          daysRemaining: null,
-        };
+      if (activeSub) {
+        const expiresAt = activeSub.expires_at ? new Date(activeSub.expires_at).getTime() : null;
+        const isActive =
+          activeSub.status === "active" &&
+          (activeSub.payment_status === "paid" || activeSub.payment_status === "completed" || !activeSub.payment_status) &&
+          (!expiresAt || expiresAt > now);
+
+        if (isActive) {
+          let daysRemaining: number | null = null;
+          if (expiresAt) {
+            const ms = expiresAt - now;
+            daysRemaining = ms > 0 ? Math.ceil(ms / (1000 * 60 * 60 * 24)) : 0;
+          }
+
+          const isPlanPremium = activeSub.plan_type !== "free";
+          const planName = activeSub.plan_type
+            ? PLAN_NAMES[activeSub.plan_type] || activeSub.plan_type
+            : undefined;
+
+          return {
+            isPremium: isPlanPremium,
+            plan_type: activeSub.plan_type,
+            plan_name: planName,
+            status: activeSub.status,
+            payment_status: activeSub.payment_status,
+            started_at: activeSub.started_at,
+            expires_at: activeSub.expires_at,
+            amount: activeSub.amount,
+            currency: activeSub.currency,
+            transaction_id: activeSub.transaction_id,
+            esewa_ref_id: activeSub.esewa_ref_id,
+            daysRemaining,
+            isActive: true,
+            isExpired: false,
+            isTrialing: false,
+          };
+        }
       }
 
-      const now = Date.now();
-      const expiresAt = data?.expires_at ? new Date(data.expires_at).getTime() : null;
+      // 3. Fallback: Query any latest subscription row
+      const { data: latestSub } = await supabase
+        .from("subscriptions")
+        .select(
+          "status, payment_status, plan_type, started_at, expires_at, amount, currency, transaction_id, esewa_ref_id, created_at",
+        )
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
-      // Check if subscription is active
-      const isActive =
-        data?.status === "active" &&
-        data?.payment_status === "paid" &&
-        (!expiresAt || expiresAt > now);
+      if (latestSub) {
+        const expiresAt = latestSub.expires_at ? new Date(latestSub.expires_at).getTime() : null;
+        const isActive =
+          latestSub.status === "active" &&
+          (latestSub.payment_status === "paid" || latestSub.payment_status === "completed") &&
+          (!expiresAt || expiresAt > now);
 
-      // Check if subscription is expired
-      const isExpired = data?.status === "active" && expiresAt !== null && expiresAt <= now;
+        const isExpired = latestSub.status === "active" && expiresAt !== null && expiresAt <= now;
+        const isTrialing = latestSub.status === "trialing";
 
-      // Check if in trial period
-      const isTrialing = data?.status === "trialing";
+        let daysRemaining: number | null = null;
+        if (expiresAt) {
+          const ms = expiresAt - now;
+          daysRemaining = ms > 0 ? Math.ceil(ms / (1000 * 60 * 60 * 24)) : 0;
+        }
 
-      // Calculate days remaining
-      let daysRemaining: number | null = null;
-      if (expiresAt) {
-        const ms = expiresAt - now;
-        daysRemaining = ms > 0 ? Math.ceil(ms / (1000 * 60 * 60 * 24)) : 0;
+        const isPlanPremium = isActive && latestSub.plan_type !== "free";
+        const planName = latestSub.plan_type
+          ? PLAN_NAMES[latestSub.plan_type] || latestSub.plan_type
+          : undefined;
+
+        if (isActive) {
+          return {
+            isPremium: isPlanPremium,
+            plan_type: latestSub.plan_type,
+            plan_name: planName,
+            status: latestSub.status,
+            payment_status: latestSub.payment_status,
+            started_at: latestSub.started_at,
+            expires_at: latestSub.expires_at,
+            amount: latestSub.amount,
+            currency: latestSub.currency,
+            transaction_id: latestSub.transaction_id,
+            esewa_ref_id: latestSub.esewa_ref_id,
+            daysRemaining,
+            isActive: true,
+            isExpired: false,
+            isTrialing: false,
+          };
+        }
       }
 
-      // Get plan name from PLAN_NAMES
-      const planName = data?.plan_type ? PLAN_NAMES[data.plan_type] : undefined;
+      // 4. Fallback check on profiles table (which edge function updates synchronously)
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("subscription_status, subscription_plan, subscription_expires_at")
+        .eq("id", user.id)
+        .maybeSingle();
 
+      if (profileData?.subscription_status === "active" && profileData.subscription_plan) {
+        const profileExpiry = profileData.subscription_expires_at
+          ? new Date(profileData.subscription_expires_at).getTime()
+          : null;
+
+        const isProfileActive = !profileExpiry || profileExpiry > now;
+        if (isProfileActive) {
+          let daysRemaining: number | null = null;
+          if (profileExpiry) {
+            const ms = profileExpiry - now;
+            daysRemaining = ms > 0 ? Math.ceil(ms / (1000 * 60 * 60 * 24)) : 0;
+          }
+
+          const planName =
+            PLAN_NAMES[profileData.subscription_plan] || profileData.subscription_plan;
+
+          return {
+            isPremium: profileData.subscription_plan !== "free",
+            plan_type: profileData.subscription_plan,
+            plan_name: planName,
+            status: "active",
+            payment_status: "paid",
+            started_at: null,
+            expires_at: profileData.subscription_expires_at,
+            daysRemaining,
+            isActive: true,
+            isExpired: false,
+            isTrialing: false,
+          };
+        }
+      }
+
+      // 5. Default: No active paid subscription found
       return {
-        isPremium: isActive && data?.plan_type !== "free",
-        plan_type: data?.plan_type,
-        plan_name: planName,
-        status: data?.status,
-        payment_status: data?.payment_status,
-        started_at: data?.started_at,
-        expires_at: data?.expires_at,
-        amount: data?.amount,
-        currency: data?.currency,
-        transaction_id: data?.transaction_id,
-        esewa_ref_id: data?.esewa_ref_id,
-        daysRemaining,
-        isActive,
-        isExpired,
-        isTrialing,
+        isPremium: false,
+        isActive: false,
+        isExpired: false,
+        isTrialing: false,
+        daysRemaining: null,
       };
     },
-    refetchInterval: 5 * 60 * 1000,
-    refetchOnWindowFocus: true,
-    placeholderData: (previousData) => previousData,
   });
 }
 

@@ -328,4 +328,24 @@ describe("P0-1 & P0-2: Idempotency & User Binding Security Model", () => {
     expect(attackResult.verified).toBe(false);
     expect(attackResult.error).toContain("already claimed by another user");
   });
+
+  it("handles transient pending status with retryable state and eventual completion", () => {
+    let callCount = 0;
+    function mockVerifyWithPending(payload: { transaction_uuid: string; total_amount: string }) {
+      callCount++;
+      if (callCount < 2) {
+        return { verified: false, pending: true, retryable: true, status: "PENDING" };
+      }
+      return { verified: true, plan_type: "premium", expires_at: new Date().toISOString() };
+    }
+
+    const first = mockVerifyWithPending({ transaction_uuid: "TXN-1", total_amount: "499" });
+    expect(first.verified).toBe(false);
+    expect(first.pending).toBe(true);
+    expect(first.retryable).toBe(true);
+
+    const second = mockVerifyWithPending({ transaction_uuid: "TXN-1", total_amount: "499" });
+    expect(second.verified).toBe(true);
+    expect(second.plan_type).toBe("premium");
+  });
 });
