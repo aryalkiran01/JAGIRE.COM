@@ -35,7 +35,6 @@ import { Route as AuthenticatedInterviewsRouteImport } from './routes/_authentic
 import { Route as AuthenticatedLearnRouteImport } from './routes/_authenticated/learn'
 import { Route as AuthenticatedMessagesRouteImport } from './routes/_authenticated/messages'
 import { Route as AuthenticatedNotificationsRouteImport } from './routes/_authenticated/notifications'
-import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated/profile'
 import { Route as AuthenticatedReferralsRouteImport } from './routes/_authenticated/referrals'
 import { Route as AuthenticatedResumeBuilderRouteImport } from './routes/_authenticated/resume-builder'
 import { Route as AuthenticatedResumeScannerRouteImport } from './routes/_authenticated/resume-scanner'
@@ -53,6 +52,8 @@ import { Route as AuthenticatedEmployerIndexRouteImport } from './routes/_authen
 import { Route as AuthenticatedEmployerCompanyRouteImport } from './routes/_authenticated/employer/company'
 import { Route as AuthenticatedEmployerInterviewsRouteImport } from './routes/_authenticated/employer/interviews'
 import { Route as AuthenticatedEmployerKnowledgeBaseRouteImport } from './routes/_authenticated/employer/knowledge-base'
+import { Route as AuthenticatedProfileIndexRouteImport } from './routes/_authenticated/profile/index'
+import { Route as AuthenticatedProfileUserIdRouteImport } from './routes/_authenticated/profile/$userId'
 import { Route as AuthenticatedEmployerAiFeatureSlugRouteImport } from './routes/_authenticated/employer/ai/$featureSlug'
 import { Route as AuthenticatedEmployerJobsJobIdRouteImport } from './routes/_authenticated/employer/jobs/$jobId'
 import { Route as AuthenticatedEmployerJobsNewRouteImport } from './routes/_authenticated/employer/jobs/new'
@@ -191,11 +192,6 @@ const AuthenticatedNotificationsRoute =
     path: '/notifications',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
-const AuthenticatedProfileRoute = AuthenticatedProfileRouteImport.update({
-  id: '/profile',
-  path: '/profile',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
 const AuthenticatedReferralsRoute = AuthenticatedReferralsRouteImport.update({
   id: '/referrals',
   path: '/referrals',
@@ -288,6 +284,18 @@ const AuthenticatedEmployerKnowledgeBaseRoute =
     path: '/knowledge-base',
     getParentRoute: () => AuthenticatedEmployerRoute,
   } as any)
+const AuthenticatedProfileIndexRoute =
+  AuthenticatedProfileIndexRouteImport.update({
+    id: '/profile/',
+    path: '/profile/',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedProfileUserIdRoute =
+  AuthenticatedProfileUserIdRouteImport.update({
+    id: '/profile/$userId',
+    path: '/profile/$userId',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedEmployerAiFeatureSlugRoute =
   AuthenticatedEmployerAiFeatureSlugRouteImport.update({
     id: '/ai/$featureSlug',
@@ -333,7 +341,6 @@ export interface FileRoutesByFullPath {
   '/learn': typeof AuthenticatedLearnRoute
   '/messages': typeof AuthenticatedMessagesRoute
   '/notifications': typeof AuthenticatedNotificationsRoute
-  '/profile': typeof AuthenticatedProfileRoute
   '/referrals': typeof AuthenticatedReferralsRoute
   '/resume-builder': typeof AuthenticatedResumeBuilderRoute
   '/resume-scanner': typeof AuthenticatedResumeScannerRoute
@@ -350,7 +357,9 @@ export interface FileRoutesByFullPath {
   '/employer/company': typeof AuthenticatedEmployerCompanyRoute
   '/employer/interviews': typeof AuthenticatedEmployerInterviewsRoute
   '/employer/knowledge-base': typeof AuthenticatedEmployerKnowledgeBaseRoute
+  '/profile/$userId': typeof AuthenticatedProfileUserIdRoute
   '/employer/': typeof AuthenticatedEmployerIndexRoute
+  '/profile/': typeof AuthenticatedProfileIndexRoute
   '/employer/ai/$featureSlug': typeof AuthenticatedEmployerAiFeatureSlugRoute
   '/employer/jobs/$jobId': typeof AuthenticatedEmployerJobsJobIdRoute
   '/employer/jobs/new': typeof AuthenticatedEmployerJobsNewRoute
@@ -380,7 +389,6 @@ export interface FileRoutesByTo {
   '/learn': typeof AuthenticatedLearnRoute
   '/messages': typeof AuthenticatedMessagesRoute
   '/notifications': typeof AuthenticatedNotificationsRoute
-  '/profile': typeof AuthenticatedProfileRoute
   '/referrals': typeof AuthenticatedReferralsRoute
   '/resume-builder': typeof AuthenticatedResumeBuilderRoute
   '/resume-scanner': typeof AuthenticatedResumeScannerRoute
@@ -397,7 +405,9 @@ export interface FileRoutesByTo {
   '/employer/company': typeof AuthenticatedEmployerCompanyRoute
   '/employer/interviews': typeof AuthenticatedEmployerInterviewsRoute
   '/employer/knowledge-base': typeof AuthenticatedEmployerKnowledgeBaseRoute
+  '/profile/$userId': typeof AuthenticatedProfileUserIdRoute
   '/employer': typeof AuthenticatedEmployerIndexRoute
+  '/profile': typeof AuthenticatedProfileIndexRoute
   '/employer/ai/$featureSlug': typeof AuthenticatedEmployerAiFeatureSlugRoute
   '/employer/jobs/$jobId': typeof AuthenticatedEmployerJobsJobIdRoute
   '/employer/jobs/new': typeof AuthenticatedEmployerJobsNewRoute
@@ -430,7 +440,6 @@ export interface FileRoutesById {
   '/_authenticated/learn': typeof AuthenticatedLearnRoute
   '/_authenticated/messages': typeof AuthenticatedMessagesRoute
   '/_authenticated/notifications': typeof AuthenticatedNotificationsRoute
-  '/_authenticated/profile': typeof AuthenticatedProfileRoute
   '/_authenticated/referrals': typeof AuthenticatedReferralsRoute
   '/_authenticated/resume-builder': typeof AuthenticatedResumeBuilderRoute
   '/_authenticated/resume-scanner': typeof AuthenticatedResumeScannerRoute
@@ -447,7 +456,9 @@ export interface FileRoutesById {
   '/_authenticated/employer/company': typeof AuthenticatedEmployerCompanyRoute
   '/_authenticated/employer/interviews': typeof AuthenticatedEmployerInterviewsRoute
   '/_authenticated/employer/knowledge-base': typeof AuthenticatedEmployerKnowledgeBaseRoute
+  '/_authenticated/profile/$userId': typeof AuthenticatedProfileUserIdRoute
   '/_authenticated/employer/': typeof AuthenticatedEmployerIndexRoute
+  '/_authenticated/profile/': typeof AuthenticatedProfileIndexRoute
   '/_authenticated/employer/ai/$featureSlug': typeof AuthenticatedEmployerAiFeatureSlugRoute
   '/_authenticated/employer/jobs/$jobId': typeof AuthenticatedEmployerJobsJobIdRoute
   '/_authenticated/employer/jobs/new': typeof AuthenticatedEmployerJobsNewRoute
@@ -480,7 +491,6 @@ export interface FileRouteTypes {
     | '/learn'
     | '/messages'
     | '/notifications'
-    | '/profile'
     | '/referrals'
     | '/resume-builder'
     | '/resume-scanner'
@@ -497,7 +507,9 @@ export interface FileRouteTypes {
     | '/employer/company'
     | '/employer/interviews'
     | '/employer/knowledge-base'
+    | '/profile/$userId'
     | '/employer/'
+    | '/profile/'
     | '/employer/ai/$featureSlug'
     | '/employer/jobs/$jobId'
     | '/employer/jobs/new'
@@ -527,7 +539,6 @@ export interface FileRouteTypes {
     | '/learn'
     | '/messages'
     | '/notifications'
-    | '/profile'
     | '/referrals'
     | '/resume-builder'
     | '/resume-scanner'
@@ -544,7 +555,9 @@ export interface FileRouteTypes {
     | '/employer/company'
     | '/employer/interviews'
     | '/employer/knowledge-base'
+    | '/profile/$userId'
     | '/employer'
+    | '/profile'
     | '/employer/ai/$featureSlug'
     | '/employer/jobs/$jobId'
     | '/employer/jobs/new'
@@ -576,7 +589,6 @@ export interface FileRouteTypes {
     | '/_authenticated/learn'
     | '/_authenticated/messages'
     | '/_authenticated/notifications'
-    | '/_authenticated/profile'
     | '/_authenticated/referrals'
     | '/_authenticated/resume-builder'
     | '/_authenticated/resume-scanner'
@@ -593,7 +605,9 @@ export interface FileRouteTypes {
     | '/_authenticated/employer/company'
     | '/_authenticated/employer/interviews'
     | '/_authenticated/employer/knowledge-base'
+    | '/_authenticated/profile/$userId'
     | '/_authenticated/employer/'
+    | '/_authenticated/profile/'
     | '/_authenticated/employer/ai/$featureSlug'
     | '/_authenticated/employer/jobs/$jobId'
     | '/_authenticated/employer/jobs/new'
@@ -805,13 +819,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedNotificationsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/profile': {
-      id: '/_authenticated/profile'
-      path: '/profile'
-      fullPath: '/profile'
-      preLoaderRoute: typeof AuthenticatedProfileRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
     '/_authenticated/referrals': {
       id: '/_authenticated/referrals'
       path: '/referrals'
@@ -931,6 +938,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedEmployerKnowledgeBaseRouteImport
       parentRoute: typeof AuthenticatedEmployerRoute
     }
+    '/_authenticated/profile/': {
+      id: '/_authenticated/profile/'
+      path: '/profile'
+      fullPath: '/profile/'
+      preLoaderRoute: typeof AuthenticatedProfileIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/profile/$userId': {
+      id: '/_authenticated/profile/$userId'
+      path: '/profile/$userId'
+      fullPath: '/profile/$userId'
+      preLoaderRoute: typeof AuthenticatedProfileUserIdRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/employer/ai/$featureSlug': {
       id: '/_authenticated/employer/ai/$featureSlug'
       path: '/ai/$featureSlug'
@@ -998,12 +1019,13 @@ interface AuthenticatedRouteChildren {
   AuthenticatedLearnRoute: typeof AuthenticatedLearnRoute
   AuthenticatedMessagesRoute: typeof AuthenticatedMessagesRoute
   AuthenticatedNotificationsRoute: typeof AuthenticatedNotificationsRoute
-  AuthenticatedProfileRoute: typeof AuthenticatedProfileRoute
   AuthenticatedReferralsRoute: typeof AuthenticatedReferralsRoute
   AuthenticatedResumeBuilderRoute: typeof AuthenticatedResumeBuilderRoute
   AuthenticatedResumeScannerRoute: typeof AuthenticatedResumeScannerRoute
   AuthenticatedSavedRoute: typeof AuthenticatedSavedRoute
   AuthenticatedAiFeatureSlugRoute: typeof AuthenticatedAiFeatureSlugRoute
+  AuthenticatedProfileUserIdRoute: typeof AuthenticatedProfileUserIdRoute
+  AuthenticatedProfileIndexRoute: typeof AuthenticatedProfileIndexRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
@@ -1022,12 +1044,13 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedLearnRoute: AuthenticatedLearnRoute,
   AuthenticatedMessagesRoute: AuthenticatedMessagesRoute,
   AuthenticatedNotificationsRoute: AuthenticatedNotificationsRoute,
-  AuthenticatedProfileRoute: AuthenticatedProfileRoute,
   AuthenticatedReferralsRoute: AuthenticatedReferralsRoute,
   AuthenticatedResumeBuilderRoute: AuthenticatedResumeBuilderRoute,
   AuthenticatedResumeScannerRoute: AuthenticatedResumeScannerRoute,
   AuthenticatedSavedRoute: AuthenticatedSavedRoute,
   AuthenticatedAiFeatureSlugRoute: AuthenticatedAiFeatureSlugRoute,
+  AuthenticatedProfileUserIdRoute: AuthenticatedProfileUserIdRoute,
+  AuthenticatedProfileIndexRoute: AuthenticatedProfileIndexRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(

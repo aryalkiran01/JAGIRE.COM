@@ -301,45 +301,6 @@ function AboutPage() {
         </div>
       </section>
 
-      {/* Testimonials */}
-      <section className="container mx-auto px-4 py-20">
-        <div className="text-center mb-14">
-          <h2 className="text-4xl font-bold mb-3">What people say about Jagire</h2>
-        </div>
-        <div className="grid md:grid-cols-3 gap-6">
-          {TESTIMONIALS.map((t, i) => (
-            <Card
-              key={i}
-              className="glass hover:shadow-card-soft transition-all animate-fade-in-up"
-            >
-              <CardContent className="p-6">
-                <Quote className="h-8 w-8 text-primary/20 mb-3" />
-                <div className="flex mb-3">
-                  {Array.from({ length: 5 }).map((_, s) => (
-                    <Star key={s} className="h-4 w-4 fill-accent text-accent" />
-                  ))}
-                </div>
-                <p className="text-sm mb-4 leading-relaxed">{t.quote}</p>
-                <div className="flex items-center gap-3">
-                  <Avatar className="h-10 w-10">
-                    <AvatarFallback className="gradient-brand text-primary-foreground">
-                      {t.name
-                        .split(" ")
-                        .map((n) => n[0])
-                        .join("")}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <div className="text-sm font-semibold">{t.name}</div>
-                    <div className="text-xs text-muted-foreground">{t.role}</div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </section>
-
       {/* CTA */}
       <section className="container mx-auto px-4 py-20">
         <div className="glass rounded-3xl p-12 md:p-16 text-center gradient-hero shadow-glow relative overflow-hidden">

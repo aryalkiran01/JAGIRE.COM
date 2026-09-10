@@ -237,3 +237,91 @@ export const adminDeleteBlogComment = createServerFn({ method: "POST" })
 
     return { success: true, message: "Blog comment deleted" };
   });
+
+const grantSubscriptionSchema = z.object({
+  targetUserId: z.string().uuid("Invalid target user ID"),
+  planType: z.enum(["free", "premium", "starter", "professional", "enterprise"]),
+  status: z.enum(["active", "trialing", "cancelled", "expired"]).default("active"),
+  startedAt: z.string().optional(),
+  expiresAt: z.string().nullable().optional(),
+});
+
+export const adminGrantSubscription = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator(grantSubscriptionSchema)
+  .handler(async ({ data, context }) => {
+    const userId = (context as any)?.userId;
+    if (!userId) throw new Error("Not authenticated");
+
+    // Verify caller is admin
+    const { data: roleData } = await supabaseAdmin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (!roleData || roleData.role !== "admin") {
+      throw new Error("Not authorized: admin role required");
+    }
+
+    const now = new Date().toISOString();
+    const startedAt = data.startedAt || now;
+    const paymentStatus = data.status === "active" ? "paid" : "unpaid";
+    const transactionId = `admin_grant_${Date.now()}`;
+    const esewaRefId = "ADMIN_MANUAL_GRANT";
+
+    // Check if target user has an existing subscription record
+    const { data: existingSub, error: findError } = await supabaseAdmin
+      .from("subscriptions")
+      .select("id")
+      .eq("user_id", data.targetUserId)
+      .maybeSingle();
+
+    if (findError) throw new Error(findError.message);
+
+    if (existingSub) {
+      const { error: updateError } = await supabaseAdmin
+        .from("subscriptions")
+        .update({
+          plan_type: data.planType,
+          status: data.status,
+          payment_status: paymentStatus,
+          started_at: startedAt,
+          expires_at: data.expiresAt ?? null,
+          transaction_id: transactionId,
+          esewa_ref_id: esewaRefId,
+          updated_at: now,
+        })
+        .eq("id", existingSub.id);
+
+      if (updateError) throw new Error(updateError.message);
+    } else {
+      const { error: insertError } = await supabaseAdmin.from("subscriptions").insert({
+        user_id: data.targetUserId,
+        plan_type: data.planType,
+        status: data.status,
+        payment_status: paymentStatus,
+        started_at: startedAt,
+        expires_at: data.expiresAt ?? null,
+        amount: 0,
+        currency: "NPR",
+        transaction_id: transactionId,
+        esewa_ref_id: esewaRefId,
+      });
+
+      if (insertError) throw new Error(insertError.message);
+    }
+
+    // Send notification to the user
+    await notifyUser(
+      supabaseAdmin,
+      data.targetUserId,
+      "Subscription Updated by Administrator",
+      `Your subscription has been updated to the ${data.planType.toUpperCase()} plan.`,
+      "system",
+      "/pricing",
+      { action: "admin_grant_subscription", plan: data.planType },
+    );
+
+    return { success: true, message: "Subscription granted successfully" };
+  });

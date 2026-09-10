@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { useSidebar } from "@/hooks/use-sidebar";
 import { useTheme } from "@/hooks/use-theme";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -17,7 +18,6 @@ import {
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { SubscriptionBadge } from "@/components/subscription-badge";
 import {
-  LayoutDashboard,
   LogOut,
   User,
   Bookmark,
@@ -26,7 +26,6 @@ import {
   FileText,
   GraduationCap,
   Gift,
-  Pencil,
   Rss,
   BookOpen,
   Video,
@@ -37,8 +36,7 @@ import {
   Building2,
   Target,
   ChevronDown,
-  Sparkles,
-  Briefcase,
+  Shield,
   type LucideIcon,
 } from "lucide-react";
 
@@ -82,6 +80,7 @@ const NAV_LINKS = [
 
 export function SiteHeader() {
   const { user, role, signOut } = useAuth();
+  const { isOpen, toggle: toggleSidebar } = useSidebar();
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { theme, toggle } = useTheme();
@@ -135,8 +134,6 @@ export function SiteHeader() {
     };
   }, [user?.id, qc]);
 
-  const dashPath = role === "admin" ? "/admin" : role === "employer" ? "/employer" : "/dashboard";
-
   const handleSignOut = async () => {
     await signOut();
     navigate({ to: "/" });
@@ -152,18 +149,32 @@ export function SiteHeader() {
           : "bg-background/80 backdrop-blur-md border-b border-border/30"
       }`}
     >
-      <div className="container mx-auto flex h-16 items-center justify-between px-4">
-        {/* Logo */}
-        <Link to="/" className="flex items-center gap-2 shrink-0 group">
-          <div className="relative">
-            <img
-              src="/Jagire-logo.png"
-              alt="Jagire"
-              className="h-9 w-auto transition-transform group-hover:scale-105"
-            />
-          </div>
-          <span className="text-xl font-bold gradient-text tracking-tight">Jagire</span>
-        </Link>
+      <div className="w-full px-4 sm:px-6 flex h-16 items-center justify-between">
+        {/* Left side: Menu trigger (☰) + Logo */}
+        <div className="flex items-center gap-1 sm:gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleSidebar}
+            aria-label={isOpen ? "Close navigation" : "Open navigation"}
+            aria-expanded={isOpen}
+            className="h-9 w-9 text-muted-foreground hover:text-foreground"
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
+
+          {/* Logo */}
+          <Link to="/" className="flex items-center gap-2 shrink-0 group">
+            {/* <div className="relative">
+              <img
+                src="/Jagire-logo.png"
+                alt="Jagire"
+                className="h-9 w-auto transition-transform group-hover:scale-105"
+              />
+            </div> */}
+            <span className="text-xl font-bold gradient-text tracking-tight">JAGIRE</span>
+          </Link>
+        </div>
 
         {/* Desktop nav */}
         <nav className="hidden items-center gap-0.5 lg:flex">
@@ -222,6 +233,18 @@ export function SiteHeader() {
                 variant="ghost"
                 size="icon"
                 asChild
+                aria-label="View messages"
+                className="relative h-9 w-9"
+              >
+                <Link to="/messages">
+                  <MessageSquare className="h-4 w-4" />
+                </Link>
+              </Button>
+
+              <Button
+                variant="ghost"
+                size="icon"
+                asChild
                 aria-label="View notifications"
                 className="relative h-9 w-9"
               >
@@ -263,77 +286,19 @@ export function SiteHeader() {
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
-                    <Link to={dashPath}>
-                      <LayoutDashboard className="mr-2 h-4 w-4" />
-                      Dashboard
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
                     <Link to="/profile">
                       <User className="mr-2 h-4 w-4" />
                       Profile
                     </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link to="/resume-scanner">
-                      <ScanText className="mr-2 h-4 w-4" />
-                      Resume Scanner
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link to="/resume-builder">
-                      <FileText className="mr-2 h-4 w-4" />
-                      Resume Builder
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link to="/interviews">
-                      <Video className="mr-2 h-4 w-4" />
-                      Interviews
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link to="/saved">
-                      <Bookmark className="mr-2 h-4 w-4" />
-                      Saved Jobs
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link to="/messages">
-                      <MessageSquare className="mr-2 h-4 w-4" />
-                      Messages
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link to="/assessments">
-                      <GraduationCap className="mr-2 h-4 w-4" />
-                      Assessments
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link to="/learn">
-                      <BookOpen className="mr-2 h-4 w-4" />
-                      Learning Center
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link to="/feed">
-                      <Rss className="mr-2 h-4 w-4" />
-                      Feed
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link to="/referrals">
-                      <Gift className="mr-2 h-4 w-4" />
-                      Refer & Earn
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link to="/blog-editor">
-                      <Pencil className="mr-2 h-4 w-4" />
-                      Write Blog
-                    </Link>
-                  </DropdownMenuItem>
+                  {role === "admin" && (
+                    <DropdownMenuItem asChild>
+                      <Link to="/admin">
+                        <Shield className="mr-2 h-4 w-4 text-primary" />
+                        Admin Panel
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleSignOut}>
                     <LogOut className="mr-2 h-4 w-4" />

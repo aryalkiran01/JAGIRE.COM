@@ -342,7 +342,11 @@ function EmployerInterviews() {
                   </Select>
                   {(iv.meeting_link || iv.meet_link) &&
                     iv.status !== "completed" &&
-                    iv.status !== "cancelled" && (
+                    iv.status !== "cancelled" &&
+                    (!iv.scheduled_at ||
+                      Date.now() <=
+                        new Date(iv.scheduled_at).getTime() +
+                          (iv.duration_minutes ?? 60) * 60_000) && (
                       <Button variant="default" size="sm" asChild>
                         <a
                           href={iv.meeting_link ?? iv.meet_link ?? "#"}

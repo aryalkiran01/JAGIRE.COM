@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -507,16 +507,27 @@ function FeedPage() {
                 <CardContent className="p-3 sm:p-5 space-y-3">
                   {/* Author header */}
                   <div className="flex items-start gap-3">
-                    <Avatar className="h-11 w-11 ring-2 ring-border">
-                      <AvatarImage src={p.author?.avatar_url ?? undefined} />
-                      <AvatarFallback className="gradient-brand text-primary-foreground">
-                        {(p.author?.full_name ?? "?").slice(0, 1)}
-                      </AvatarFallback>
-                    </Avatar>
+                    <Link
+                      to="/profile/$userId"
+                      params={{ userId: p.author_id }}
+                      className="shrink-0 group"
+                      title={`View ${p.author?.full_name ?? "User"}'s profile`}
+                    >
+                      <Avatar className="h-11 w-11 ring-2 ring-border transition-transform group-hover:scale-105">
+                        <AvatarImage src={p.author?.avatar_url ?? undefined} />
+                        <AvatarFallback className="gradient-brand text-primary-foreground">
+                          {(p.author?.full_name ?? "?").slice(0, 1)}
+                        </AvatarFallback>
+                      </Avatar>
+                    </Link>
                     <div className="flex-1 min-w-0">
-                      <div className="font-semibold text-sm">
+                      <Link
+                        to="/profile/$userId"
+                        params={{ userId: p.author_id }}
+                        className="font-semibold text-sm hover:underline hover:text-primary transition-colors inline-block truncate max-w-full"
+                      >
                         {p.author?.full_name ?? "Anonymous"}
-                      </div>
+                      </Link>
                       <div className="text-xs text-muted-foreground">
                         {p.author?.headline ?? ""}
                         {p.author?.headline && " · "}
@@ -582,10 +593,15 @@ function FeedPage() {
                     </p>
                   )}
 
-                  {/* Image */}
+                  {/* Image - full display with automatic height based on original aspect ratio */}
                   {p.image_url && (
-                    <div className="rounded-xl overflow-hidden border -mx-1">
-                      <img src={p.image_url} alt="" className="w-full max-h-[500px] object-cover" />
+                    <div className="rounded-xl overflow-hidden border bg-muted/10 -mx-1 flex items-center justify-center">
+                      <img
+                        src={p.image_url}
+                        alt="Post attachment"
+                        loading="lazy"
+                        className="w-full h-auto max-h-[85vh] object-contain rounded-xl"
+                      />
                     </div>
                   )}
 
@@ -656,17 +672,28 @@ function FeedPage() {
                       const text = c.content ?? c.body ?? "";
                       return (
                         <div key={c.id} className="flex gap-2 items-start">
-                          <Avatar className="h-7 w-7 shrink-0">
-                            <AvatarImage src={c.author?.avatar_url ?? undefined} />
-                            <AvatarFallback className="text-xs">
-                              {(c.author?.full_name ?? "?").slice(0, 1)}
-                            </AvatarFallback>
-                          </Avatar>
+                          <Link
+                            to="/profile/$userId"
+                            params={{ userId: c.author_id }}
+                            className="shrink-0 group"
+                            title={`View ${c.author?.full_name ?? "User"}'s profile`}
+                          >
+                            <Avatar className="h-7 w-7 shrink-0 transition-transform group-hover:scale-105">
+                              <AvatarImage src={c.author?.avatar_url ?? undefined} />
+                              <AvatarFallback className="text-xs">
+                                {(c.author?.full_name ?? "?").slice(0, 1)}
+                              </AvatarFallback>
+                            </Avatar>
+                          </Link>
                           <div className="flex-1 min-w-0">
                             <div className="bg-muted/60 rounded-lg px-3 py-2 inline-block">
-                              <div className="font-medium text-xs">
+                              <Link
+                                to="/profile/$userId"
+                                params={{ userId: c.author_id }}
+                                className="font-medium text-xs hover:underline hover:text-primary transition-colors block"
+                              >
                                 {c.author?.full_name ?? "Anonymous"}
-                              </div>
+                              </Link>
                               <div className="text-sm">{text}</div>
                             </div>
                             <div className="flex items-center gap-3 mt-1 ml-1">

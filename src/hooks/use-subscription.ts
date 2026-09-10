@@ -32,9 +32,11 @@ export function useSubscription() {
         return {
           isPremium: true,
           plan_type: "enterprise",
-          plan_name: "Admin Access",
+          plan_name: "Administrator / Unlimited",
           status: "active",
           payment_status: "paid",
+          started_at: null,
+          expires_at: null,
           daysRemaining: null,
           isActive: true,
           isExpired: false,
@@ -128,6 +130,7 @@ export const PLAN_NAMES: Record<string, string> = {
   professional: "Professional",
   enterprise: "Enterprise",
   pro: "Professional",
+  admin: "Administrator / Unlimited",
 };
 
 // Helper function to check if a plan is for employers

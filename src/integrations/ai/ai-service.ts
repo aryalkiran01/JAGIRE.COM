@@ -31,19 +31,13 @@ function log(
 }
 
 function getConfiguredProviderOrder(): AIProvider[] {
-  const declared = process.env.AI_PROVIDER?.toLowerCase() ?? "gemini";
   const list: AIProvider[] = [];
-  switch (declared) {
-    case "gemini":
-    default:
-      if (process.env.GEMINI_API_KEY) list.push(new GeminiProvider());
-      if (process.env.OLLAMA_HOST) list.push(new OllamaProvider());
-      break;
-    case "ollama":
-      list.push(new OllamaProvider());
-      if (process.env.GEMINI_API_KEY) list.push(new GeminiProvider());
-      break;
+  // Primary AI Provider: Google Gemini
+  if (process.env.GEMINI_API_KEY) {
+    list.push(new GeminiProvider());
   }
+  // Automatic fallback: Ollama (always available as fallback)
+  list.push(new OllamaProvider());
   return list;
 }
 
@@ -68,23 +62,7 @@ async function retryWithBackoff<T>(
     } catch (err) {
       lastError = err;
       const latencyMs = Date.now() - start;
-      if (isFatal(err)) {
-        log("error", `${provider.name} fatal error — not retrying`, {
-          provider: provider.name,
-          error: (err as Error).message,
-          latencyMs,
-        });
-        throw err;
-      }
-      if (!isTransient(err)) {
-        log("error", `${provider.name} non-transient error — not retrying`, {
-          provider: provider.name,
-          error: (err as Error).message,
-          latencyMs,
-        });
-        throw err;
-      }
-      if (attempt < MAX_RETRIES) {
+      if (attempt < MAX_RETRIES && isTransient(err)) {
         const delay = BACKOFF_BASE_MS * Math.pow(2, attempt);
         log("warn", `${provider.name} transient error — retrying in ${delay}ms`, {
           provider: provider.name,
@@ -93,13 +71,11 @@ async function retryWithBackoff<T>(
           latencyMs,
         });
         await sleep(delay);
+      } else {
+        break;
       }
     }
   }
-  log("error", `${label} exhausted retries`, {
-    provider: provider.name,
-    error: (lastError as Error)?.message,
-  });
   throw lastError;
 }
 
@@ -131,9 +107,163 @@ function setCached(key: string, value: unknown): void {
   responseCache.set(key, { value, expires: Date.now() + CACHE_TTL_MS });
 }
 
+function normalizeAndSanitizeTaskOutput(task: AITask | undefined, raw: unknown): unknown {
+  if (!raw || typeof raw !== "object") return raw;
+  const result = { ...(raw as Record<string, any>) };
+
+  if (task === "resume-analysis") {
+    const maxLengths: Record<string, number> = {
+      suggestions: 8,
+      extracted_skills: 20,
+      strengths: 5,
+      weaknesses: 5,
+      missing_skills: 10,
+      keywords: 15,
+      skill_gaps: 8,
+      resume_improvements: 8,
+      career_paths: 4,
+      recommended_certifications: 5,
+      suggested_projects: 4,
+      recommended_jobs: 5,
+      companies_hiring: 5,
+    };
+
+    for (const [field, max] of Object.entries(maxLengths)) {
+      if (Array.isArray(result[field]) && result[field].length > max) {
+        result[field] = result[field].slice(0, max);
+      }
+    }
+
+    const arrayFields = [
+      "suggestions",
+      "extracted_skills",
+      "strengths",
+      "weaknesses",
+      "missing_skills",
+      "keywords",
+      "skill_gaps",
+      "resume_improvements",
+    ];
+
+    for (const field of arrayFields) {
+      if (typeof result[field] === "string") {
+        result[field] = result[field]
+          .split(/[,•\-\n]/)
+          .map((s: string) => s.trim())
+          .filter(Boolean)
+          .slice(0, maxLengths[field] || 20);
+      }
+    }
+
+    if (typeof result.salary_prediction === "string") {
+      try {
+        result.salary_prediction = JSON.parse(result.salary_prediction);
+      } catch {
+        result.salary_prediction = null;
+      }
+    }
+
+    if (typeof result.interview_prep_plan === "string") {
+      try {
+        result.interview_prep_plan = JSON.parse(result.interview_prep_plan);
+      } catch {
+        result.interview_prep_plan = null;
+      }
+    }
+  } else if (task === "career-coach") {
+    const maxLengths: Record<string, number> = {
+      recommended_skills: 8,
+      action_plan: 6,
+      improvement_suggestions: 6,
+      follow_up_questions: 3,
+    };
+
+    const arrayFields = [
+      "recommended_skills",
+      "action_plan",
+      "improvement_suggestions",
+      "follow_up_questions",
+    ];
+
+    for (const field of arrayFields) {
+      if (typeof result[field] === "string") {
+        result[field] = result[field]
+          .split(/\r?\n|,|•|;|\d+\.\s*/)
+          .map((s: string) => s.trim())
+          .filter(Boolean)
+          .slice(0, maxLengths[field]);
+      } else if (!Array.isArray(result[field])) {
+        result[field] = [];
+      }
+    }
+  } else if (task === "learning-recommendations") {
+    if (!Array.isArray(result.items)) {
+      if (typeof result.items === "string") {
+        try {
+          result.items = JSON.parse(result.items);
+        } catch {
+          result.items = [];
+        }
+      } else {
+        result.items = [];
+      }
+    }
+
+    result.items = (result.items || [])
+      .filter((item: any) => item && typeof item === "object")
+      .map((item: any, index: number) => {
+        const searchTerms = `${item.title || ""} ${item.provider || "course"}`.trim();
+        const searchUrl = searchTerms
+          ? `https://www.google.com/search?q=${encodeURIComponent(searchTerms + " course")}`
+          : `https://www.google.com/search?q=${encodeURIComponent("learn " + (item.skills?.[0] || "programming"))}`;
+
+        let url = item.url || "";
+        if (!url || !url.includes("google.com/search?q=")) {
+          if (item.provider?.toLowerCase().includes("udemy")) {
+            url = `https://www.udemy.com/courses/search/?q=${encodeURIComponent(item.title || item.skills?.[0] || "")}`;
+          } else if (item.provider?.toLowerCase().includes("youtube")) {
+            url = `https://www.youtube.com/results?search_query=${encodeURIComponent(item.title || "")}`;
+          } else if (item.provider?.toLowerCase().includes("coursera")) {
+            url = `https://www.coursera.org/search?query=${encodeURIComponent(item.title || "")}`;
+          } else {
+            url = searchUrl;
+          }
+        }
+
+        return {
+          kind: ["course", "video", "challenge", "interview"].includes(item.kind)
+            ? item.kind
+            : "course",
+          title: item.title || `Learning Resource ${index + 1}`,
+          provider: item.provider || "Online Platform",
+          description: item.description || "",
+          skills: Array.isArray(item.skills)
+            ? item.skills.filter((s: any) => typeof s === "string")
+            : [],
+          url: url,
+        };
+      })
+      .slice(0, 8);
+
+    if (result.items.length === 0) {
+      result.items = [
+        {
+          kind: "course",
+          title: "Professional Skills Development",
+          provider: "Coursera",
+          description: "Develop your professional skills",
+          skills: ["professional development"],
+          url: "https://www.coursera.org/search?query=professional+development",
+        },
+      ];
+    }
+  }
+
+  return result;
+}
+
 class AIServiceImpl {
   private providers: AIProvider[];
-  private providerIndex = 0;
 
   constructor(providers?: AIProvider[]) {
     this.providers = providers ?? getConfiguredProviderOrder();
@@ -166,210 +296,81 @@ class AIServiceImpl {
   }
 
   async generateJsonValidated<T>(req: AIRequest, schema: z.ZodType<T>): Promise<T> {
+    const key = cacheKey(req);
+    const cached = getCached(key);
+    if (cached !== undefined) return cached as T;
+
+    if (this.providers.length === 0) {
+      throw new Error("No AI providers configured");
+    }
+
     let lastError: unknown;
-    for (let attempt = 0; attempt <= VALIDATION_RETRY_LIMIT; attempt++) {
-      try {
-        const raw = await this.executeWithFallback(
-          (p) => p.generateJson<T>(req),
-          "generateJsonValidated",
-          req,
-        );
 
-        if (req.task === "resume-analysis" && typeof raw === "object" && raw !== null) {
-          const result = raw as Record<string, any>;
+    for (let i = 0; i < this.providers.length; i++) {
+      const provider = this.providers[i];
+      const isFallback = i > 0;
+      const providerLabel = isFallback ? `${provider.name}_fallback` : provider.name;
 
-          // Truncate arrays that exceed maximum lengths
-          const maxLengths: Record<string, number> = {
-            suggestions: 8,
-            extracted_skills: 20,
-            strengths: 5,
-            weaknesses: 5,
-            missing_skills: 10,
-            keywords: 15,
-            skill_gaps: 8,
-            resume_improvements: 8,
-            career_paths: 4,
-            recommended_certifications: 5,
-            suggested_projects: 4,
-            recommended_jobs: 5,
-            companies_hiring: 5,
-          };
+      for (let attempt = 0; attempt <= VALIDATION_RETRY_LIMIT; attempt++) {
+        try {
+          const raw = await retryWithBackoff(
+            provider,
+            (p) => p.generateJson<T>(req),
+            `generateJsonValidated:${providerLabel}`,
+          );
 
-          for (const [field, max] of Object.entries(maxLengths)) {
-            if (Array.isArray(result[field]) && result[field].length > max) {
-              result[field] = result[field].slice(0, max);
-            }
+          const normalized = normalizeAndSanitizeTaskOutput(req.task, raw);
+          const parsed = schema.parse(normalized);
+
+          log(
+            "info",
+            `${providerLabel} successfully produced validated output for ${req.task ?? "task"}`,
+            {
+              provider: provider.name,
+              provider_type: isFallback ? "ollama_fallback" : "gemini",
+              task: req.task,
+              attempt,
+            },
+          );
+
+          setCached(key, parsed);
+          return parsed;
+        } catch (err) {
+          lastError = err;
+          const errMessage = err instanceof Error ? err.message : String(err);
+          log(
+            "warn",
+            `${providerLabel} attempt ${attempt + 1} validation/execution failure: ${errMessage}`,
+            {
+              provider: provider.name,
+              task: req.task,
+              attempt,
+            },
+          );
+          if (attempt < VALIDATION_RETRY_LIMIT) {
+            await sleep(BACKOFF_BASE_MS);
           }
-
-          // Fix string arrays that came as comma-separated strings
-          const arrayFields = [
-            "suggestions",
-            "extracted_skills",
-            "strengths",
-            "weaknesses",
-            "missing_skills",
-            "keywords",
-            "skill_gaps",
-            "resume_improvements",
-          ];
-
-          for (const field of arrayFields) {
-            if (typeof result[field] === "string") {
-              result[field] = result[field]
-                .split(/[,•\-\n]/)
-                .map((s: string) => s.trim())
-                .filter(Boolean)
-                .slice(0, maxLengths[field] || 20);
-            }
-          }
-
-          // Fix salary_prediction
-          if (typeof result.salary_prediction === "string") {
-            try {
-              result.salary_prediction = JSON.parse(result.salary_prediction);
-            } catch {
-              result.salary_prediction = null;
-            }
-          }
-
-          // Fix interview_prep_plan
-          if (typeof result.interview_prep_plan === "string") {
-            try {
-              result.interview_prep_plan = JSON.parse(result.interview_prep_plan);
-            } catch {
-              result.interview_prep_plan = null;
-            }
-          }
-
-          // Assign back to raw
-          Object.assign(raw as any, result);
         }
+      }
 
-        if (req.task === "career-coach" && typeof raw === "object" && raw !== null) {
-          const result = raw as Record<string, any>;
-
-          const maxLengths: Record<string, number> = {
-            recommended_skills: 8,
-            action_plan: 6,
-            improvement_suggestions: 6,
-            follow_up_questions: 3,
-          };
-
-          const arrayFields = [
-            "recommended_skills",
-            "action_plan",
-            "improvement_suggestions",
-            "follow_up_questions",
-          ];
-
-          for (const field of arrayFields) {
-            if (typeof result[field] === "string") {
-              result[field] = result[field]
-                .split(/\r?\n|,|•|;|\d+\.\s*/)
-                .map((s: string) => s.trim())
-                .filter(Boolean)
-                .slice(0, maxLengths[field]);
-            } else if (!Array.isArray(result[field])) {
-              result[field] = [];
-            }
-          }
-
-          Object.assign(raw as any, result);
-        }
-        // In generateJsonValidated method, add this block after the career-coach handling:
-
-        if (req.task === "learning-recommendations" && typeof raw === "object" && raw !== null) {
-          const result = raw as Record<string, any>;
-
-          // Ensure items is an array
-          if (!Array.isArray(result.items)) {
-            if (typeof result.items === "string") {
-              try {
-                result.items = JSON.parse(result.items);
-              } catch {
-                result.items = [];
-              }
-            } else {
-              result.items = [];
-            }
-          }
-
-          // Validate and fix each item - Generate search URLs instead of fake course URLs
-          result.items = result.items
-            .filter((item: any) => item && typeof item === "object")
-            .map((item: any, index: number) => {
-              // Generate a search URL based on the course details
-              const searchTerms = `${item.title || ""} ${item.provider || "course"}`.trim();
-              const searchUrl = searchTerms
-                ? `https://www.google.com/search?q=${encodeURIComponent(searchTerms + " course")}`
-                : `https://www.google.com/search?q=${encodeURIComponent("learn " + (item.skills?.[0] || "programming"))}`;
-
-              // If provider is known, create a more specific search
-              let url = item.url || "";
-              if (!url || !url.includes("google.com/search?q=")) {
-                if (item.provider?.toLowerCase().includes("udemy")) {
-                  url = `https://www.udemy.com/courses/search/?q=${encodeURIComponent(item.title || item.skills?.[0] || "")}`;
-                } else if (item.provider?.toLowerCase().includes("youtube")) {
-                  url = `https://www.youtube.com/results?search_query=${encodeURIComponent(item.title || "")}`;
-                } else if (item.provider?.toLowerCase().includes("coursera")) {
-                  url = `https://www.coursera.org/search?query=${encodeURIComponent(item.title || "")}`;
-                } else {
-                  url = searchUrl;
-                }
-              }
-
-              return {
-                kind: ["course", "video", "challenge", "interview"].includes(item.kind)
-                  ? item.kind
-                  : "course",
-                title: item.title || `Learning Resource ${index + 1}`,
-                provider: item.provider || "Online Platform",
-                description: item.description || "",
-                skills: Array.isArray(item.skills)
-                  ? item.skills.filter((s: any) => typeof s === "string")
-                  : [],
-                url: url,
-              };
-            })
-            .slice(0, 8);
-
-          // Ensure we have at least 1 item
-          if (result.items.length === 0) {
-            result.items = [
-              {
-                kind: "course",
-                title: "Professional Skills Development",
-                provider: "Coursera",
-                description: "Develop your professional skills",
-                skills: ["professional development"],
-                url: "https://www.coursera.org/search?query=professional+development",
-              },
-            ];
-          }
-
-          Object.assign(raw as any, result);
-        }
-
-        // Then validate
-        const parsed = schema.parse(raw);
-        if (attempt > 0) {
-          log("info", `Validation succeeded on retry ${attempt}`, { label: req.task });
-        }
-        return parsed;
-      } catch (err) {
-        lastError = err;
-        if (err instanceof z.ZodError) {
-          log("warn", `Zod validation failed — retrying once`, {
+      if (i < this.providers.length - 1) {
+        log(
+          "warn",
+          `Primary provider ${provider.name} failed. Automatically falling back to ${this.providers[i + 1].name}`,
+          {
+            from_provider: provider.name,
+            to_provider: this.providers[i + 1].name,
             task: req.task,
-            errors: err.errors.map((e) => `${e.path.join(".")}: ${e.message}`),
-            attempt,
-          });
-          if (attempt < VALIDATION_RETRY_LIMIT) continue;
-        }
-        throw err;
+          },
+        );
       }
     }
-    throw lastError;
+
+    const msg = "AI operation could not be completed. Please try again.";
+    log("error", `All AI providers failed for ${req.task ?? "task"}`, {
+      error: (lastError as Error)?.message,
+    });
+    throw new Error(msg);
   }
 
   async generateEmbedding(req: AIEmbeddingRequest): Promise<AIEmbeddingResponse> {
@@ -405,50 +406,36 @@ class AIServiceImpl {
 
     let lastError: unknown;
     for (let i = 0; i < this.providers.length; i++) {
-      const idx = (this.providerIndex + i) % this.providers.length;
-      const provider = this.providers[idx];
-
-      // Fast-fail: if Ollama is not the primary and a cloud provider is available,
-      // don't wait for Ollama's long timeout — give it a short window.
-      const isOllamaFallback =
-        provider.name === "ollama" && idx !== this.providerIndex && this.providers.length > 1;
+      const provider = this.providers[i];
+      const isFallback = i > 0;
+      const providerLabel = isFallback ? `${provider.name}_fallback` : provider.name;
 
       try {
-        const result = await retryWithBackoff(
-          provider,
-          isOllamaFallback
-            ? (p) =>
-                Promise.race([
-                  fn(p),
-                  new Promise<never>((_, reject) =>
-                    setTimeout(() => reject(new AITransientError("Ollama fast-fail timeout", 408))),
-                  ),
-                ])
-            : fn,
-          `${label}:${provider.name}`,
-        );
-        this.providerIndex = idx;
+        const result = await retryWithBackoff(provider, fn, `${label}:${providerLabel}`);
+        log("info", `${providerLabel} successfully handled request`, {
+          provider: provider.name,
+          provider_type: isFallback ? "ollama_fallback" : "gemini",
+          label,
+        });
         return result;
       } catch (err) {
         lastError = err;
-        if (isFatal(err)) {
-          throw err;
-        }
         if (i < this.providers.length - 1) {
-          log("warn", `Provider ${provider.name} failed — falling back`, {
-            provider: provider.name,
-            nextProvider: this.providers[(idx + 1) % this.providers.length].name,
-            error: (err as Error).message,
-          });
+          log(
+            "warn",
+            `Provider ${provider.name} failed (${(err as Error).message}) — automatically falling back to ${this.providers[i + 1].name}`,
+            {
+              from_provider: provider.name,
+              to_provider: this.providers[i + 1].name,
+              error: (err as Error).message,
+            },
+          );
         }
       }
     }
 
-    const msg =
-      lastError instanceof Error
-        ? `All AI providers failed. Last error: ${lastError.message}`
-        : "All AI providers failed with an unknown error";
-    log("error", msg, { error: (lastError as Error)?.message });
+    const msg = "AI service temporarily unavailable. Please try again shortly.";
+    log("error", `All AI providers failed for ${label}`, { error: (lastError as Error)?.message });
     throw new Error(msg);
   }
 }

@@ -11,6 +11,7 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { AuthProvider } from "@/hooks/use-auth";
+import { SidebarProvider } from "@/hooks/use-sidebar";
 import { Toaster } from "@/components/ui/sonner";
 
 function NotFoundComponent() {
@@ -191,8 +192,10 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <Outlet />
-        <Toaster richColors position="top-right" />
+        <SidebarProvider>
+          <Outlet />
+          <Toaster richColors position="top-right" />
+        </SidebarProvider>
       </AuthProvider>
     </QueryClientProvider>
   );

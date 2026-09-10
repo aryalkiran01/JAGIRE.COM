@@ -221,15 +221,10 @@ function InterviewsPage() {
       i.status === "ongoing" ||
       i.status === "reschedule_requested";
     if (!isActiveStatus) return false;
-    // If scheduled_at is in the past but status is still active,
-    // it should be treated as past (missed), not upcoming.
     if (i.scheduled_at) {
-      const scheduled = new Date(i.scheduled_at);
-      // Allow a 2-hour grace window for ongoing interviews
-      const graceEnd = new Date(
-        scheduled.getTime() + (i.duration_minutes ?? 60) * 60_000 + 2 * 3600_000,
-      );
-      if (scheduled < now && graceEnd < now) return false;
+      const scheduled = new Date(i.scheduled_at).getTime();
+      const endTime = scheduled + (i.duration_minutes ?? 60) * 60_000;
+      if (now.getTime() > endTime) return false;
     }
     return true;
   });
@@ -270,8 +265,17 @@ function InterviewsPage() {
             const link = iv.meeting_link ?? iv.meet_link;
             const jobTitle = iv.application?.job?.title ?? "Position";
             const companyName = iv.application?.job?.company?.name ?? "";
+            const startTimeMs = iv.scheduled_at ? new Date(iv.scheduled_at).getTime() : null;
+            const durationMinutes = iv.duration_minutes ?? 60;
+            const endTimeMs = startTimeMs ? startTimeMs + durationMinutes * 60_000 : null;
+            const nowMs = Date.now();
+            const isConcluded =
+              iv.status === "completed" ||
+              iv.status === "cancelled" ||
+              (endTimeMs !== null && nowMs > endTimeMs);
             const canJoin =
-              iv.status === "confirmed" || iv.status === "scheduled" || iv.status === "ongoing";
+              !isConcluded &&
+              (iv.status === "confirmed" || iv.status === "scheduled" || iv.status === "ongoing");
             const isCandidate = iv.candidate_id === user?.id;
             const isEmployer = iv.employer_id === user?.id;
             return (

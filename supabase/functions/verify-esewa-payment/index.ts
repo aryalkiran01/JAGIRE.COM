@@ -31,7 +31,10 @@ interface VerifyBody {
   signed_field_names: string;
 }
 
-async function hmacSha256Hex(message: string, secret: string): Promise<string> {
+async function hmacSha256(
+  message: string,
+  secret: string,
+): Promise<{ hex: string; base64: string }> {
   const enc = new TextEncoder();
   const key = await crypto.subtle.importKey(
     "raw",
@@ -41,9 +44,17 @@ async function hmacSha256Hex(message: string, secret: string): Promise<string> {
     ["sign"],
   );
   const sig = await crypto.subtle.sign("HMAC", key, enc.encode(message));
-  return Array.from(new Uint8Array(sig))
+  const bytes = new Uint8Array(sig);
+
+  const hex = Array.from(bytes)
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
+
+  let bin = "";
+  bytes.forEach((b) => (bin += String.fromCharCode(b)));
+  const base64 = btoa(bin);
+
+  return { hex, base64 };
 }
 
 Deno.serve(async (req: Request) => {
@@ -128,8 +139,13 @@ Deno.serve(async (req: Request) => {
       messageParts.push(`${fieldName}=${val}`);
     }
     const message = messageParts.join(",");
-    const computedSig = await hmacSha256Hex(message, ESEWA_SECRET);
-    if (computedSig !== body.esewa_signature) {
+    const { hex: computedHex, base64: computedBase64 } = await hmacSha256(message, ESEWA_SECRET);
+    const isValidSignature =
+      body.esewa_signature === computedHex ||
+      body.esewa_signature === computedBase64 ||
+      body.esewa_signature.toLowerCase() === computedHex.toLowerCase();
+
+    if (!isValidSignature) {
       console.error("Signature mismatch");
       return new Response(JSON.stringify({ error: "Invalid eSewa signature", verified: false }), {
         status: 403,
@@ -168,15 +184,23 @@ Deno.serve(async (req: Request) => {
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
-    // 4. Idempotency: check if this transaction was already verified + activated
+    // 4. Idempotency & User Binding: check if this transaction was already verified
     const { data: existing } = await supabase
       .from("payment_verifications")
-      .select("verified, transaction_uuid")
+      .select("verified, transaction_uuid, user_id")
       .eq("transaction_uuid", transaction_uuid)
-      .eq("verified", true)
       .maybeSingle();
 
     if (existing?.verified) {
+      if (existing.user_id && existing.user_id !== userId) {
+        return new Response(
+          JSON.stringify({
+            verified: false,
+            error: "Transaction was already claimed by another user.",
+          }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
       return new Response(
         JSON.stringify({
           verified: true,

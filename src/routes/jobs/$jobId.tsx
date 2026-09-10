@@ -111,20 +111,50 @@ function JobDetail() {
           <Card>
             <CardContent className="p-6">
               <div className="flex items-start gap-4 mb-6">
-                <div className="h-16 w-16 rounded-xl bg-muted flex items-center justify-center overflow-hidden">
-                  {(job as any).company?.logo_url ? (
-                    <img
-                      src={(job as any).company.logo_url}
-                      alt=""
-                      className="h-full w-full object-cover"
-                    />
+                {(job as any).company?.slug ? (
+                  <Link
+                    to="/companies/$slug"
+                    params={{ slug: (job as any).company.slug }}
+                    className="h-16 w-16 rounded-xl bg-muted flex items-center justify-center overflow-hidden hover:ring-2 hover:ring-primary/50 transition-all shrink-0"
+                  >
+                    {(job as any).company?.logo_url ? (
+                      <img
+                        src={(job as any).company.logo_url}
+                        alt=""
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <Building2 className="h-8 w-8 text-muted-foreground" />
+                    )}
+                  </Link>
+                ) : (
+                  <div className="h-16 w-16 rounded-xl bg-muted flex items-center justify-center overflow-hidden shrink-0">
+                    {(job as any).company?.logo_url ? (
+                      <img
+                        src={(job as any).company.logo_url}
+                        alt=""
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <Building2 className="h-8 w-8 text-muted-foreground" />
+                    )}
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <h1 className="text-2xl sm:text-3xl font-bold mb-1">{job.title}</h1>
+                  {(job as any).company?.slug ? (
+                    <Link
+                      to="/companies/$slug"
+                      params={{ slug: (job as any).company.slug }}
+                      className="text-muted-foreground hover:text-primary transition-colors font-medium inline-flex items-center gap-1 text-sm"
+                    >
+                      {(job as any).company?.name}
+                    </Link>
                   ) : (
-                    <Building2 className="h-8 w-8" />
+                    <div className="text-muted-foreground text-sm">
+                      {(job as any).company?.name}
+                    </div>
                   )}
-                </div>
-                <div className="flex-1">
-                  <h1 className="text-3xl font-bold mb-1">{job.title}</h1>
-                  <div className="text-muted-foreground">{(job as any).company?.name}</div>
                   <div className="flex flex-wrap gap-2 mt-3">
                     {job.location && (
                       <Badge variant="secondary">

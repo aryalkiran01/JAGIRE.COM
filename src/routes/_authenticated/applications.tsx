@@ -11,7 +11,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
 import { SkeletonCard } from "@/components/ui/skeleton-loader";
-import { Briefcase, Calendar, Video, ArrowRight, ExternalLink } from "lucide-react";
+import {
+  Briefcase,
+  Calendar,
+  Video,
+  ArrowRight,
+  ExternalLink,
+  Clock,
+  CircleCheck as CheckCircle2,
+} from "lucide-react";
 import { Link } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/_authenticated/applications")({
@@ -157,33 +165,68 @@ function Applications() {
               {/* Interview Section */}
               {application.interview?.length > 0 && (
                 <div className="space-y-3 mb-5">
-                  {application.interview.map((interview: any) => (
-                    <div
-                      key={interview.id}
-                      className="rounded-xl border border-purple-500/20 p-4 bg-purple-500/5"
-                    >
-                      <div className="flex items-center gap-2 font-semibold text-purple-700 dark:text-purple-300 mb-1">
-                        <Video className="h-4 w-4" />
-                        <span>Interview Scheduled</span>
+                  {application.interview.map((interview: any) => {
+                    const startTimeRaw = interview.start_time || interview.scheduled_at;
+                    const startTimeMs = startTimeRaw ? new Date(startTimeRaw).getTime() : null;
+                    const durationMinutes = interview.duration_minutes ?? 60;
+                    const endTimeMs = startTimeMs ? startTimeMs + durationMinutes * 60_000 : null;
+                    const nowMs = Date.now();
+                    const isConcluded =
+                      interview.status === "completed" ||
+                      interview.status === "cancelled" ||
+                      (endTimeMs !== null && nowMs > endTimeMs);
+                    const isUpcoming = startTimeMs !== null && nowMs < startTimeMs - 15 * 60_000;
+                    const isJoinable = !isConcluded && !!interview.meet_link;
+
+                    return (
+                      <div
+                        key={interview.id}
+                        className="rounded-xl border border-purple-500/20 p-4 bg-purple-500/5"
+                      >
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <div className="flex items-center gap-2 font-semibold text-purple-700 dark:text-purple-300">
+                            <Video className="h-4 w-4" />
+                            <span>Interview Scheduled</span>
+                          </div>
+                          {isConcluded ? (
+                            <Badge
+                              variant="outline"
+                              className="text-xs text-muted-foreground bg-muted/40"
+                            >
+                              <CheckCircle2 className="h-3 w-3 mr-1 text-emerald-500" />
+                              Interview Concluded
+                            </Badge>
+                          ) : isUpcoming ? (
+                            <Badge variant="secondary" className="text-xs">
+                              <Clock className="h-3 w-3 mr-1" />
+                              Upcoming
+                            </Badge>
+                          ) : (
+                            <Badge className="bg-emerald-600 text-white text-xs">
+                              <span className="h-1.5 w-1.5 rounded-full bg-white mr-1.5 animate-pulse" />
+                              Live / Ready
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-sm font-medium">{interview.title}</p>
+                        <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                          <Calendar className="h-3.5 w-3.5" />
+                          {startTimeRaw ? new Date(startTimeRaw).toLocaleString() : "Date TBD"}
+                        </p>
+                        {isJoinable && (
+                          <Button
+                            size="sm"
+                            className="mt-3 gradient-brand text-primary-foreground gap-1.5"
+                            asChild
+                          >
+                            <a href={interview.meet_link} target="_blank" rel="noopener noreferrer">
+                              Join Google Meet <ExternalLink className="h-3.5 w-3.5" />
+                            </a>
+                          </Button>
+                        )}
                       </div>
-                      <p className="text-sm font-medium">{interview.title}</p>
-                      <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                        <Calendar className="h-3.5 w-3.5" />
-                        {new Date(interview.start_time).toLocaleString()}
-                      </p>
-                      {interview.meet_link && (
-                        <Button
-                          size="sm"
-                          className="mt-3 gradient-brand text-primary-foreground gap-1.5"
-                          asChild
-                        >
-                          <a href={interview.meet_link} target="_blank" rel="noopener noreferrer">
-                            Join Google Meet <ExternalLink className="h-3.5 w-3.5" />
-                          </a>
-                        </Button>
-                      )}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
 

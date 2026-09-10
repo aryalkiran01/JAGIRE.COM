@@ -89,16 +89,21 @@ function Dashboard() {
   const { data: interviews } = useQuery({
     queryKey: ["my-interviews", user?.id],
     enabled: !!user,
-    queryFn: async () =>
-      (
-        await supabase
-          .from("interviews")
-          .select("*, job:jobs(title, company:companies(name))")
-          .eq("candidate_id", user!.id)
-          .eq("status", "scheduled")
-          .order("scheduled_at", { ascending: true })
-          .limit(5)
-      ).data ?? [],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("interviews")
+        .select("*, job:jobs(title, company:companies(name))")
+        .eq("candidate_id", user!.id)
+        .eq("status", "scheduled")
+        .order("scheduled_at", { ascending: true })
+        .limit(10);
+      const now = Date.now();
+      return (data ?? []).filter((iv: any) => {
+        if (!iv.scheduled_at) return true;
+        const endTime = new Date(iv.scheduled_at).getTime() + (iv.duration_minutes ?? 60) * 60_000;
+        return now <= endTime;
+      });
+    },
   });
 
   const { data: notifications } = useQuery({

@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
@@ -52,13 +52,15 @@ import {
   CircleCheck as CheckCircle2,
   Circle as XCircle,
   Loader as Loader2,
+  Plus,
+  ShieldCheck,
 } from "lucide-react";
 import { deleteJobAsAdmin } from "@/lib/application.service";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useServerFn } from "@tanstack/react-start";
-import { adminDeleteJob } from "@/lib/admin.server";
+import { adminDeleteJob, adminGrantSubscription } from "@/lib/admin.server";
 
 export const Route = createFileRoute("/_authenticated/admin")({ component: Admin });
 
@@ -227,6 +229,24 @@ function Admin() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const toggleVerifyCompany = useMutation({
+    mutationFn: async ({ companyId, isVerified }: { companyId: string; isVerified: boolean }) => {
+      const { error } = await supabase
+        .from("companies")
+        .update({
+          is_verified: isVerified,
+          verification_status: isVerified ? "verified" : "pending",
+        })
+        .eq("id", companyId);
+      if (error) throw error;
+    },
+    onSuccess: (_, vars) => {
+      toast.success(vars.isVerified ? "Company verified" : "Company verification revoked");
+      qc.invalidateQueries({ queryKey: ["admin-companies"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   const deleteJobFn = useServerFn(deleteJobAsAdmin);
   const deleteJob = async (id: string) => {
     try {
@@ -282,6 +302,46 @@ function Admin() {
         <Shield className="h-7 w-7 text-primary" />
         <h1 className="text-3xl font-bold">Admin Panel</h1>
       </div>
+
+      {/* Administrator Platform Access & Plan Banner */}
+      <Card className="mb-6 border-primary/20 bg-gradient-to-r from-primary/5 via-primary/10 to-accent/5">
+        <CardContent className="p-5 sm:p-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-start gap-3.5">
+              <div className="h-10 w-10 rounded-xl bg-primary/15 flex items-center justify-center shrink-0 mt-0.5">
+                <Crown className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="text-base font-semibold">Administrator Account Status</h2>
+                  <Badge className="bg-emerald-600 text-white hover:bg-emerald-700">
+                    Active / Unlimited
+                  </Badge>
+                </div>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Full unrestricted platform access with all AI and management capabilities
+                  permanently enabled.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs bg-background/60 backdrop-blur rounded-lg p-3 border">
+              <div>
+                <span className="text-muted-foreground block text-[11px]">Current Plan</span>
+                <span className="font-semibold text-foreground">Administrator / Unlimited</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground block text-[11px]">Start Date</span>
+                <span className="font-medium text-foreground">Not applicable</span>
+              </div>
+              <div className="col-span-2 sm:col-span-1">
+                <span className="text-muted-foreground block text-[11px]">Expiry Date</span>
+                <span className="font-semibold text-emerald-600 dark:text-emerald-400">Never</span>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
@@ -386,6 +446,9 @@ function Admin() {
                       {/* User detail */}
                       <UserDetailDialog user={u} />
 
+                      {/* Manage Subscription */}
+                      <ManageUserSubscriptionDialog user={u} />
+
                       {/* Delete */}
                       {u.id !== user?.id && (
                         <ConfirmDelete
@@ -476,34 +539,66 @@ function Admin() {
             </CardHeader>
             <CardContent className="p-0">
               <div className="divide-y">
-                {companies?.map((c: any) => (
-                  <div
-                    key={c.id}
-                    className="flex items-center justify-between p-4 hover:bg-muted/40 gap-3"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium truncate">{c.name}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {c.industry ?? "—"} · {c.headquarters ?? "—"}
+                {companies?.map((c: any) => {
+                  const isVerified = Boolean(c.is_verified || c.verification_status === "verified");
+                  return (
+                    <div
+                      key={c.id}
+                      className="flex items-center justify-between p-4 hover:bg-muted/40 gap-3 flex-wrap sm:flex-nowrap"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-medium truncate">{c.name}</span>
+                          {isVerified ? (
+                            <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 text-[10px] px-1.5 py-0">
+                              Verified
+                            </Badge>
+                          ) : (
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] px-1.5 py-0 text-muted-foreground"
+                            >
+                              Standard
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {c.industry ?? "—"} · {c.headquarters ?? c.location ?? "—"}
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-0.5">
+                          Created {new Date(c.created_at).toLocaleDateString()}
+                        </div>
                       </div>
-                      <div className="text-xs text-muted-foreground mt-0.5">
-                        Created {new Date(c.created_at).toLocaleDateString()}
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Button
+                          variant={isVerified ? "outline" : "secondary"}
+                          size="sm"
+                          className="h-8 text-xs gap-1"
+                          onClick={() =>
+                            toggleVerifyCompany.mutate({
+                              companyId: c.id,
+                              isVerified: !isVerified,
+                            })
+                          }
+                          disabled={toggleVerifyCompany.isPending}
+                        >
+                          <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" />
+                          {isVerified ? "Revoke" : "Verify"}
+                        </Button>
+                        <Button variant="ghost" size="sm" asChild className="h-8 w-8 p-0">
+                          <Link to="/companies/$slug" params={{ slug: c.slug }}>
+                            <Eye className="h-4 w-4" />
+                          </Link>
+                        </Button>
+                        <ConfirmDelete
+                          label="Delete company"
+                          description={`Permanently delete "${c.name}"? All jobs and applications from this company will also be removed.`}
+                          onConfirm={() => deleteCompany.mutate(c.id)}
+                        />
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <Button variant="ghost" size="sm" asChild>
-                        <Link to="/companies/$slug" params={{ slug: c.slug }}>
-                          <Eye className="h-4 w-4" />
-                        </Link>
-                      </Button>
-                      <ConfirmDelete
-                        label="Delete company"
-                        description={`Permanently delete "${c.name}"? All jobs and applications from this company will also be removed.`}
-                        onConfirm={() => deleteCompany.mutate(c.id)}
-                      />
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
                 {!companies?.length && (
                   <div className="p-8 text-center text-muted-foreground">No companies found.</div>
                 )}
@@ -821,9 +916,11 @@ function AdminTicket({
 // Admin Subscriptions management
 // ============================================================
 const SUB_PLANS = [
-  { value: "starter", label: "Starter" },
-  { value: "pro", label: "Pro" },
-  { value: "enterprise", label: "Enterprise" },
+  { value: "free", label: "Free (Job Seeker)" },
+  { value: "premium", label: "Premium (Job Seeker)" },
+  { value: "starter", label: "Starter (Employer)" },
+  { value: "professional", label: "Professional (Employer)" },
+  { value: "enterprise", label: "Enterprise (Employer)" },
 ];
 
 function statusBadge(status?: string) {
@@ -835,12 +932,307 @@ function statusBadge(status?: string) {
     );
   if (status === "expired") return <Badge variant="secondary">Expired</Badge>;
   if (status === "cancelled") return <Badge variant="destructive">Cancelled</Badge>;
+  if (status === "trialing") return <Badge variant="default">Trialing</Badge>;
   return <Badge variant="outline">{status ?? "—"}</Badge>;
+}
+
+function ManageUserSubscriptionDialog({
+  user,
+  triggerButton,
+}: {
+  user: any;
+  triggerButton?: React.ReactNode;
+}) {
+  const qc = useQueryClient();
+  const grantSubFn = useServerFn(adminGrantSubscription);
+  const [open, setOpen] = useState(false);
+  const [planType, setPlanType] = useState<string>("premium");
+  const [status, setStatus] = useState<"active" | "trialing" | "cancelled" | "expired">("active");
+  const [startDate, setStartDate] = useState(new Date().toISOString().split("T")[0]);
+  const [expiryOption, setExpiryOption] = useState<"30" | "90" | "365" | "never" | "custom">("30");
+  const [customExpiryDate, setCustomExpiryDate] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const { data: currentSub, isLoading: loadingCurrentSub } = useQuery({
+    queryKey: ["user-sub-detail", user?.id],
+    enabled: open && !!user?.id,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("subscriptions")
+        .select("*")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      return data;
+    },
+  });
+
+  useEffect(() => {
+    if (open) {
+      if (currentSub) {
+        if (currentSub.plan_type) setPlanType(currentSub.plan_type);
+        if (currentSub.status) setStatus(currentSub.status as any);
+        if (currentSub.started_at) {
+          setStartDate(new Date(currentSub.started_at).toISOString().split("T")[0]);
+        }
+        if (currentSub.expires_at) {
+          setExpiryOption("custom");
+          setCustomExpiryDate(new Date(currentSub.expires_at).toISOString().split("T")[0]);
+        } else {
+          setExpiryOption("never");
+        }
+      } else {
+        setPlanType(user.role === "employer" ? "starter" : "premium");
+        setStatus("active");
+        setStartDate(new Date().toISOString().split("T")[0]);
+        setExpiryOption("30");
+      }
+    }
+  }, [currentSub, open, user.role]);
+
+  const handleSubmit = async () => {
+    setLoading(true);
+    try {
+      let expiresAt: string | null = null;
+      const start = new Date(startDate || Date.now());
+
+      if (expiryOption === "30") {
+        const exp = new Date(start);
+        exp.setDate(exp.getDate() + 30);
+        expiresAt = exp.toISOString();
+      } else if (expiryOption === "90") {
+        const exp = new Date(start);
+        exp.setDate(exp.getDate() + 90);
+        expiresAt = exp.toISOString();
+      } else if (expiryOption === "365") {
+        const exp = new Date(start);
+        exp.setDate(exp.getDate() + 365);
+        expiresAt = exp.toISOString();
+      } else if (expiryOption === "custom") {
+        if (!customExpiryDate) {
+          toast.error("Please enter a custom expiry date");
+          setLoading(false);
+          return;
+        }
+        expiresAt = new Date(customExpiryDate).toISOString();
+      } else if (expiryOption === "never") {
+        expiresAt = null;
+      }
+
+      await grantSubFn({
+        data: {
+          targetUserId: user.id,
+          planType: planType as any,
+          status,
+          startedAt: start.toISOString(),
+          expiresAt,
+        },
+      });
+
+      toast.success(`Subscription granted for ${user.full_name ?? user.email}`);
+      await qc.invalidateQueries({ queryKey: ["admin-subscriptions"] });
+      await qc.invalidateQueries({ queryKey: ["user-sub-detail", user.id] });
+      setOpen(false);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to grant subscription");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <>
+      {triggerButton ? (
+        <div onClick={() => setOpen(true)}>{triggerButton}</div>
+      ) : (
+        <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setOpen(true)}>
+          <CreditCard className="h-3.5 w-3.5 mr-1" />
+          Manage Plan
+        </Button>
+      )}
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Crown className="h-5 w-5 text-primary" />
+              Manage Subscription — {user?.full_name ?? user?.email}
+            </DialogTitle>
+            <DialogDescription>
+              Directly grant, modify, or activate a platform plan for this user. This creates an
+              administrative grant without simulated external payment records.
+            </DialogDescription>
+          </DialogHeader>
+
+          {loadingCurrentSub ? (
+            <div className="py-6 text-center text-sm text-muted-foreground">
+              Loading current subscription status…
+            </div>
+          ) : (
+            <div className="space-y-4 py-2 text-sm">
+              {/* Current Status Box */}
+              <div className="p-3.5 rounded-xl border bg-muted/40 space-y-1.5 text-xs">
+                <div className="font-semibold text-foreground flex items-center justify-between">
+                  <span>Current Subscription Status</span>
+                  {currentSub ? (
+                    statusBadge(currentSub.status)
+                  ) : (
+                    <Badge variant="outline">No Active Subscription</Badge>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-muted-foreground pt-1">
+                  <div>
+                    Plan:{" "}
+                    <span className="font-medium text-foreground capitalize">
+                      {currentSub?.plan_type ?? "None"}
+                    </span>
+                  </div>
+                  <div>
+                    Payment Source:{" "}
+                    <span className="font-medium text-foreground">
+                      {currentSub?.transaction_id?.startsWith("admin_grant")
+                        ? "Admin Grant"
+                        : currentSub?.esewa_ref_id
+                          ? "eSewa"
+                          : "None"}
+                    </span>
+                  </div>
+                  <div>
+                    Started:{" "}
+                    <span className="font-medium text-foreground">
+                      {currentSub?.started_at
+                        ? new Date(currentSub.started_at).toLocaleDateString()
+                        : "—"}
+                    </span>
+                  </div>
+                  <div>
+                    Expires:{" "}
+                    <span className="font-medium text-foreground">
+                      {currentSub?.expires_at
+                        ? new Date(currentSub.expires_at).toLocaleDateString()
+                        : "Never / Unlimited"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Form Controls */}
+              <div className="space-y-3 pt-1">
+                <div>
+                  <Label htmlFor="planSelect" className="text-xs font-medium mb-1.5 block">
+                    Select Plan
+                  </Label>
+                  <Select value={planType} onValueChange={setPlanType}>
+                    <SelectTrigger id="planSelect">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SUB_PLANS.map((p) => (
+                        <SelectItem key={p.value} value={p.value}>
+                          {p.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="statusSelect" className="text-xs font-medium mb-1.5 block">
+                      Subscription Status
+                    </Label>
+                    <Select value={status} onValueChange={(v: any) => setStatus(v)}>
+                      <SelectTrigger id="statusSelect">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="active">Active (Full Access)</SelectItem>
+                        <SelectItem value="trialing">Trialing</SelectItem>
+                        <SelectItem value="cancelled">Cancelled</SelectItem>
+                        <SelectItem value="expired">Expired</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="startDate" className="text-xs font-medium mb-1.5 block">
+                      Start Date
+                    </Label>
+                    <Input
+                      id="startDate"
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="text-xs font-medium mb-1.5 block">Subscription Expiry</Label>
+                  <div className="grid grid-cols-5 gap-1.5 mb-2">
+                    {[
+                      { id: "30", label: "30 Days" },
+                      { id: "90", label: "90 Days" },
+                      { id: "365", label: "1 Year" },
+                      { id: "never", label: "Unlimited" },
+                      { id: "custom", label: "Custom" },
+                    ].map((opt) => (
+                      <Button
+                        key={opt.id}
+                        type="button"
+                        size="sm"
+                        variant={expiryOption === opt.id ? "default" : "outline"}
+                        className="text-xs h-8 px-1"
+                        onClick={() => setExpiryOption(opt.id as any)}
+                      >
+                        {opt.label}
+                      </Button>
+                    ))}
+                  </div>
+
+                  {expiryOption === "custom" && (
+                    <div className="pt-1">
+                      <Input
+                        type="date"
+                        value={customExpiryDate}
+                        onChange={(e) => setCustomExpiryDate(e.target.value)}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-4 border-t">
+                <Button variant="outline" onClick={() => setOpen(false)} disabled={loading}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleSubmit}
+                  disabled={loading}
+                  className="gradient-brand text-primary-foreground"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> Saving…
+                    </>
+                  ) : (
+                    "Save & Grant Subscription"
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
+  );
 }
 
 function AdminSubscriptions() {
   const qc = useQueryClient();
+  const grantSubFn = useServerFn(adminGrantSubscription);
   const [search, setSearch] = useState("");
+  const [grantModalOpen, setGrantModalOpen] = useState(false);
+  const [selectedUserForGrant, setSelectedUserForGrant] = useState<string>("");
   const [actionTarget, setActionTarget] = useState<any | null>(null);
   const [actionType, setActionType] = useState<
     "activate" | "extend" | "cancel" | "changePlan" | null
@@ -862,6 +1254,18 @@ function AdminSubscriptions() {
     },
   });
 
+  const { data: allUsers } = useQuery({
+    queryKey: ["admin-all-users-for-grant"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("id, full_name, email")
+        .order("full_name", { ascending: true })
+        .limit(300);
+      return data ?? [];
+    },
+  });
+
   // Fetch user profiles for the subscription owners
   const userIds = (subscriptions ?? []).map((s: any) => s.user_id).filter(Boolean);
   const { data: profiles } = useQuery({
@@ -877,26 +1281,6 @@ function AdminSubscriptions() {
     },
   });
 
-  const updateMutation = useMutation({
-    mutationFn: async (payload: {
-      id: string;
-      updates: Database["public"]["Tables"]["subscriptions"]["Update"];
-    }) => {
-      const { error } = await supabase
-        .from("subscriptions")
-        .update(payload.updates)
-        .eq("id", payload.id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["admin-subscriptions"] });
-      toast.success("Subscription updated");
-      setActionTarget(null);
-      setActionType(null);
-    },
-    onError: (e: any) => toast.error(e.message),
-  });
-
   function openAction(sub: any, type: typeof actionType) {
     setActionTarget(sub);
     setActionType(type);
@@ -904,59 +1288,99 @@ function AdminSubscriptions() {
     setNewPlan(sub.plan_type ?? "starter");
   }
 
-  function submitAction() {
+  async function submitAction() {
     if (!actionTarget || !actionType) return;
     const sub = actionTarget;
     const now = new Date();
 
-    if (actionType === "activate") {
-      const expires = new Date(now);
-      expires.setDate(expires.getDate() + 30);
-      updateMutation.mutate({
-        id: sub.id,
-        updates: {
-          status: "active",
-          payment_status: "paid",
-          started_at: now.toISOString(),
-          expires_at: expires.toISOString(),
-        },
-      });
-    } else if (actionType === "extend") {
-      const base = sub.expires_at ? new Date(sub.expires_at) : now;
-      if (base < now) base.setTime(now.getTime());
-      const days = parseInt(extendDays, 10) || 30;
-      base.setDate(base.getDate() + days);
-      updateMutation.mutate({
-        id: sub.id,
-        updates: { expires_at: base.toISOString(), status: "active" },
-      });
-    } else if (actionType === "cancel") {
-      updateMutation.mutate({
-        id: sub.id,
-        updates: { status: "cancelled" },
-      });
-    } else if (actionType === "changePlan") {
-      updateMutation.mutate({
-        id: sub.id,
-        updates: { plan_type: newPlan },
-      });
+    try {
+      if (actionType === "activate") {
+        const expires = new Date(now);
+        expires.setDate(expires.getDate() + 30);
+        await grantSubFn({
+          data: {
+            targetUserId: sub.user_id,
+            planType: sub.plan_type || "premium",
+            status: "active",
+            startedAt: now.toISOString(),
+            expiresAt: expires.toISOString(),
+          },
+        });
+        toast.success("Subscription activated for 30 days");
+      } else if (actionType === "extend") {
+        const base = sub.expires_at ? new Date(sub.expires_at) : now;
+        if (base < now) base.setTime(now.getTime());
+        const days = parseInt(extendDays, 10) || 30;
+        base.setDate(base.getDate() + days);
+        await grantSubFn({
+          data: {
+            targetUserId: sub.user_id,
+            planType: sub.plan_type || "premium",
+            status: "active",
+            startedAt: sub.started_at || now.toISOString(),
+            expiresAt: base.toISOString(),
+          },
+        });
+        toast.success(`Subscription extended by ${days} days`);
+      } else if (actionType === "cancel") {
+        await grantSubFn({
+          data: {
+            targetUserId: sub.user_id,
+            planType: sub.plan_type || "free",
+            status: "cancelled",
+            startedAt: sub.started_at || now.toISOString(),
+            expiresAt: sub.expires_at || null,
+          },
+        });
+        toast.success("Subscription cancelled");
+      } else if (actionType === "changePlan") {
+        await grantSubFn({
+          data: {
+            targetUserId: sub.user_id,
+            planType: newPlan as any,
+            status: sub.status === "active" ? "active" : "active",
+            startedAt: sub.started_at || now.toISOString(),
+            expiresAt: sub.expires_at || null,
+          },
+        });
+        toast.success(`Plan changed to ${newPlan}`);
+      }
+
+      await qc.invalidateQueries({ queryKey: ["admin-subscriptions"] });
+      setActionTarget(null);
+      setActionType(null);
+    } catch (err: any) {
+      toast.error(err.message || "Operation failed");
     }
   }
+
+  const selectedUserObject = allUsers?.find((u) => u.id === selectedUserForGrant);
 
   return (
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <CardTitle className="flex items-center gap-2">
-            <CreditCard className="h-5 w-5" />
+            <CreditCard className="h-5 w-5 text-primary" />
             User Subscriptions
           </CardTitle>
-          <Input
-            placeholder="Search by plan, status, transaction id…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="max-w-xs h-9"
-          />
+
+          <div className="flex items-center gap-2">
+            <Input
+              placeholder="Search by plan, status, transaction id…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="max-w-xs h-9"
+            />
+            <Button
+              size="sm"
+              className="h-9 gradient-brand text-primary-foreground"
+              onClick={() => setGrantModalOpen(true)}
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              Grant Subscription
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="p-0">
@@ -992,7 +1416,7 @@ function AdminSubscriptions() {
                       <div>
                         Amount:{" "}
                         <span className="font-medium text-foreground">
-                          {s.amount ? `Rs. ${Number(s.amount).toLocaleString()}` : "—"}
+                          {s.amount ? `Rs. ${Number(s.amount).toLocaleString()}` : "Admin Grant"}
                         </span>
                       </div>
                       <div>
@@ -1004,7 +1428,7 @@ function AdminSubscriptions() {
                       <div>
                         End:{" "}
                         <span>
-                          {s.expires_at ? new Date(s.expires_at).toLocaleDateString() : "—"}
+                          {s.expires_at ? new Date(s.expires_at).toLocaleDateString() : "Never"}
                         </span>
                       </div>
                     </div>
@@ -1049,9 +1473,7 @@ function AdminSubscriptions() {
                     <th className="text-left p-3 font-medium">Status</th>
                     <th className="text-left p-3 font-medium">Start</th>
                     <th className="text-left p-3 font-medium">End</th>
-                    <th className="text-left p-3 font-medium">Amount</th>
-                    <th className="text-left p-3 font-medium">Transaction</th>
-                    <th className="text-left p-3 font-medium">eSewa ref</th>
+                    <th className="text-left p-3 font-medium">Source / Tx</th>
                     <th className="text-left p-3 font-medium">Actions</th>
                   </tr>
                 </thead>
@@ -1067,7 +1489,7 @@ function AdminSubscriptions() {
                             {profile?.email ?? s.user_id?.slice(0, 8)}
                           </div>
                         </td>
-                        <td className="p-3 capitalize">{s.plan_type}</td>
+                        <td className="p-3 capitalize font-medium">{s.plan_type}</td>
                         <td className="p-3">
                           {statusBadge(expired && s.status === "active" ? "expired" : s.status)}
                         </td>
@@ -1075,16 +1497,12 @@ function AdminSubscriptions() {
                           {s.started_at ? new Date(s.started_at).toLocaleDateString() : "—"}
                         </td>
                         <td className="p-3 text-xs">
-                          {s.expires_at ? new Date(s.expires_at).toLocaleDateString() : "—"}
+                          {s.expires_at ? new Date(s.expires_at).toLocaleDateString() : "Never"}
                         </td>
-                        <td className="p-3 text-xs">
-                          {s.amount ? `Rs. ${Number(s.amount).toLocaleString()}` : "—"}
-                        </td>
-                        <td className="p-3 text-xs font-mono truncate max-w-32">
-                          {s.transaction_id ?? "—"}
-                        </td>
-                        <td className="p-3 text-xs font-mono truncate max-w-32">
-                          {s.esewa_ref_id ?? "—"}
+                        <td className="p-3 text-xs font-mono truncate max-w-36">
+                          {s.transaction_id?.startsWith("admin_grant")
+                            ? "Admin Grant"
+                            : (s.transaction_id ?? s.esewa_ref_id ?? "—")}
                         </td>
                         <td className="p-3">
                           <div className="flex gap-1 flex-wrap">
@@ -1094,7 +1512,7 @@ function AdminSubscriptions() {
                               className="h-7 text-xs"
                               onClick={() => openAction(s, "activate")}
                             >
-                              <CheckCircle2 className="h-3 w-3 mr-1" />
+                              <CheckCircle2 className="h-3 w-3 mr-1 text-emerald-600" />
                               Activate
                             </Button>
                             <Button
@@ -1112,7 +1530,7 @@ function AdminSubscriptions() {
                               className="h-7 text-xs"
                               onClick={() => openAction(s, "changePlan")}
                             >
-                              <Crown className="h-3 w-3 mr-1" />
+                              <Crown className="h-3 w-3 mr-1 text-amber-500" />
                               Plan
                             </Button>
                             <Button
@@ -1135,6 +1553,52 @@ function AdminSubscriptions() {
           </>
         )}
       </CardContent>
+
+      {/* Grant Subscription Dialog from Header */}
+      <Dialog open={grantModalOpen} onOpenChange={setGrantModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Crown className="h-5 w-5 text-primary" />
+              Grant Subscription to User
+            </DialogTitle>
+            <DialogDescription>
+              Select a user to configure and grant a platform subscription.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div>
+              <Label className="text-xs font-medium mb-1.5 block">Select User</Label>
+              <Select value={selectedUserForGrant} onValueChange={setSelectedUserForGrant}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose a registered user…" />
+                </SelectTrigger>
+                <SelectContent className="max-h-60">
+                  {(allUsers ?? []).map((u) => (
+                    <SelectItem key={u.id} value={u.id}>
+                      {u.full_name ? `${u.full_name} (${u.email})` : u.email}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {selectedUserObject && (
+              <div className="pt-2">
+                <ManageUserSubscriptionDialog
+                  user={selectedUserObject}
+                  triggerButton={
+                    <Button className="w-full gradient-brand text-primary-foreground">
+                      Configure Plan for {selectedUserObject.full_name || selectedUserObject.email}
+                    </Button>
+                  }
+                />
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Action dialog */}
       <Dialog
@@ -1206,7 +1670,7 @@ function AdminSubscriptions() {
 
           {actionType === "activate" && (
             <p className="text-sm text-muted-foreground">
-              This will activate a 30-day premium subscription for this user.
+              This will activate a 30-day subscription for this user.
             </p>
           )}
 
@@ -1222,14 +1686,13 @@ function AdminSubscriptions() {
             </Button>
             <Button
               onClick={submitAction}
-              disabled={updateMutation.isPending}
               className={
                 actionType === "cancel"
                   ? "bg-destructive text-destructive-foreground"
                   : "gradient-brand text-primary-foreground"
               }
             >
-              {updateMutation.isPending ? "Saving…" : "Confirm"}
+              Confirm
             </Button>
           </div>
         </DialogContent>
