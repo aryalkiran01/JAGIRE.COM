@@ -234,7 +234,7 @@ export function SiteHeader() {
                 size="icon"
                 asChild
                 aria-label="View messages"
-                className="relative h-9 w-9"
+                className="h-9 w-9"
               >
                 <Link to="/messages">
                   <MessageSquare className="h-4 w-4" />

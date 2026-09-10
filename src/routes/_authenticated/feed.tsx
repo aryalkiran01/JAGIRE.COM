@@ -119,7 +119,7 @@ function FeedPage() {
       const { data: comments } = await supabase
         .from("post_comments")
         .select(
-          "id, post_id, parent_id, author_id, content, body, created_at, likes_count, author:profiles!post_comments_author_id_fkey(id, full_name, avatar_url, headline)",
+          "id, post_id, parent_id, author_id, content, body, created_at, likes_count, likes:comment_likes(count), author:profiles!post_comments_author_id_fkey(id, full_name, avatar_url, headline)",
         )
         .in("post_id", postIds)
         .order("created_at", { ascending: true });
@@ -127,7 +127,11 @@ function FeedPage() {
       const commentMap = new Map<string, CommentRow[]>();
       for (const c of comments ?? []) {
         const arr = commentMap.get(c.post_id) ?? [];
-        arr.push(c as unknown as CommentRow);
+        const rawLikesCount = (c as any).likes?.[0]?.count ?? c.likes_count ?? 0;
+        arr.push({
+          ...(c as unknown as CommentRow),
+          likes_count: rawLikesCount,
+        });
         commentMap.set(c.post_id, arr);
       }
       return postList.map((p) => ({
@@ -315,12 +319,42 @@ function FeedPage() {
   }
 
   async function toggleSave(postId: string) {
+    if (!user) {
+      toast.error("Please log in to save posts");
+      return;
+    }
     const isSaved = savedIds?.has(postId);
-    if (isSaved)
-      await supabase.from("post_saves").delete().eq("post_id", postId).eq("user_id", user!.id);
-    else await supabase.from("post_saves").insert({ post_id: postId, user_id: user!.id });
-    toast.success(isSaved ? "Removed from saved" : "Saved");
-    qc.invalidateQueries({ queryKey: ["feed-saves"] });
+    
+    // Optimistic cache update for feed-saves
+    qc.setQueryData<Set<string>>(["feed-saves", user.id], (old) => {
+      const next = new Set(old ?? []);
+      if (isSaved) next.delete(postId);
+      else next.add(postId);
+      return next;
+    });
+
+    try {
+      if (isSaved) {
+        const { error } = await supabase
+          .from("post_saves")
+          .delete()
+          .eq("post_id", postId)
+          .eq("user_id", user.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("post_saves")
+          .upsert({ post_id: postId, user_id: user.id }, { onConflict: "post_id,user_id" });
+        if (error) throw error;
+      }
+      toast.success(isSaved ? "Removed from saved" : "Saved to your bookmarks");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update saved post");
+      qc.invalidateQueries({ queryKey: ["feed-saves", user.id] });
+    } finally {
+      qc.invalidateQueries({ queryKey: ["feed-saves", user.id] });
+      qc.invalidateQueries({ queryKey: ["saved-posts", user.id] });
+    }
   }
 
   async function addComment(postId: string) {
@@ -405,7 +439,7 @@ function FeedPage() {
       } else {
         const { error } = await supabase
           .from("comment_likes")
-          .insert({ comment_id: commentId, user_id: user.id });
+          .upsert({ comment_id: commentId, user_id: user.id }, { onConflict: "comment_id,user_id" });
         if (error) throw error;
       }
     } catch (err) {
@@ -799,12 +833,12 @@ function FeedPage() {
 
                   {/* Image attachment - rendered only when an image exists */}
                   {p.image_url && (
-                    <div className="rounded-xl overflow-hidden border border-border/60 bg-muted/10 flex items-center justify-center">
+                    <div className="rounded-xl overflow-hidden border border-border/40">
                       <img
                         src={p.image_url}
                         alt="Post attachment"
                         loading="lazy"
-                        className="w-full h-auto max-h-[85vh] object-contain rounded-xl"
+                        className="w-full h-auto block rounded-xl"
                       />
                     </div>
                   )}

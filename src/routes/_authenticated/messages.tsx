@@ -18,6 +18,7 @@ import {
   Smile,
   X,
   Check,
+  CheckCheck,
   Phone,
   Video,
   Info,
@@ -47,14 +48,16 @@ type ChatWithDetails = {
   last_message_at: string | null;
   other?: Profile;
   lastMessage?: Message;
-  unreadCount: number;
 };
 
 type Message = {
   id: string;
   chat_id: string;
   sender_id: string;
+  receiver_id?: string | null;
   body: string | null;
+  is_read?: boolean | null;
+  read_at?: string | null;
   created_at: string | null;
 };
 
@@ -84,6 +87,13 @@ function Messages() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastMessageCountRef = useRef<number>(0);
+
+  // Sync activeChat when search.chat param changes
+  useEffect(() => {
+    if (search.chat && search.chat !== activeChat) {
+      setActiveChat(search.chat);
+    }
+  }, [search.chat]);
 
   // Create or open chat from ?with=userId
   useEffect(() => {
@@ -159,7 +169,7 @@ function Messages() {
         profileMap = new Map((profilesData ?? []).map((profile: Profile) => [profile.id, profile]));
       }
 
-      // Get ALL messages for search functionality
+      // Get last messages for preview & search
       const chatIds = chatData.map((chat) => chat.id);
       const lastMessageMap = new Map<string, Message>();
       let allMessages: Message[] = [];
@@ -168,10 +178,9 @@ function Messages() {
         // Get last messages for preview
         const { data: lastMessagesData } = await supabase
           .from("messages")
-          .select("id, chat_id, body, sender_id, created_at")
+          .select("id, chat_id, body, sender_id, is_read, created_at")
           .in("chat_id", chatIds)
-          .order("created_at", { ascending: false })
-          .limit(chatIds.length);
+          .order("created_at", { ascending: false });
 
         lastMessagesData?.forEach((msg: any) => {
           if (!lastMessageMap.has(msg.chat_id)) {
@@ -180,15 +189,16 @@ function Messages() {
               chat_id: msg.chat_id,
               sender_id: msg.sender_id,
               body: msg.body || "",
+              is_read: msg.is_read,
               created_at: msg.created_at,
             });
           }
         });
 
-        // Get all messages for search (limit to recent 50 per chat for performance)
+        // Get recent messages for search (limit to 100)
         const { data: allMessagesData } = await supabase
           .from("messages")
-          .select("id, chat_id, body, sender_id, created_at")
+          .select("id, chat_id, body, sender_id, is_read, created_at")
           .in("chat_id", chatIds)
           .order("created_at", { ascending: false })
           .limit(100);
@@ -196,7 +206,7 @@ function Messages() {
         allMessages = (allMessagesData ?? []) as Message[];
       }
 
-      // Build the result with all messages for search
+      // Build the result
       const result = chatData.map((chat) => {
         const otherId = chat.user_a === user!.id ? chat.user_b : chat.user_a;
         const otherProfile = profileMap.get(otherId ?? "");
@@ -208,8 +218,6 @@ function Messages() {
           user_b: chat.user_b || "",
           other: otherProfile,
           lastMessage: lastMessageMap.get(chat.id),
-          unreadCount: 0,
-          // Store all messages for search
           messages: chatMessages,
         } as ChatWithDetails & { messages?: Message[] };
       });
@@ -218,7 +226,7 @@ function Messages() {
     },
   });
 
-  // Get messages
+  // Get messages for active chat
   const { data: messages, isLoading: messagesLoading } = useQuery({
     queryKey: ["msgs", activeChat],
     enabled: !!activeChat,
@@ -234,31 +242,89 @@ function Messages() {
     },
   });
 
-  // Realtime messages
+  // Mark active chat messages as seen in DB & active chat cache
+  const markChatAsSeen = useCallback(
+    async (chatId: string) => {
+      if (!user || !chatId) return;
+
+      try {
+        qc.setQueryData(["msgs", chatId], (old: Message[] | undefined) => {
+          if (!old) return old;
+          return old.map((m) =>
+            m.sender_id !== user.id ? { ...m, is_read: true, read_at: new Date().toISOString() } : m,
+          );
+        });
+
+        const now = new Date().toISOString();
+        await supabase
+          .from("messages")
+          .update({
+            is_read: true,
+            read_at: now,
+          })
+          .eq("chat_id", chatId)
+          .neq("sender_id", user.id)
+          .or("is_read.is.null,is_read.eq.false");
+      } catch (err) {
+        console.error("Failed to mark messages as seen:", err);
+      }
+    },
+    [user, qc],
+  );
+
+  // Mark active chat as seen on mount / change
   useEffect(() => {
-    if (!activeChat) return;
+    if (activeChat) {
+      markChatAsSeen(activeChat);
+    }
+  }, [activeChat, markChatAsSeen]);
+
+  // Mark incoming messages as seen when viewing active chat
+  useEffect(() => {
+    if (activeChat && messages && user) {
+      const hasUnseen = messages.some((m) => m.sender_id !== user.id && !m.is_read);
+      if (hasUnseen) {
+        markChatAsSeen(activeChat);
+      }
+    }
+  }, [activeChat, messages, user, markChatAsSeen]);
+
+  // Realtime messages subscription across all user conversations
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const topic = `chat-messages-all:${user.id}`;
+    supabase
+      .getChannels()
+      .filter((c) => c.topic === `realtime:${topic}`)
+      .forEach((c) => void supabase.removeChannel(c));
 
     const channel = supabase
-      .channel(`chat:${activeChat}`)
+      .channel(topic)
       .on(
         "postgres_changes",
         {
-          event: "INSERT",
+          event: "*",
           schema: "public",
           table: "messages",
-          filter: `chat_id=eq.${activeChat}`,
         },
-        () => {
-          qc.invalidateQueries({ queryKey: ["msgs", activeChat] });
-          qc.invalidateQueries({ queryKey: ["chats"] });
+        (payload) => {
+          const msg = (payload.new || payload.old) as any;
+          if (activeChat && msg?.chat_id === activeChat) {
+            qc.invalidateQueries({ queryKey: ["msgs", activeChat] });
+            if (payload.eventType === "INSERT" && msg?.sender_id !== user.id) {
+              markChatAsSeen(activeChat);
+            }
+          }
+          qc.invalidateQueries({ queryKey: ["chats", user.id] });
         },
       )
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      void supabase.removeChannel(channel);
     };
-  }, [activeChat, qc]);
+  }, [user?.id, activeChat, markChatAsSeen, qc]);
 
   // Auto scroll
   const scrollToBottom = useCallback((smooth = true) => {
@@ -304,10 +370,35 @@ function Messages() {
     setText("");
 
     try {
+      const currentChat = chats?.find((c) => c.id === activeChat);
+      let otherId = currentChat
+        ? currentChat.user_a === user.id
+          ? currentChat.user_b
+          : currentChat.user_a
+        : null;
+
+      if (!otherId && activeChat) {
+        const { data: chatData } = await supabase
+          .from("chats")
+          .select("user_a, user_b")
+          .eq("id", activeChat)
+          .maybeSingle();
+
+        if (chatData) {
+          otherId = chatData.user_a === user.id ? chatData.user_b : chatData.user_a;
+        }
+      }
+
+      if (!otherId && search.with && search.with !== user.id) {
+        otherId = search.with;
+      }
+
       const { error } = await supabase.from("messages").insert({
         chat_id: activeChat,
         sender_id: user.id,
+        receiver_id: otherId,
         body,
+        is_read: false,
       });
 
       if (error) throw error;
@@ -318,7 +409,7 @@ function Messages() {
         .eq("id", activeChat);
 
       qc.invalidateQueries({ queryKey: ["msgs", activeChat] });
-      qc.invalidateQueries({ queryKey: ["chats"] });
+      qc.invalidateQueries({ queryKey: ["chats", user.id] });
       setTimeout(() => scrollToBottom(true), 100);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to send message";
@@ -473,6 +564,7 @@ function Messages() {
                         key={chat.id}
                         onClick={() => {
                           setActiveChat(chat.id);
+                          markChatAsSeen(chat.id);
                           navigate({ search: { chat: chat.id } });
                           lastMessageCountRef.current = 0;
                         }}
@@ -521,14 +613,6 @@ function Messages() {
                                 lastMessage?.body || "Start a conversation"
                               )}
                             </p>
-                            {chat.unreadCount > 0 && (
-                              <Badge
-                                variant={isActive ? "secondary" : "default"}
-                                className="h-5 min-w-5 px-1.5 text-[10px] shrink-0"
-                              >
-                                {chat.unreadCount}
-                              </Badge>
-                            )}
                           </div>
                         </div>
                       </button>
@@ -678,7 +762,18 @@ function Messages() {
                                         ? format(new Date(message.created_at), "HH:mm")
                                         : ""}
                                     </span>
-                                    {isMine && <Check className="h-3 w-3" />}
+                                    {isMine && (
+                                      <span
+                                        title={message.is_read ? "Seen" : "Sent"}
+                                        className="inline-flex items-center"
+                                      >
+                                        {message.is_read ? (
+                                          <CheckCheck className="h-3.5 w-3.5 text-primary-foreground" />
+                                        ) : (
+                                          <Check className="h-3 w-3 opacity-75" />
+                                        )}
+                                      </span>
+                                    )}
                                   </div>
                                 </div>
                               </div>

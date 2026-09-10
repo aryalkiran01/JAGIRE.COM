@@ -17,6 +17,7 @@ import {
   Sparkles,
   TrendingUp,
   ChevronDown,
+  Bookmark,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -35,6 +36,7 @@ type NavItem = {
 const SEEKER_NAV: NavItem[] = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/applications", label: "Applications", icon: Target },
+  { to: "/saved", label: "Saved", icon: Bookmark },
   { to: "/interviews", label: "Interviews", icon: Video },
   { to: "/career-coach", label: "AI Career Coach", icon: BrainCircuit },
   { to: "/ai-assistant", label: "AI Assistant", icon: Sparkles },
@@ -47,6 +49,7 @@ const ADMIN_NAV: NavItem[] = [
   { to: "/admin", label: "Admin Panel", icon: Shield },
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/applications", label: "Applications", icon: Target },
+  { to: "/saved", label: "Saved", icon: Bookmark },
   { to: "/interviews", label: "Interviews", icon: Video },
   { to: "/career-coach", label: "AI Career Coach", icon: BrainCircuit },
   { to: "/ai-assistant", label: "AI Assistant", icon: Sparkles },
@@ -59,6 +62,7 @@ const EMPLOYER_NAV: NavItem[] = [
   { to: "/employer", label: "Dashboard", icon: LayoutDashboard },
   { to: "/employer/intelligence", label: "Intelligence", icon: TrendingUp },
   { to: "/employer/jobs/new", label: "Job Posts", icon: Briefcase },
+  { to: "/saved", label: "Saved", icon: Bookmark },
   { to: "/employer/interviews", label: "Interviews", icon: Video },
   { to: "/employer/company", label: "Company", icon: Building2 },
   { to: "/employer/knowledge-base", label: "Knowledge Base", icon: BookOpen },

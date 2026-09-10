@@ -25,6 +25,7 @@ import {
   ShieldAlert,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/profile/$userId")({
   component: PublicProfilePage,
@@ -180,22 +181,45 @@ function PublicProfilePage() {
             </div>
 
             {/* Action Buttons */}
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-2 shrink-0 flex-wrap">
               {isOwnProfile ? (
-                <Button asChild className="gradient-brand text-primary-foreground shadow-sm">
+                <Button asChild className="gradient-brand text-primary-foreground shadow-sm h-9 text-xs sm:text-sm">
                   <Link to="/profile">
-                    <Pencil className="h-4 w-4 mr-1.5" />
+                    <Pencil className="h-3.5 w-3.5 mr-1.5" />
                     Edit Profile
                   </Link>
                 </Button>
               ) : (
-                <Button asChild className="gradient-brand text-primary-foreground shadow-sm">
+                <Button asChild className="gradient-brand text-primary-foreground shadow-sm h-9 text-xs sm:text-sm">
                   <Link to="/messages" search={{ with: userId }}>
-                    <MessageSquare className="h-4 w-4 mr-1.5" />
+                    <MessageSquare className="h-3.5 w-3.5 mr-1.5" />
                     Message
                   </Link>
                 </Button>
               )}
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  if (navigator.share) {
+                    navigator
+                      .share({
+                        title: `${profile.full_name || "User"} on Jagire`,
+                        url: window.location.href,
+                      })
+                      .catch(() => {});
+                  } else {
+                    navigator.clipboard.writeText(window.location.href);
+                    toast.success("Profile link copied!");
+                  }
+                }}
+                className="h-9 text-xs gap-1.5"
+                aria-label="Share Profile"
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Share</span>
+              </Button>
             </div>
           </div>
 
@@ -360,12 +384,12 @@ function PublicProfilePage() {
                   </p>
 
                   {post.image_url && (
-                    <div className="rounded-xl overflow-hidden border border-border/60 bg-muted/20 flex items-center justify-center max-h-96">
+                    <div className="rounded-xl overflow-hidden border border-border/40">
                       <img
                         src={post.image_url}
                         alt="Post media"
                         loading="lazy"
-                        className="w-full h-auto max-h-96 object-contain rounded-lg"
+                        className="w-full h-auto block rounded-xl"
                       />
                     </div>
                   )}
