@@ -296,7 +296,17 @@ export async function syncAndBuildCompanyIntelligence(
 
 Provide actionable hiring recommendations, structured screening criteria, and realistic NPR salary benchmarks suited for the Nepali talent market.`;
 
-  const systemPrompt = `You are Jagire.com's Lead Talent Acquisition & Company Intelligence AI. Provide structured, realistic, and high-impact hiring guidance for employers in Nepal in JSON format matching the schema.`;
+  const systemPrompt = `You are Jagire.com's Lead Talent Acquisition & Company Intelligence AI. Provide structured, realistic, and high-impact hiring guidance for employers in Nepal in JSON format strictly conforming to the schema.
+
+Required JSON fields:
+- target_talent_profiles: Array of objects with { role_title: string, seniority: string, required_skills: string[], why: string }
+- skill_demands: Array of strings
+- recruitment_strategy: Array of strings
+- candidate_screening_criteria: Array of objects with { category: string, must_have: string, good_to_have: string }
+- interview_focus_areas: Array of strings
+- compensation_benchmarks_npr: Array of objects with { role: string, min_salary: string, max_salary: string, market_trend: string }
+- employer_branding_suggestions: Array of strings
+- hiring_velocity_assessment: string`;
 
   let aiHiringRoadmap: any = {};
   let aiRecommendations: any = {};
@@ -306,7 +316,7 @@ Provide actionable hiring recommendations, structured screening criteria, and re
       prompt,
       systemPrompt,
       companyHiringStrategySchema,
-      "general",
+      "company-intelligence",
     );
 
     aiHiringRoadmap = {

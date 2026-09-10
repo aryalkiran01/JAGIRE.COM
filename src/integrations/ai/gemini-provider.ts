@@ -65,17 +65,23 @@ export class GeminiProvider implements AIProvider {
   async generateJson<T>(req: AIRequest): Promise<T> {
     const model = resolveModel(req);
     const url = `${GEMINI_URL}/${model}:generateContent?key=${apiKey()}`;
-    const body = {
+    const generationConfig: Record<string, unknown> = {
+      responseMimeType: "application/json",
+      temperature: 0.3,
+      topK: 1,
+      topP: 0.95,
+    };
+
+    if (req.responseSchema) {
+      generationConfig.responseSchema = req.responseSchema;
+    }
+
+    const body: Record<string, unknown> = {
       contents: [{ role: "user", parts: [{ text: req.prompt }] }],
       ...(req.systemInstruction
         ? { systemInstruction: { parts: [{ text: req.systemInstruction }] } }
         : {}),
-      generationConfig: {
-        responseMimeType: "application/json",
-        temperature: 0.3,
-        topK: 1,
-        topP: 0.95,
-      },
+      generationConfig,
     };
 
     let res: Response;

@@ -18,6 +18,7 @@ export type AITask =
   | "hiring-recommendation"
   | "job-recommendation"
   | "company-candidate-analysis"
+  | "company-intelligence"
   | "linkedin-import"
   | "learning-recommendations"
   | "career-coach"
@@ -32,6 +33,7 @@ export interface AIRequest {
   model?: string;
   task?: AITask;
   json?: boolean;
+  responseSchema?: Record<string, unknown>;
 }
 
 export interface AIResponse {

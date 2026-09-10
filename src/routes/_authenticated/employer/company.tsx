@@ -444,7 +444,7 @@ function CompanyForm() {
             {selectedCompany && (
               <div className="flex items-center gap-2.5 flex-wrap">
                 <Button asChild variant="outline" size="sm" className="h-9 gap-1.5 shadow-sm">
-                  <Link to="/employer/intelligence">
+                  <Link to="/employer/intelligence" search={{ companyId: selectedCompany.id }}>
                     <TrendingUp className="h-3.5 w-3.5 text-primary" />
                     <span>360° Intelligence</span>
                   </Link>

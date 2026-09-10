@@ -40,6 +40,7 @@ import {
   Clock,
   Banknote,
   Edit3,
+  TrendingUp,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -490,14 +491,22 @@ function CompanyDetail() {
                   </Button>
                 )}
 
-                {/* Owner Edit Profile Action */}
+                {/* Owner 360 Intelligence & Edit Actions */}
                 {(isOwner || role === "admin") && (
-                  <Button asChild variant="secondary" size="sm" className="gap-1.5 h-9">
-                    <Link to="/employer/company">
-                      <Edit3 className="h-3.5 w-3.5" />
-                      Edit Profile
-                    </Link>
-                  </Button>
+                  <>
+                    <Button asChild variant="outline" size="sm" className="gap-1.5 h-9 shadow-sm">
+                      <Link to="/employer/intelligence" search={{ companyId: company.id }}>
+                        <TrendingUp className="h-3.5 w-3.5 text-primary" />
+                        <span>360° Intelligence</span>
+                      </Link>
+                    </Button>
+                    <Button asChild variant="secondary" size="sm" className="gap-1.5 h-9">
+                      <Link to="/employer/company">
+                        <Edit3 className="h-3.5 w-3.5" />
+                        <span>Edit Profile</span>
+                      </Link>
+                    </Button>
+                  </>
                 )}
 
                 {/* Share Button */}

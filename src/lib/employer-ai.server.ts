@@ -724,7 +724,7 @@ async function fetchEmployerData(
   if (specificCompanyId) {
     const { data: specificCompany, error: specificCompanyError } = await supabase
       .from("companies")
-      .select("id,name,industry,headquarters,description,website,size,founded_year")
+      .select("*")
       .eq("id", specificCompanyId)
       .eq("owner_id", userId)
       .single();
@@ -738,7 +738,7 @@ async function fetchEmployerData(
   } else {
     const { data: companies, error: companyError } = await supabase
       .from("companies")
-      .select("id,name,industry,headquarters,description,website,size,founded_year")
+      .select("*")
       .eq("owner_id", userId)
       .order("created_at", { ascending: false })
       .limit(1);
@@ -830,7 +830,7 @@ async function buildEmployerContext(
   userId: string,
   neededFields: string[] = [],
   specificCompanyId?: string | null,
-): Promise<{ context: string; companyId: string | null }> {
+): Promise<{ context: string; companyId: string | null; companyName?: string | null }> {
   const { company, jobs, applications, companyId } = await fetchEmployerData(
     supabase,
     userId,
@@ -853,17 +853,31 @@ async function buildEmployerContext(
   }
 
   if (company) {
+    const industryStr = company.industry || "General Enterprise & Services";
+    const locStr = company.headquarters || company.location || "Kathmandu, Nepal";
+    const sizeStr = company.size || company.company_size || "10-50 employees";
+    const techStr = Array.isArray(company.technologies)
+      ? company.technologies.join(", ")
+      : typeof company.technologies === "string"
+        ? company.technologies
+        : "Standard Tech Stack";
+    const benStr = Array.isArray(company.benefits)
+      ? company.benefits.join(", ")
+      : typeof company.benefits === "string"
+        ? company.benefits
+        : "Competitive Compensation";
+
     ctx.push(
       `## Detailed Company Profile
-- Name: ${company.name}
-- Industry: ${company.industry || "Not specified"}
-- Headquarters: ${company.headquarters || "Not specified"}
-- Size: ${company.size || "Not specified"}
-- Founded: ${company.founded_year || "Not specified"}
-- Website: ${company.website || "Not specified"}
-- Description: ${company.description || "No description available"}
-- Technologies: ${Array.isArray(company.technologies) ? company.technologies.join(", ") : company.technologies || "Standard"}
-- Benefits: ${Array.isArray(company.benefits) ? company.benefits.join(", ") : company.benefits || "Competitive"}`,
+- Target Company Name: ${company.name}
+- Industry: ${industryStr}
+- Location / Headquarters: ${locStr}
+- Company Size: ${sizeStr}
+- Founded: ${company.founded_year || "N/A"}
+- Website: ${company.website || "N/A"}
+- Description: ${company.description || "N/A"}
+- Core Technologies: ${techStr}
+- Benefits & Culture: ${benStr}`,
     );
   } else {
     ctx.push(`## Company Profile\nNo company profile found.`);
@@ -910,7 +924,11 @@ ${applications
     );
   }
 
-  return { context: ctx.join("\n\n"), companyId: companyId ?? null };
+  return {
+    context: ctx.join("\n\n"),
+    companyId: companyId ?? null,
+    companyName: company?.name ?? null,
+  };
 }
 
 // ── Main Server Function ────────────────────────────────────────────────────
@@ -978,12 +996,11 @@ export const runEmployerAiFeature = (
   }
 
   // Build employer context with specific company if provided
-  const { context: employerContext, companyId: contextCompanyId } = await buildEmployerContext(
-    supabase,
-    userId,
-    config.contextFields || [],
-    companyId,
-  );
+  const {
+    context: employerContext,
+    companyId: contextCompanyId,
+    companyName,
+  } = await buildEmployerContext(supabase, userId, config.contextFields || [], companyId);
 
   // RAG context from knowledge base
   let ragContext = "";
@@ -1008,7 +1025,7 @@ export const runEmployerAiFeature = (
     // RAG is optional — continue without it
   }
 
-  // Build complete prompt with explicit no-data instructions
+  // Build complete prompt with explicit company and no-data instructions
   const promptParts = [
     `## Employer Context\n${employerContext || "No company profile set up yet."}`,
   ];
@@ -1021,16 +1038,17 @@ export const runEmployerAiFeature = (
     `## Request\n${message}`,
     ``,
     `## Instructions
-1. Use ONLY the provided company context to personalize your response
-2. If no applications are listed, do NOT invent or generate fake candidate names
-3. If no jobs are listed, state that clearly
-4. Be specific and actionable based on ACTUAL data provided
-5. Consider the Nepali job market
-6. Use NPR (Rs.) for all salary figures
-7. Provide realistic, practical recommendations
-8. Format response as valid JSON per the schema
-9. If there's no data for a requested analysis, return empty arrays and explain why
-10. NEVER fabricate candidate names, applications, or metrics`,
+1. You are advising the hiring team for "${companyName || "the employer"}". Always base your analysis and recommendations specifically on "${companyName || "the employer"}" and its actual business context.
+2. Use ONLY the provided company context to personalize your response
+3. If no applications are listed, do NOT invent or generate fake candidate names
+4. If no jobs are listed, state that clearly
+5. Be specific and actionable based on ACTUAL data provided
+6. Consider the Nepali job market
+7. Use NPR (Rs.) for all salary figures
+8. Provide realistic, practical recommendations
+9. Format response as valid JSON per the schema
+10. If there's no data for a requested analysis, return empty arrays and explain why
+11. NEVER fabricate candidate names, applications, or metrics`,
   );
 
   const prompt = promptParts.join("\n\n");

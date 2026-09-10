@@ -3,10 +3,20 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Building2,
@@ -33,7 +43,14 @@ import { toast } from "sonner";
 import { getCompanyIntelligence, syncCompanyIntelligence } from "@/lib/company-intelligence.server";
 import { cn } from "@/lib/utils";
 
+type IntelligenceSearch = {
+  companyId?: string;
+};
+
 export const Route = createFileRoute("/_authenticated/employer/intelligence")({
+  validateSearch: (s: Record<string, unknown>): IntelligenceSearch => ({
+    companyId: typeof s.companyId === "string" ? s.companyId : undefined,
+  }),
   component: EmployerCompanyIntelligencePage,
 });
 
@@ -57,16 +74,39 @@ function getHiringTier(score: number) {
 }
 
 function EmployerCompanyIntelligencePage() {
+  const { user } = useAuth();
+  const search = Route.useSearch();
+  const navigate = Route.useNavigate();
   const qc = useQueryClient();
   const fetchCI = useServerFn(getCompanyIntelligence);
   const syncCI = useServerFn(syncCompanyIntelligence);
 
   const [isSyncing, setIsSyncing] = useState(false);
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["employer-company-intelligence"],
+  // Fetch all companies owned by this employer
+  const { data: companies = [], isLoading: isCompaniesLoading } = useQuery({
+    queryKey: ["my-companies", user?.id],
+    enabled: !!user?.id,
     queryFn: async () => {
-      return await fetchCI({ data: undefined });
+      const { data, error } = await supabase
+        .from("companies")
+        .select("id, name, slug, logo_url, industry, headquarters, location")
+        .eq("owner_id", user!.id)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const selectedCompanyId =
+    search.companyId || (companies.length > 0 ? companies[0].id : undefined);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["employer-company-intelligence", selectedCompanyId],
+    enabled: !!selectedCompanyId || (!isCompaniesLoading && companies.length === 0),
+    queryFn: async () => {
+      return await fetchCI({ data: { companyId: selectedCompanyId } });
     },
   });
 
@@ -99,8 +139,8 @@ function EmployerCompanyIntelligencePage() {
     setIsSyncing(true);
     try {
       await syncCI({ data: { companyId: company.id } });
-      await qc.invalidateQueries({ queryKey: ["employer-company-intelligence"] });
-      toast.success("Company intelligence synchronized successfully!");
+      await qc.invalidateQueries({ queryKey: ["employer-company-intelligence", selectedCompanyId] });
+      toast.success("360° Company intelligence synchronized successfully!");
     } catch (err: any) {
       toast.error(err.message || "Failed to sync company intelligence");
     } finally {
@@ -108,7 +148,7 @@ function EmployerCompanyIntelligencePage() {
     }
   }
 
-  if (!isLoading && !company) {
+  if (!isLoading && !isCompaniesLoading && (!company || companies.length === 0)) {
     return (
       <div className="container mx-auto px-4 py-16 max-w-lg text-center space-y-4">
         <div className="h-16 w-16 mx-auto rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
@@ -131,7 +171,7 @@ function EmployerCompanyIntelligencePage() {
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2.5">
             <Building2 className="h-7 w-7 text-primary" />
@@ -146,6 +186,32 @@ function EmployerCompanyIntelligencePage() {
         </div>
 
         <div className="flex items-center gap-2 shrink-0 flex-wrap">
+          {/* Company Selector Dropdown for multi-company employers */}
+          {companies.length > 1 && (
+            <div className="flex items-center gap-2 mr-2">
+              <Select
+                value={selectedCompanyId}
+                onValueChange={(newId) => {
+                  navigate({ search: { companyId: newId } });
+                }}
+              >
+                <SelectTrigger className="w-[200px] sm:w-[240px] h-9 bg-card border-border text-xs shadow-sm">
+                  <SelectValue placeholder="Select company" />
+                </SelectTrigger>
+                <SelectContent>
+                  {companies.map((c) => (
+                    <SelectItem key={c.id} value={c.id} className="text-xs">
+                      <div className="flex items-center gap-2">
+                        <Building2 className="h-3.5 w-3.5 text-primary shrink-0" />
+                        <span className="font-medium truncate">{c.name}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           <Button
             variant="outline"
             size="sm"

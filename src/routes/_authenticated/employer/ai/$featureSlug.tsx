@@ -38,6 +38,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+import { useMemo } from "react";
 export const Route = createFileRoute("/_authenticated/employer/ai/$featureSlug")({
   head: () => ({ meta: [{ title: "AI Feature — Jagire" }] }),
   component: AiFeaturePage,
@@ -59,31 +60,33 @@ type CompanyProfile = {
   name: string;
   industry?: string | null;
   headquarters?: string | null;
+  location?: string | null;
   description?: string | null;
   website?: string | null;
   size?: string | null;
   founded_year?: number | null;
   active_jobs_count?: number;
   total_applications_count?: number;
+  active_jobs?: Array<{ id: string; title: string; status: string }>;
 };
 
 // ── Suggested Prompts ───────────────────────────────────────────────────────
 
 const SUGGESTED_PROMPTS: Record<string, string[]> = {
   "candidate-match": [
-    "Match my applicants to the Senior React Engineer role",
-    "Which candidates best fit a remote backend Python position?",
-    "Find the best cultural fit among recent applicants",
+    "Match my applicants to our active positions",
+    "Which candidates best fit our technical requirements?",
+    "Find the best cultural and skillset fit among recent applicants",
   ],
   "resume-screening": [
-    "Screen these 5 resumes against the job requirements",
-    "Flag unqualified applicants for the data analyst role",
-    "Review resumes for the DevOps position",
+    "Screen applicants against our job requirements",
+    "Flag unqualified applicants for our open roles",
+    "Review candidate resumes and highlight top matches",
   ],
   "resume-ranking": [
-    "Rank my applicants for the product manager role",
+    "Rank my applicants for our open roles",
     "Rank these candidates from best to worst fit",
-    "Order candidates by technical proficiency",
+    "Order candidates by technical proficiency and relevance",
   ],
   "smart-shortlisting": [
     "Shortlist the top 3 candidates for interview",
@@ -91,17 +94,17 @@ const SUGGESTED_PROMPTS: Record<string, string[]> = {
     "Select candidates for the second round",
   ],
   "candidate-ranking": [
-    "Compare the top 5 candidates side-by-side",
+    "Compare the top candidates side-by-side",
     "Rank candidates by overall hiring suitability",
     "Evaluate candidates for team fit",
   ],
   "candidate-summary": [
-    "Summarize the profile of applicant Jane Doe",
+    "Summarize the profile of our top applicant",
     "Give me a snapshot of the strongest candidate",
     "Create a summary for the interview panel",
   ],
   "hiring-recommendation": [
-    "Should I hire this candidate for the senior role?",
+    "Should I hire this candidate for our open role?",
     "Give a hire/no-hire recommendation for the top applicant",
     "Evaluate if we should extend an offer",
   ],
@@ -111,9 +114,9 @@ const SUGGESTED_PROMPTS: Record<string, string[]> = {
     "Assess long-term retention probability",
   ],
   "talent-search": [
-    "Build a search strategy for a senior DevOps engineer",
-    "Suggest boolean search strings for a React developer",
-    "Create a sourcing plan for niche skills",
+    "Build a talent search and sourcing strategy for our team",
+    "Suggest boolean search strings for our target skills",
+    "Create a sourcing plan for niche technical skills",
   ],
   "duplicate-candidate-detection": [
     "Check my applicant pool for duplicate profiles",
@@ -121,43 +124,43 @@ const SUGGESTED_PROMPTS: Record<string, string[]> = {
     "Identify redundant applications",
   ],
   "skill-gap-analysis": [
-    "Analyze skill gaps in my engineering team",
-    "What skills are missing for our next product launch?",
+    "Analyze skill gaps in our current team",
+    "What skills are missing for our next milestone?",
     "Assess team capabilities vs project requirements",
   ],
   "interview-question-generator": [
-    "Generate interview questions for a senior backend role",
-    "Create behavioral questions for a product manager",
-    "Build a technical assessment for frontend developers",
+    "Generate interview questions for our open role",
+    "Create behavioral questions for a candidate interview",
+    "Build a technical assessment questionnaire",
   ],
   "job-description-writer": [
-    "Write a job description for a Senior Frontend Engineer",
-    "Draft a job post for a marketing manager",
-    "Create a compelling JD for a data scientist",
+    "Write an engaging job description for our upcoming opening",
+    "Draft a job post highlighting our company culture",
+    "Create a compelling job posting with clear responsibilities",
   ],
   "job-description-optimizer": [
     "Optimize this job description for reach and inclusivity",
-    "Improve my job post's conversion",
-    "Make this JD more attractive to senior candidates",
+    "Improve my job post's applicant conversion",
+    "Make this JD more attractive to qualified candidates",
   ],
   "hiring-analytics": [
     "Analyze my hiring funnel and bottlenecks",
     "Where am I losing candidates in the pipeline?",
-    "Review my time-to-hire metrics",
+    "Review my time-to-hire metrics and pipeline health",
   ],
   "email-assistant": [
-    "Draft an interview invite email",
+    "Draft an interview invite email for shortlisted candidates",
     "Write a polite rejection email to a candidate",
     "Create a follow-up email template",
   ],
   "meeting-scheduler": [
-    "Propose interview slots for 3 candidates this week",
+    "Propose interview slots for candidates this week",
     "Format a calendar invite for a panel interview",
     "Schedule technical rounds efficiently",
   ],
   "onboarding-assistant": [
-    "Build a first-week onboarding plan for a new engineer",
-    "Create an onboarding checklist for a sales hire",
+    "Build a first-week onboarding plan for a new hire",
+    "Create an onboarding checklist for our new team member",
     "Design a 30-day onboarding program",
   ],
   "office-dashboard": [
@@ -171,14 +174,14 @@ const SUGGESTED_PROMPTS: Record<string, string[]> = {
     "Identify manual processes to streamline",
   ],
   "workflow-builder": [
-    "Design a hiring workflow for engineering roles",
+    "Design an efficient hiring workflow for our team",
     "Build a 4-stage interview workflow with SLAs",
-    "Create an efficient approval process",
+    "Create an efficient candidate approval process",
   ],
   "predictive-hiring-analytics": [
     "Forecast time-to-fill for my open roles",
     "Predict offer acceptance likelihood for top candidates",
-    "Analyze hiring trends and patterns",
+    "Analyze hiring trends and candidate velocity",
   ],
   "workforce-planning": [
     "Propose a headcount plan for next quarter",
@@ -232,7 +235,7 @@ function AiFeaturePage() {
   const isPremium = subscription?.isPremium ?? false;
 
   // Fetch all companies for the user
-  const { data: companiesList, isLoading: isCompaniesLoading } = useQuery({
+  const { data: companiesList = [], isLoading: isCompaniesLoading } = useQuery({
     queryKey: ["user-companies"],
     queryFn: async () => {
       const {
@@ -243,7 +246,7 @@ function AiFeaturePage() {
 
       const { data: companies, error } = await supabase
         .from("companies")
-        .select("id, name, industry, headquarters, description, website, size, founded_year")
+        .select("id, name, industry, headquarters, location, description, website, size, founded_year")
         .eq("owner_id", user.id)
         .order("created_at", { ascending: false });
 
@@ -257,33 +260,28 @@ function AiFeaturePage() {
     staleTime: 5 * 60 * 1000,
   });
 
+  // Effective selected company ID (fallback to first company)
+  const activeCompanyId =
+    selectedCompanyId || (companiesList && companiesList.length > 0 ? companiesList[0].id : null);
+
   // Fetch company profile with stats for selected company
   const { data: companyProfile, isLoading: isCompanyLoading } = useQuery({
-    queryKey: ["company-profile", selectedCompanyId],
+    queryKey: ["company-profile", activeCompanyId],
+    enabled: !!activeCompanyId,
     queryFn: async () => {
       const {
         data: { user },
       } = await supabase.auth.getUser();
 
-      if (!user) return null;
-
-      let companyId = selectedCompanyId;
-
-      // If no company selected, use the first one
-      if (!companyId && companiesList && companiesList.length > 0) {
-        companyId = companiesList[0].id;
-        setSelectedCompanyId(companyId);
-      }
-
-      if (!companyId) return null;
+      if (!user || !activeCompanyId) return null;
 
       // Get specific company
       const { data: company, error: companyError } = await supabase
         .from("companies")
-        .select("id, name, industry, headquarters, description, website, size, founded_year")
-        .eq("id", companyId)
+        .select("id, name, industry, headquarters, location, description, website, size, founded_year")
+        .eq("id", activeCompanyId)
         .eq("owner_id", user.id)
-        .single();
+        .maybeSingle();
 
       if (companyError || !company) {
         console.error("Company query error:", companyError);
@@ -293,20 +291,12 @@ function AiFeaturePage() {
       // Get jobs for this company
       const { data: jobs, error: jobsError } = await supabase
         .from("jobs")
-        .select("id, status")
+        .select("id, title, status")
         .eq("company_id", company.id);
 
-      if (jobsError) {
-        console.error("Jobs query error:", jobsError);
-        return {
-          ...company,
-          active_jobs_count: 0,
-          total_applications_count: 0,
-        } as CompanyProfile;
-      }
-
-      const activeJobsCount =
-        jobs?.filter((j) => j.status === "active" || j.status === "published").length || 0;
+      const activeJobsList =
+        jobs?.filter((j) => j.status === "active" || j.status === "published") || [];
+      const activeJobsCount = activeJobsList.length;
       let totalApplicationsCount = 0;
 
       if (jobs && jobs.length > 0) {
@@ -317,25 +307,38 @@ function AiFeaturePage() {
           .select("id", { count: "exact", head: true })
           .in("job_id", jobIds);
 
-        if (applicationsError) {
-          console.error("Applications count error:", applicationsError);
-        } else {
+        if (!applicationsError) {
           totalApplicationsCount = count || 0;
         }
       }
 
       return {
         ...company,
+        active_jobs: activeJobsList,
         active_jobs_count: activeJobsCount,
         total_applications_count: totalApplicationsCount,
       } as CompanyProfile;
     },
-    enabled: !!companiesList,
     staleTime: 5 * 60 * 1000,
     retry: 2,
   });
 
   const hasCompany = !!companyProfile;
+
+  // Personalized dynamic suggestions
+  const suggestions = useMemo(() => {
+    const defaultList = SUGGESTED_PROMPTS[featureSlug] ?? [];
+    if (!companyProfile) return defaultList;
+
+    const activeJobTitle = companyProfile.active_jobs?.[0]?.title;
+    if (!activeJobTitle) return defaultList;
+
+    return defaultList.map((q) => {
+      return q
+        .replace(/our active positions|our open roles|our open positions/gi, `the ${activeJobTitle} role`)
+        .replace(/for a candidate interview/gi, `for ${activeJobTitle} candidates`);
+    });
+  }, [featureSlug, companyProfile]);
 
   // Scroll to bottom when turns change
   useEffect(() => {
@@ -353,7 +356,7 @@ function AiFeaturePage() {
         data: {
           featureSlug,
           message,
-          companyId: selectedCompanyId, // Pass selected company ID
+          companyId: activeCompanyId, // Pass active company ID
         },
       });
     },
@@ -464,7 +467,6 @@ function AiFeaturePage() {
     );
   }
 
-  const suggestions = SUGGESTED_PROMPTS[featureSlug] ?? [];
   const isLoading = ask.isPending;
   const isDisabled = !isPremium || !hasCompany || isLoading;
 

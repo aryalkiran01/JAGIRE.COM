@@ -5,6 +5,7 @@ import { GeminiProvider } from "./gemini-provider";
 import { OllamaProvider } from "./ollama-provider";
 import { isTransient, isFatal } from "./errors";
 import { AITransientError } from "./types";
+import { zodToGeminiSchema, zodToSchemaShapeDescription } from "./schema-converter";
 
 const MAX_RETRIES = 1;
 const BACKOFF_BASE_MS = 500;
@@ -257,6 +258,189 @@ function normalizeAndSanitizeTaskOutput(task: AITask | undefined, raw: unknown):
         },
       ];
     }
+  } else if (
+    task === "company-intelligence" ||
+    result.target_talent_profiles !== undefined ||
+    result.compensation_benchmarks_npr !== undefined
+  ) {
+    // 1. target_talent_profiles
+    if (result.target_talent_profiles !== undefined) {
+      const rawProfiles = Array.isArray(result.target_talent_profiles)
+        ? result.target_talent_profiles
+        : typeof result.target_talent_profiles === "object" && result.target_talent_profiles !== null
+          ? [result.target_talent_profiles]
+          : [];
+
+      result.target_talent_profiles = rawProfiles
+        .filter((p: any) => p && typeof p === "object")
+        .map((p: any) => {
+          let skills: string[] = [];
+          if (Array.isArray(p.required_skills)) {
+            skills = p.required_skills.map(String).filter(Boolean);
+          } else if (Array.isArray(p.skills)) {
+            skills = p.skills.map(String).filter(Boolean);
+          } else if (typeof p.required_skills === "string") {
+            skills = p.required_skills.split(/[,•\-\n]/).map((s: string) => s.trim()).filter(Boolean);
+          } else if (typeof p.skills === "string") {
+            skills = p.skills.split(/[,•\-\n]/).map((s: string) => s.trim()).filter(Boolean);
+          }
+
+          return {
+            role_title: String(p.role_title || p.title || p.role || p.name || "Talent Role"),
+            seniority: String(p.seniority || p.level || p.experience_level || "Mid-Level"),
+            required_skills: skills.length > 0 ? skills : ["Relevant Experience"],
+            why: String(p.why || p.reason || p.description || p.rationale || "Key strategic role for company growth."),
+          };
+        });
+
+      if (result.target_talent_profiles.length === 0) {
+        result.target_talent_profiles = [
+          {
+            role_title: "Core Specialist",
+            seniority: "Mid-Level",
+            required_skills: ["Domain Expertise", "Team Collaboration"],
+            why: "Supports core operational and engineering deliverables.",
+          },
+        ];
+      }
+    }
+
+    // 2. compensation_benchmarks_npr
+    if (result.compensation_benchmarks_npr !== undefined) {
+      if (Array.isArray(result.compensation_benchmarks_npr)) {
+        result.compensation_benchmarks_npr = result.compensation_benchmarks_npr
+          .filter((b: any) => b && typeof b === "object")
+          .map((b: any) => ({
+            role: String(b.role || b.title || "Key Role"),
+            min_salary: String(b.min_salary || b.min || "Rs. 50,000"),
+            max_salary: String(b.max_salary || b.max || "Rs. 100,000"),
+            market_trend: String(b.market_trend || b.trend || "Stable market demand"),
+          }));
+      } else if (typeof result.compensation_benchmarks_npr === "object" && result.compensation_benchmarks_npr !== null) {
+        if ("role" in result.compensation_benchmarks_npr || "min_salary" in result.compensation_benchmarks_npr) {
+          const b = result.compensation_benchmarks_npr;
+          result.compensation_benchmarks_npr = [
+            {
+              role: String(b.role || "Key Role"),
+              min_salary: String(b.min_salary || "Rs. 50,000"),
+              max_salary: String(b.max_salary || "Rs. 100,000"),
+              market_trend: String(b.market_trend || "High demand"),
+            },
+          ];
+        } else {
+          result.compensation_benchmarks_npr = Object.entries(result.compensation_benchmarks_npr).map(
+            ([role, val]: [string, any]) => {
+              if (val && typeof val === "object") {
+                return {
+                  role: String(val.role || role),
+                  min_salary: String(val.min_salary || val.min || "Rs. 50,000"),
+                  max_salary: String(val.max_salary || val.max || "Rs. 100,000"),
+                  market_trend: String(val.market_trend || val.trend || "Active market"),
+                };
+              }
+              const strVal = String(val || "");
+              const parts = strVal.split(/[-–—to]/i).map((s) => s.trim());
+              return {
+                role,
+                min_salary: parts[0] ? (parts[0].startsWith("Rs") ? parts[0] : `Rs. ${parts[0]}`) : "Rs. 50,000",
+                max_salary: parts[1] ? (parts[1].startsWith("Rs") ? parts[1] : `Rs. ${parts[1]}`) : "Rs. 100,000",
+                market_trend: "Active demand",
+              };
+            },
+          );
+        }
+      } else {
+        result.compensation_benchmarks_npr = [];
+      }
+
+      if (result.compensation_benchmarks_npr.length === 0) {
+        result.compensation_benchmarks_npr = [
+          {
+            role: "Software Engineer",
+            min_salary: "Rs. 60,000",
+            max_salary: "Rs. 130,000",
+            market_trend: "High market demand",
+          },
+        ];
+      }
+    }
+
+    // 3. candidate_screening_criteria
+    if (result.candidate_screening_criteria !== undefined) {
+      const rawCriteria = Array.isArray(result.candidate_screening_criteria)
+        ? result.candidate_screening_criteria
+        : typeof result.candidate_screening_criteria === "object" && result.candidate_screening_criteria !== null
+          ? [result.candidate_screening_criteria]
+          : [];
+
+      result.candidate_screening_criteria = rawCriteria
+        .filter((c: any) => c && typeof c === "object")
+        .map((c: any) => ({
+          category: String(c.category || c.name || "Core Competency"),
+          must_have: String(c.must_have || c.mustHave || c.required || "Proven track record in primary domain"),
+          good_to_have: String(c.good_to_have || c.goodToHave || c.preferred || c.optional || "Strong problem solving skills"),
+        }));
+
+      if (result.candidate_screening_criteria.length === 0) {
+        result.candidate_screening_criteria = [
+          {
+            category: "Technical Foundation",
+            must_have: "Required core stack skills",
+            good_to_have: "Production project portfolio",
+          },
+        ];
+      }
+    }
+
+    // 4. String array fields
+    const stringArrayFields = [
+      "skill_demands",
+      "recruitment_strategy",
+      "interview_focus_areas",
+      "employer_branding_suggestions",
+    ];
+
+    for (const field of stringArrayFields) {
+      if (typeof result[field] === "string") {
+        result[field] = result[field]
+          .split(/[\r\n•;]+/)
+          .map((s: string) => s.replace(/^\d+[\.\)]\s*/, "").trim())
+          .filter(Boolean);
+      } else if (!Array.isArray(result[field])) {
+        result[field] = result[field] != null ? [String(result[field])] : [];
+      }
+    }
+
+    // Ensure non-empty arrays for required fields
+    if (!result.skill_demands || result.skill_demands.length === 0) {
+      result.skill_demands = ["Technical Skills", "Problem Solving", "Communication"];
+    }
+    if (!result.recruitment_strategy || result.recruitment_strategy.length === 0) {
+      result.recruitment_strategy = [
+        "Optimize job descriptions for clarity",
+        "Screen and respond to applicants within 48 hours",
+      ];
+    }
+    if (!result.interview_focus_areas || result.interview_focus_areas.length === 0) {
+      result.interview_focus_areas = ["Hands-on technical assessment", "Culture and team alignment"];
+    }
+    if (!result.employer_branding_suggestions || result.employer_branding_suggestions.length === 0) {
+      result.employer_branding_suggestions = [
+        "Highlight collaborative culture and career growth opportunities",
+      ];
+    }
+
+    // 5. hiring_velocity_assessment
+    if (result.hiring_velocity_assessment && typeof result.hiring_velocity_assessment === "object") {
+      result.hiring_velocity_assessment =
+        result.hiring_velocity_assessment.summary ||
+        result.hiring_velocity_assessment.assessment ||
+        result.hiring_velocity_assessment.text ||
+        JSON.stringify(result.hiring_velocity_assessment);
+    } else if (typeof result.hiring_velocity_assessment !== "string" || !result.hiring_velocity_assessment.trim()) {
+      result.hiring_velocity_assessment =
+        "Active hiring pipeline with strong potential to accelerate screening and shortlisting turnaround.";
+    }
   }
 
   return result;
@@ -304,7 +488,24 @@ class AIServiceImpl {
       throw new Error("No AI providers configured");
     }
 
+    // Convert Zod schema to Gemini OpenAPI format and human-readable shape description
+    const responseSchema = zodToGeminiSchema(schema) as unknown as Record<string, unknown>;
+    const schemaShape = zodToSchemaShapeDescription(schema);
+
+    // Build base system instruction that explicitly defines JSON schema for all providers (Gemini & Ollama)
+    const baseSystemInstruction = req.systemInstruction || "";
+    const systemInstructionWithSchema = [
+      baseSystemInstruction,
+      `CRITICAL JSON OUTPUT FORMAT:`,
+      `You MUST return a valid, complete JSON object conforming strictly to this schema:`,
+      schemaShape,
+      `Ensure all required fields are included with exact field names and appropriate types. Do not wrap in markdown fences or include explanatory commentary outside the JSON.`,
+    ]
+      .filter(Boolean)
+      .join("\n\n");
+
     let lastError: unknown;
+    let lastZodIssues: string | null = null;
 
     for (let i = 0; i < this.providers.length; i++) {
       const provider = this.providers[i];
@@ -313,9 +514,23 @@ class AIServiceImpl {
 
       for (let attempt = 0; attempt <= VALIDATION_RETRY_LIMIT; attempt++) {
         try {
+          // If this is a retry attempt, augment the prompt with the exact validation errors
+          let effectivePrompt = req.prompt;
+          if (attempt > 0 && lastZodIssues) {
+            effectivePrompt = `${req.prompt}\n\n[CRITICAL CORRECTION REQUIRED]:\nYour previous JSON output was rejected due to schema validation errors:\n${lastZodIssues}\nYou MUST fix these exact issues and provide the complete JSON object with all required fields.`;
+          }
+
+          const providerReq: AIRequest = {
+            ...req,
+            prompt: effectivePrompt,
+            systemInstruction: systemInstructionWithSchema,
+            responseSchema,
+            json: true,
+          };
+
           const raw = await retryWithBackoff(
             provider,
-            (p) => p.generateJson<T>(req),
+            (p) => p.generateJson<T>(providerReq),
             `generateJsonValidated:${providerLabel}`,
           );
 
@@ -337,6 +552,14 @@ class AIServiceImpl {
           return parsed;
         } catch (err) {
           lastError = err;
+          if (err instanceof z.ZodError) {
+            lastZodIssues = err.issues
+              .map((iss) => `- Field "${iss.path.join(".") || "root"}": ${iss.message}`)
+              .join("\n");
+          } else {
+            lastZodIssues = null;
+          }
+
           const errMessage = err instanceof Error ? err.message : String(err);
           log(
             "warn",

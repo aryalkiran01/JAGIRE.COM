@@ -34,6 +34,7 @@ const TASK_TO_CATEGORY: Record<AITask | "embedding", "generative" | "fast" | "em
   "career-suggestions": "generative",
   "hiring-recommendation": "generative",
   "company-candidate-analysis": "generative",
+  "company-intelligence": "generative",
   "career-coach": "generative",
   "career-assistant": "generative",
   reasoning: "generative",
