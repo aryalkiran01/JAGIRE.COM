@@ -4,7 +4,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
-import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -135,9 +134,8 @@ function BlogPost() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <SiteHeader />
-      <article className="container mx-auto px-4 py-12 max-w-3xl">
+    <>
+      <article className="container mx-auto px-4 py-12 max-w-3xl flex-1">
         <Button variant="ghost" size="sm" asChild className="mb-4">
           <Link to="/blog">
             <ArrowLeft className="mr-2 h-4 w-4" />
@@ -295,6 +293,6 @@ function BlogPost() {
         )}
       </article>
       <SiteFooter />
-    </div>
+    </>
   );
 }

@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -69,9 +68,8 @@ function ContactPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <SiteHeader />
-      <div className="container mx-auto px-4 py-16 max-w-xl">
+    <>
+      <div className="container mx-auto px-4 py-16 max-w-xl flex-1">
         <h1 className="text-4xl font-bold mb-2">Get in touch</h1>
         <p className="text-muted-foreground mb-8">
           Have a question or feedback? We typically respond within 24 hours.
@@ -120,6 +118,6 @@ function ContactPage() {
         </Card>
       </div>
       <SiteFooter />
-    </div>
+    </>
   );
 }

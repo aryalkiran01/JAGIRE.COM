@@ -2,7 +2,6 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -72,9 +71,8 @@ function Blog() {
   const totalPages = Math.ceil(recent.length / PAGE_SIZE);
 
   return (
-    <div className="min-h-screen bg-background">
-      <SiteHeader />
-      <div className="container mx-auto px-4 py-16 max-w-5xl">
+    <>
+      <div className="container mx-auto px-4 py-16 max-w-5xl flex-1">
         <div className="mb-8">
           <h1 className="text-4xl font-bold mb-2">Blog</h1>
           <p className="text-muted-foreground">
@@ -221,6 +219,6 @@ function Blog() {
         )}
       </div>
       <SiteFooter />
-    </div>
+    </>
   );
 }

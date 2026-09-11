@@ -1,6 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useEffect, useRef } from "react";
-import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -326,9 +325,8 @@ function PaymentSuccess() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <SiteHeader />
-      <main className="flex-1 flex items-center justify-center container mx-auto px-4 py-16 max-w-lg">
+    <>
+      <div className="flex-1 flex items-center justify-center container mx-auto px-4 py-16 max-w-lg">
         <Card className="w-full glass shadow-card-soft border-border/60">
           <CardContent className="p-8 sm:p-10 text-center">
             {state.status === "verifying" && (
@@ -398,8 +396,8 @@ function PaymentSuccess() {
             )}
           </CardContent>
         </Card>
-      </main>
+      </div>
       <SiteFooter />
-    </div>
+    </>
   );
 }

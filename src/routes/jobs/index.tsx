@@ -4,7 +4,6 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
-import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -56,8 +55,7 @@ function JobsPage() {
   });
 
   return (
-    <div className="min-h-screen bg-background">
-      <SiteHeader />
+    <>
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-4xl font-bold mb-2">Find your next role</h1>
@@ -156,6 +154,6 @@ function JobsPage() {
         )}
       </div>
       <SiteFooter />
-    </div>
+    </>
   );
 }

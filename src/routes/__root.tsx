@@ -4,6 +4,7 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
+  useRouterState,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
@@ -12,6 +13,8 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { AuthProvider } from "@/hooks/use-auth";
 import { SidebarProvider } from "@/hooks/use-sidebar";
+import { SiteHeader } from "@/components/layout/site-header";
+import { AppSidebar } from "@/components/layout/app-sidebar";
 import { Toaster } from "@/components/ui/sonner";
 
 function NotFoundComponent() {
@@ -188,12 +191,29 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const isAuthRoute =
+    pathname.startsWith("/auth") ||
+    pathname.startsWith("/forgot-password") ||
+    pathname.startsWith("/reset-password");
 
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <SidebarProvider>
-          <Outlet />
+          {isAuthRoute ? (
+            <Outlet />
+          ) : (
+            <div className="min-h-screen bg-background flex flex-col">
+              <SiteHeader />
+              <div className="flex flex-1 min-h-0 w-full">
+                <AppSidebar />
+                <main className="flex-1 min-w-0 flex flex-col">
+                  <Outlet />
+                </main>
+              </div>
+            </div>
+          )}
           <Toaster richColors position="top-right" />
         </SidebarProvider>
       </AuthProvider>

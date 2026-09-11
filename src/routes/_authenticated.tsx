@@ -1,7 +1,5 @@
 import { createFileRoute, Outlet, Navigate } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/use-auth";
-import { SiteHeader } from "@/components/layout/site-header";
-import { AppSidebar } from "@/components/layout/app-sidebar";
 import { AIAssistantWidget } from "@/components/ai-assistant-widget";
 import { Loader as Loader2 } from "lucide-react";
 
@@ -21,15 +19,9 @@ function AuthLayout() {
   if (!user)
     return <Navigate to="/auth" search={{ mode: "signin", redirect: window.location.pathname }} />;
   return (
-    <div className="min-h-screen bg-background">
-      <SiteHeader />
-      <div className="flex">
-        <AppSidebar />
-        <main className="flex-1 min-w-0">
-          <Outlet />
-        </main>
-      </div>
+    <>
+      <Outlet />
       <AIAssistantWidget />
-    </div>
+    </>
   );
 }

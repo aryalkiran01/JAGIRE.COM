@@ -1,6 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -130,11 +129,9 @@ function PricingPage() {
   const isSeeker = userRole === "job_seeker";
 
   return (
-    <div className="min-h-screen bg-background">
-      <SiteHeader />
-
+    <>
       {/* Hero */}
-      <section className="relative overflow-hidden pt-20 pb-8">
+          <section className="relative overflow-hidden pt-20 pb-8">
         <div className="absolute inset-0 -z-10 gradient-hero opacity-[0.07]" />
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-primary/10 rounded-full blur-[120px] -z-10" />
         <div className="container mx-auto px-4 text-center max-w-4xl">
@@ -200,7 +197,7 @@ function PricingPage() {
       </div>
 
       <SiteFooter />
-    </div>
+    </>
   );
 }
 

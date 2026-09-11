@@ -19,10 +19,11 @@ import {
   ChevronDown,
   Bookmark,
   X,
+  User,
   type LucideIcon,
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { EMPLOYER_AI_GROUPS } from "@/lib/employer-ai-features";
 import { JOBSEEKER_AI_GROUPS } from "@/lib/jobseeker-ai-features";
 
@@ -33,8 +34,19 @@ type NavItem = {
   description?: string;
 };
 
+const GUEST_NAV: NavItem[] = [
+  { to: "/jobs", label: "Browse Jobs", icon: Briefcase },
+  { to: "/companies", label: "Companies", icon: Building2 },
+  { to: "/feed", label: "Community Feed", icon: Rss },
+  { to: "/learn", label: "Learning Center", icon: BookOpen },
+  { to: "/about", label: "About Us", icon: BookOpen },
+  { to: "/pricing", label: "Pricing", icon: TrendingUp },
+];
+
 const SEEKER_NAV: NavItem[] = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/jobs", label: "Browse Jobs", icon: Briefcase },
+  { to: "/companies", label: "Companies", icon: Building2 },
   { to: "/applications", label: "Applications", icon: Target },
   { to: "/saved", label: "Saved", icon: Bookmark },
   { to: "/interviews", label: "Interviews", icon: Video },
@@ -43,11 +55,14 @@ const SEEKER_NAV: NavItem[] = [
   { to: "/resume-builder", label: "Resume Builder", icon: FileText },
   { to: "/feed", label: "Community Feed", icon: Rss },
   { to: "/learn", label: "Learning Center", icon: BookOpen },
+  { to: "/pricing", label: "Pricing", icon: TrendingUp },
 ];
 
 const ADMIN_NAV: NavItem[] = [
   { to: "/admin", label: "Admin Panel", icon: Shield },
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/jobs", label: "Browse Jobs", icon: Briefcase },
+  { to: "/companies", label: "Companies", icon: Building2 },
   { to: "/applications", label: "Applications", icon: Target },
   { to: "/saved", label: "Saved", icon: Bookmark },
   { to: "/interviews", label: "Interviews", icon: Video },
@@ -56,10 +71,13 @@ const ADMIN_NAV: NavItem[] = [
   { to: "/resume-builder", label: "Resume Builder", icon: FileText },
   { to: "/feed", label: "Community Feed", icon: Rss },
   { to: "/learn", label: "Learning Center", icon: BookOpen },
+  { to: "/pricing", label: "Pricing", icon: TrendingUp },
 ];
 
 const EMPLOYER_NAV: NavItem[] = [
   { to: "/employer", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/jobs", label: "Browse Jobs", icon: Briefcase },
+  { to: "/companies", label: "Companies", icon: Building2 },
   { to: "/employer/intelligence", label: "Intelligence", icon: TrendingUp },
   { to: "/employer/jobs/new", label: "Job Posts", icon: Briefcase },
   { to: "/saved", label: "Saved", icon: Bookmark },
@@ -69,11 +87,12 @@ const EMPLOYER_NAV: NavItem[] = [
   { to: "/enterprise", label: "Enterprise", icon: Shield },
   { to: "/applications", label: "Applications", icon: Target },
   { to: "/feed", label: "Community Feed", icon: Rss },
+  { to: "/pricing", label: "Pricing", icon: TrendingUp },
 ];
 
 function NavLink({ item, onNavigate }: { item: NavItem; onNavigate?: () => void }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const active = pathname === item.to || pathname.startsWith(item.to + "/");
+  const active = pathname === item.to || (item.to !== "/" && pathname.startsWith(item.to + "/"));
   return (
     <Link
       to={item.to}
@@ -152,75 +171,186 @@ function AiGroupCollapsible<
 }
 
 export function AppSidebar() {
-  const { role } = useAuth();
+  const { user, role } = useAuth();
   const { isOpen, close } = useSidebar();
   const isEmployer = role === "employer";
-  const nav = role === "admin" ? ADMIN_NAV : isEmployer ? EMPLOYER_NAV : SEEKER_NAV;
+  const nav = !user
+    ? GUEST_NAV
+    : role === "admin"
+      ? ADMIN_NAV
+      : isEmployer
+        ? EMPLOYER_NAV
+        : SEEKER_NAV;
+
+  // Handle ESC key to close sidebar
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        close();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, close]);
 
   if (!isOpen) return null;
 
   return (
     <>
-      {/* Mobile Backdrop Overlay (< lg) */}
-      <div
-        className="fixed inset-0 z-40 bg-background/80 backdrop-blur-sm lg:hidden transition-opacity"
-        onClick={close}
-        aria-hidden="true"
-      />
+      {/* ── Mobile/Tablet Drawer (< lg) ────────────────────────── */}
+      <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Navigation Menu">
+        {/* Soft overlay backdrop */}
+        <div
+          className="fixed inset-0 bg-black/40 transition-opacity animate-fade-in"
+          onClick={close}
+          aria-hidden="true"
+        />
 
-      {/* Sidebar Container */}
-      <aside className="fixed inset-y-0 left-0 z-50 w-64 bg-card border-r border-border/40 shadow-2xl flex flex-col pt-16 lg:pt-0 lg:static lg:w-60 lg:shrink-0 lg:shadow-none lg:bg-card/30 lg:backdrop-blur-sm lg:h-[calc(100vh-4rem)] lg:sticky lg:top-16 overflow-y-auto animate-fade-in-right lg:animate-none">
-        {/* Mobile Header with Close Button */}
-        <div className="flex items-center justify-between p-3 border-b border-border/40 lg:hidden">
-          <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-            Navigation Menu
-          </span>
+        {/* Slide-out Drawer Panel */}
+        <aside
+          className="fixed inset-y-0 left-0 z-50 w-[260px] max-w-[85vw] bg-card border-r border-border shadow-2xl flex flex-col pt-3 overflow-y-auto animate-fade-in-right"
+        >
+          <div className="flex items-center justify-between px-4 pb-3 border-b border-border/50">
+            <Link to="/" onClick={close} className="flex items-center gap-2">
+              <span className="text-xl font-bold gradient-text tracking-tight">JAGIRE</span>
+            </Link>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={close}
+              aria-label="Close menu"
+              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+
+          <nav className="flex-1 px-3 py-4 space-y-1 pb-10">
+            {nav.map((item) => (
+              <NavLink key={item.to} item={item} onNavigate={close} />
+            ))}
+
+            {user ? (
+              isEmployer ? (
+                <>
+                  <div className="px-3 pt-4 pb-1 text-[11px] font-bold uppercase tracking-wider text-primary/70 flex items-center gap-1.5">
+                    <Sparkles className="h-3.5 w-3.5" />
+                    AI Features
+                  </div>
+                  {EMPLOYER_AI_GROUPS.map((group, idx) => (
+                    <AiGroupCollapsible
+                      key={group.id}
+                      group={group}
+                      defaultOpen={idx === 0}
+                      onNavigate={close}
+                    />
+                  ))}
+                </>
+              ) : (
+                <>
+                  <div className="px-3 pt-4 pb-1 text-[11px] font-bold uppercase tracking-wider text-primary/70 flex items-center gap-1.5">
+                    <Sparkles className="h-3.5 w-3.5" />
+                    AI Tools
+                  </div>
+                  {JOBSEEKER_AI_GROUPS.map((group, idx) => (
+                    <AiGroupCollapsible
+                      key={group.id}
+                      group={group}
+                      defaultOpen={idx === 0}
+                      onNavigate={close}
+                    />
+                  ))}
+                </>
+              )
+            ) : (
+              <div className="pt-4 px-2 space-y-2 border-t mt-4">
+                <Button variant="outline" className="w-full" asChild onClick={close}>
+                  <Link to="/auth">Sign In</Link>
+                </Button>
+                <Button
+                  className="w-full gradient-brand text-primary-foreground"
+                  asChild
+                  onClick={close}
+                >
+                  <Link to="/auth" search={{ mode: "signup" }}>
+                    Get Started
+                  </Link>
+                </Button>
+              </div>
+            )}
+          </nav>
+        </aside>
+      </div>
+
+      {/* ── Desktop Inline Sidebar (lg: screens) ──────────────────── */}
+      {/* Participates directly in flex layout (w-[260px] shrink-0), never overlaps main content */}
+      <aside
+        className="hidden lg:flex lg:w-[260px] lg:shrink-0 lg:flex-col lg:bg-card/40 lg:border-r lg:border-border/40 lg:h-[calc(100vh-4rem)] lg:sticky lg:top-16 overflow-y-auto z-30"
+        aria-label="Sidebar Navigation"
+      >
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border/40">
+          <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Navigation</span>
           <Button
             variant="ghost"
             size="icon"
             onClick={close}
-            aria-label="Close sidebar"
-            className="h-8 w-8 text-muted-foreground hover:text-foreground"
+            aria-label="Collapse sidebar"
+            className="h-7 w-7 text-muted-foreground hover:text-foreground"
           >
             <X className="h-4 w-4" />
           </Button>
         </div>
 
-        <nav className="flex-1 px-3 py-6 sm:py-8 space-y-1 pb-10">
+        <nav className="flex-1 px-3 py-3 space-y-1 pb-10">
           {nav.map((item) => (
-            <NavLink key={item.to} item={item} onNavigate={close} />
+            <NavLink key={item.to} item={item} />
           ))}
 
-          {isEmployer ? (
-            <>
-              <div className="px-3 pt-4 pb-1 text-[11px] font-bold uppercase tracking-wider text-primary/70 flex items-center gap-1.5">
-                <Sparkles className="h-3.5 w-3.5" />
-                AI Features
-              </div>
-              {EMPLOYER_AI_GROUPS.map((group, idx) => (
-                <AiGroupCollapsible
-                  key={group.id}
-                  group={group}
-                  defaultOpen={idx === 0}
-                  onNavigate={close}
-                />
-              ))}
-            </>
+          {user ? (
+            isEmployer ? (
+              <>
+                <div className="px-3 pt-4 pb-1 text-[11px] font-bold uppercase tracking-wider text-primary/70 flex items-center gap-1.5">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  AI Features
+                </div>
+                {EMPLOYER_AI_GROUPS.map((group, idx) => (
+                  <AiGroupCollapsible
+                    key={group.id}
+                    group={group}
+                    defaultOpen={idx === 0}
+                  />
+                ))}
+              </>
+            ) : (
+              <>
+                <div className="px-3 pt-4 pb-1 text-[11px] font-bold uppercase tracking-wider text-primary/70 flex items-center gap-1.5">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  AI Tools
+                </div>
+                {JOBSEEKER_AI_GROUPS.map((group, idx) => (
+                  <AiGroupCollapsible
+                    key={group.id}
+                    group={group}
+                    defaultOpen={idx === 0}
+                  />
+                ))}
+              </>
+            )
           ) : (
-            <>
-              <div className="px-3 pt-4 pb-1 text-[11px] font-bold uppercase tracking-wider text-primary/70 flex items-center gap-1.5">
-                <Sparkles className="h-3.5 w-3.5" />
-                AI Tools
-              </div>
-              {JOBSEEKER_AI_GROUPS.map((group, idx) => (
-                <AiGroupCollapsible
-                  key={group.id}
-                  group={group}
-                  defaultOpen={idx === 0}
-                  onNavigate={close}
-                />
-              ))}
-            </>
+            <div className="pt-4 px-2 space-y-2 border-t mt-4">
+              <Button variant="outline" className="w-full" asChild>
+                <Link to="/auth">Sign In</Link>
+              </Button>
+              <Button
+                className="w-full gradient-brand text-primary-foreground"
+                asChild
+              >
+                <Link to="/auth" search={{ mode: "signup" }}>
+                  Get Started
+                </Link>
+              </Button>
+            </div>
           )}
         </nav>
       </aside>

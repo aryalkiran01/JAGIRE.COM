@@ -4,7 +4,6 @@ import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
-import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -278,37 +277,31 @@ function CompanyDetail() {
 
   if (isCompanyLoading) {
     return (
-      <div className="min-h-screen bg-background flex flex-col">
-        <SiteHeader />
-        <div className="flex-1 flex items-center justify-center">
-          <div className="flex flex-col items-center gap-3">
-            <div className="h-10 w-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-            <p className="text-sm text-muted-foreground">Loading company profile…</p>
-          </div>
+      <div className="flex-1 flex items-center justify-center py-20">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-10 w-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm text-muted-foreground animate-pulse">
+            Loading company intelligence...
+          </p>
         </div>
-        <SiteFooter />
       </div>
     );
   }
 
   if (!company) {
     return (
-      <div className="min-h-screen bg-background flex flex-col">
-        <SiteHeader />
-        <div className="flex-1 flex items-center justify-center p-4">
-          <Card className="max-w-md w-full text-center p-8 glass border-border/60">
-            <Building2 className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
-            <h2 className="text-2xl font-bold mb-2">Company Not Found</h2>
-            <p className="text-sm text-muted-foreground mb-6">
-              The company profile you are looking for might have been moved, renamed, or is not
-              publicly listed.
-            </p>
-            <Button asChild className="gradient-brand text-primary-foreground">
-              <Link to="/companies">Explore All Companies</Link>
-            </Button>
-          </Card>
-        </div>
-        <SiteFooter />
+      <div className="flex-1 flex items-center justify-center p-4 py-20">
+        <Card className="max-w-md w-full text-center p-8 glass border-border/60">
+          <Building2 className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
+          <h2 className="text-2xl font-bold mb-2">Company Not Found</h2>
+          <p className="text-sm text-muted-foreground mb-6">
+            The company profile you are looking for might have been moved, renamed, or is not
+            publicly listed.
+          </p>
+          <Button asChild className="gradient-brand text-primary-foreground">
+            <Link to="/companies">Explore All Companies</Link>
+          </Button>
+        </Card>
       </div>
     );
   }
@@ -343,10 +336,8 @@ function CompanyDetail() {
       : [];
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col">
-      <SiteHeader />
-
-      <main className="flex-1 pb-16">
+    <>
+      <div className="pb-16 flex-1">
         {/* ── 1. Hero / Header Banner ──────────────────────────────────────── */}
         <section className="relative">
           {/* Cover Image Banner */}
@@ -1145,9 +1136,9 @@ function CompanyDetail() {
             </TabsContent>
           </Tabs>
         </section>
-      </main>
+      </div>
 
       <SiteFooter />
-    </div>
+    </>
   );
 }

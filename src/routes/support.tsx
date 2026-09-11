@@ -3,7 +3,6 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
-import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -70,9 +69,8 @@ function Support() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <SiteHeader />
-      <div className="container mx-auto px-4 py-16 max-w-3xl">
+    <>
+      <div className="container mx-auto px-4 py-16 max-w-3xl flex-1">
         <h1 className="text-4xl font-bold mb-6">Support</h1>
         <Card className="mb-6">
           <CardContent className="p-6 space-y-3">
@@ -127,6 +125,6 @@ function Support() {
         )}
       </div>
       <SiteFooter />
-    </div>
+    </>
   );
 }

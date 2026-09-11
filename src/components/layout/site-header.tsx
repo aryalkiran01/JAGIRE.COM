@@ -15,7 +15,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { SubscriptionBadge } from "@/components/subscription-badge";
 import {
   LogOut,
@@ -84,7 +83,6 @@ export function SiteHeader() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { theme, toggle } = useTheme();
-  const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const routerState = useRouterState();
   const currentPath = routerState.location.pathname;
@@ -143,15 +141,14 @@ export function SiteHeader() {
 
   return (
     <header
-      className={`sticky top-0 z-50 w-full transition-all duration-300 ${
-        scrolled
+      className={`sticky top-0 z-50 w-full transition-all duration-300 ${scrolled
           ? "glass shadow-card-soft border-b border-border/60"
           : "bg-background/80 backdrop-blur-md border-b border-border/30"
-      }`}
+        }`}
     >
-      <div className="w-full px-4 sm:px-6 flex h-16 items-center justify-between">
+      <div className="w-full px-4 sm:px-6 lg:px-8 flex h-16 items-center justify-between">
         {/* Left side: Menu trigger (☰) + Logo */}
-        <div className="flex items-center gap-1 sm:gap-2">
+        <div className="flex items-center gap-2 sm:gap-3">
           <Button
             variant="ghost"
             size="icon"
@@ -163,15 +160,11 @@ export function SiteHeader() {
             <Menu className="h-5 w-5" />
           </Button>
 
+          {/* Divider between menu button and logo */}
+          <span className="hidden sm:block h-5 w-px bg-border/60" aria-hidden />
+
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2 shrink-0 group">
-            {/* <div className="relative">
-              <img
-                src="/Jagire-logo.png"
-                alt="Jagire"
-                className="h-9 w-auto transition-transform group-hover:scale-105"
-              />
-            </div> */}
+          <Link to="/" className="flex items-center gap-2 shrink-0 group ml-1 sm:ml-2">
             <span className="text-xl font-bold gradient-text tracking-tight">JAGIRE</span>
           </Link>
         </div>
@@ -323,70 +316,17 @@ export function SiteHeader() {
             </div>
           )}
 
-          {/* Mobile menu */}
-          <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-            <SheetTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label="Open navigation menu"
-                className="lg:hidden h-9 w-9"
-              >
-                <Menu className="h-5 w-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="right" className="w-[340px] overflow-y-auto">
-              <SheetHeader>
-                <SheetTitle className="flex items-center gap-2">
-                  <img src="/Jagire-logo.png" alt="Jagire" className="h-8 w-auto" />
-                  <span className="gradient-text font-bold">Jagire</span>
-                </SheetTitle>
-              </SheetHeader>
-              <div className="mt-6 space-y-1">
-                {NAV_LINKS.filter((l) => !l.authOnly || user).map((link) => (
-                  <MobileLink
-                    key={link.to}
-                    to={link.to}
-                    label={link.label}
-                    active={isActive(link.to)}
-                    onClick={() => setMobileOpen(false)}
-                  />
-                ))}
-                <div className="my-3 border-t" />
-                <p className="px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
-                  Features
-                </p>
-                {FEATURE_LINKS.map((f) => (
-                  <MobileLink
-                    key={f.to}
-                    to={f.to}
-                    icon={f.icon}
-                    label={f.label}
-                    active={isActive(f.to)}
-                    onClick={() => setMobileOpen(false)}
-                  />
-                ))}
-                {!user && (
-                  <div className="pt-4 space-y-2">
-                    <Button variant="outline" className="w-full" asChild>
-                      <Link to="/auth" onClick={() => setMobileOpen(false)}>
-                        Sign in
-                      </Link>
-                    </Button>
-                    <Button className="w-full gradient-brand text-primary-foreground" asChild>
-                      <Link
-                        to="/auth"
-                        search={{ mode: "signup" }}
-                        onClick={() => setMobileOpen(false)}
-                      >
-                        Get started
-                      </Link>
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </SheetContent>
-          </Sheet>
+          {/* Mobile menu trigger */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleSidebar}
+            aria-label="Open navigation menu"
+            aria-expanded={isOpen}
+            className="lg:hidden h-9 w-9 text-muted-foreground hover:text-foreground"
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
         </div>
       </div>
     </header>
@@ -405,43 +345,13 @@ function NavLink({
   return (
     <Link
       to={to}
-      className={`relative rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:text-foreground hover:bg-muted/50 ${
-        active ? "text-foreground" : "text-muted-foreground"
-      }`}
+      className={`relative rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:text-foreground hover:bg-muted/50 ${active ? "text-foreground" : "text-muted-foreground"
+        }`}
     >
       {children}
       {active && (
         <span className="absolute inset-x-3 -bottom-px h-0.5 rounded-full gradient-brand" />
       )}
-    </Link>
-  );
-}
-
-function MobileLink({
-  to,
-  icon: Icon,
-  label,
-  active,
-  onClick,
-}: {
-  to: string;
-  icon?: LucideIcon;
-  label: string;
-  active?: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <Link
-      to={to}
-      onClick={onClick}
-      className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
-        active
-          ? "bg-primary/10 text-primary"
-          : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-      }`}
-    >
-      {Icon ? <Icon className="h-4 w-4" /> : null}
-      {label}
     </Link>
   );
 }

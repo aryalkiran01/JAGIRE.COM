@@ -2,7 +2,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -146,9 +145,7 @@ function Landing() {
   });
 
   return (
-    <div className="min-h-screen bg-background">
-      <SiteHeader />
-
+    <>
       {/* Hero */}
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 gradient-hero opacity-10" />
@@ -449,7 +446,7 @@ function Landing() {
       </section>
 
       <SiteFooter />
-    </div>
+    </>
   );
 }
 

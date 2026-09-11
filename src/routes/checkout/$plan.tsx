@@ -1,5 +1,4 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -29,16 +28,15 @@ function Checkout() {
 
   if (!plan || plan.contactSales) {
     return (
-      <div className="min-h-screen bg-background">
-        <SiteHeader />
-        <div className="container mx-auto px-4 py-16 max-w-lg text-center">
+      <>
+        <div className="container mx-auto px-4 py-16 max-w-lg text-center flex-1">
           <h1 className="text-3xl font-bold mb-4">Plan not found</h1>
           <Button asChild>
             <Link to="/pricing">Back to pricing</Link>
           </Button>
         </div>
         <SiteFooter />
-      </div>
+      </>
     );
   }
 
@@ -76,9 +74,8 @@ function Checkout() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <SiteHeader />
-      <div className="container mx-auto px-4 py-16 max-w-lg">
+    <>
+      <div className="container mx-auto px-4 py-16 max-w-lg flex-1">
         <Card className="glass shadow-card-soft">
           <CardContent className="p-8">
             <div className="flex items-center justify-between mb-2">
@@ -173,6 +170,6 @@ function Checkout() {
         </Card>
       </div>
       <SiteFooter />
-    </div>
+    </>
   );
 }

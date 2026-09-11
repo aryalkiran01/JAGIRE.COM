@@ -3,7 +3,6 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
-import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -104,9 +103,8 @@ function JobDetail() {
   const salary = fmtSalary(job.salary_min, job.salary_max);
 
   return (
-    <div className="min-h-screen bg-background">
-      <SiteHeader />
-      <div className="container mx-auto px-4 py-8 grid lg:grid-cols-3 gap-6">
+    <>
+      <div className="container mx-auto px-4 py-8 grid lg:grid-cols-3 gap-6 flex-1">
         <div className="lg:col-span-2 space-y-6">
           <Card>
             <CardContent className="p-6">
@@ -286,6 +284,6 @@ function JobDetail() {
         </div>
       </div>
       <SiteFooter />
-    </div>
+    </>
   );
 }

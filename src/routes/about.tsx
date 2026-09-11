@@ -1,6 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -43,15 +41,13 @@ export const Route = createFileRoute("/about")({
 
 function AboutPage() {
   return (
-    <div className="min-h-screen bg-background">
-      <SiteHeader />
-
+    <>
       {/* Hero */}
-      <section className="relative overflow-hidden py-24 md:py-32">
-        <div className="absolute inset-0 gradient-hero opacity-10" />
-        <div className="absolute -top-20 -left-20 h-96 w-96 rounded-full gradient-brand opacity-20 blur-3xl animate-float" />
+          <section className="relative overflow-hidden py-24 md:py-32">
+        <div className="absolute inset-0 gradient-hero opacity-10 pointer-events-none" />
+        <div className="absolute -top-20 -left-20 h-96 w-96 rounded-full gradient-brand opacity-20 blur-3xl animate-float pointer-events-none" />
         <div
-          className="absolute -bottom-20 -right-20 h-96 w-96 rounded-full bg-accent opacity-20 blur-3xl animate-float"
+          className="absolute -bottom-20 -right-20 h-96 w-96 rounded-full bg-accent opacity-20 blur-3xl animate-float pointer-events-none"
           style={{ animationDelay: "1s" }}
         />
         <div className="container relative mx-auto px-4 text-center max-w-4xl">
@@ -333,7 +329,7 @@ function AboutPage() {
       </section>
 
       <SiteFooter />
-    </div>
+    </>
   );
 }
 

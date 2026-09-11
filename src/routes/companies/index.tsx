@@ -3,7 +3,6 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -84,13 +83,11 @@ function Companies() {
   }, [companies, q, industry, sort, jobCounts]);
 
   return (
-    <div className="min-h-screen bg-background">
-      <SiteHeader />
-
+    <>
       {/* Hero header */}
       <section className="relative overflow-hidden border-b">
-        <div className="absolute inset-0 gradient-hero opacity-5" />
-        <div className="absolute -top-20 -right-20 h-72 w-72 rounded-full gradient-brand opacity-15 blur-3xl" />
+        <div className="absolute inset-0 gradient-hero opacity-5 pointer-events-none" />
+        <div className="absolute -top-20 -right-20 h-72 w-72 rounded-full gradient-brand opacity-15 blur-3xl pointer-events-none" />
         <div className="container relative mx-auto px-4 py-16">
           <div className="max-w-2xl">
             <Badge variant="secondary" className="mb-4 glass">
@@ -253,8 +250,7 @@ function Companies() {
           </Card>
         )}
       </div>
-
       <SiteFooter />
-    </div>
+    </>
   );
 }
