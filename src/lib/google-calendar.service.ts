@@ -189,7 +189,7 @@ async function createGoogleCalendarEvent(
   };
 
   const res = await fetch(
-    `${GOOGLE_CALENDAR_API}/calendars/primary/events?conferenceDataVersion=1&sendUpdates=all`,
+    `${GOOGLE_CALENDAR_API}/calendars/primary/events?conferenceDataVersion=1&sendUpdates=none`,
     {
       method: "POST",
       headers: {
@@ -265,12 +265,12 @@ async function sendInterviewEmail(
   meetLink: string | null,
   candidateName?: string,
   notes?: string,
-) {
+): Promise<{ emailSent: boolean; emailRestricted: boolean; message?: string }> {
   const SUPABASE_URL = process.env.SUPABASE_URL;
   const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
     console.warn("[sendInterviewEmail] Missing SUPABASE_URL or SERVICE_ROLE_KEY – skipping email");
-    return;
+    return { emailSent: false, emailRestricted: false, message: "Email service not configured" };
   }
 
   const fmt = (d: Date) =>
@@ -299,7 +299,6 @@ async function sendInterviewEmail(
     </div>`;
 
   const recipients = [candidateEmail];
-  if (employerEmail && employerEmail !== candidateEmail) recipients.push(employerEmail);
 
   try {
     const res = await fetch(`${SUPABASE_URL}/functions/v1/send-email`, {
@@ -313,21 +312,31 @@ async function sendInterviewEmail(
         to: recipients,
         subject: `Interview Scheduled: ${title}`,
         html,
+        reply_to: employerEmail || undefined,
       }),
     });
     if (!res.ok) {
       const errText = await res.text();
-      console.warn("[sendInterviewEmail] Note: Email delivery skipped or restricted:", res.status, errText);
-    } else {
-      const result = await res.json().catch(() => ({}));
-      if (result?.warning) {
-        console.warn("[sendInterviewEmail] Resend Notice:", result.warning);
-      } else {
-        console.log("[sendInterviewEmail] Email sent to", recipients.join(", "));
-      }
+      console.warn("[sendInterviewEmail] Note: Edge function returned status:", res.status, errText);
+      return { emailSent: false, emailRestricted: false, message: "Email delivery failed" };
     }
+    const result = await res.json().catch(() => ({}));
+    if (result?.emailSent) {
+      console.log("[sendInterviewEmail] Email sent to", recipients.join(", "));
+      return { emailSent: true, emailRestricted: false };
+    }
+    if (result?.emailRestricted) {
+      console.warn("[sendInterviewEmail] Resend testing restriction:", result.message);
+      return { emailSent: false, emailRestricted: true, message: result.message };
+    }
+    return {
+      emailSent: false,
+      emailRestricted: false,
+      message: result?.message || "Email delivery could not be completed",
+    };
   } catch (e) {
     console.warn("[sendInterviewEmail] Email dispatch notice:", e);
+    return { emailSent: false, emailRestricted: false, message: "Email dispatch error" };
   }
 }
 
@@ -512,7 +521,7 @@ export const scheduleInterview = createServerFn({ method: "POST" })
       .maybeSingle();
     const employerEmail = employerProfile?.email ?? null;
 
-    await sendInterviewEmail(
+    const emailResult = await sendInterviewEmail(
       supabaseAdmin,
       data.candidateEmail,
       employerEmail,
@@ -524,7 +533,13 @@ export const scheduleInterview = createServerFn({ method: "POST" })
       data.notes,
     );
 
-    return { interviewId: interview.id, eventId: googleEventId, meetLink };
+    return {
+      interviewId: interview.id,
+      eventId: googleEventId,
+      meetLink,
+      emailSent: emailResult.emailSent,
+      emailRestricted: emailResult.emailRestricted,
+    };
   });
 
 // ------------------- Status update functions -------------------

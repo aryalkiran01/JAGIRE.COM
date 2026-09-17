@@ -51,7 +51,22 @@ Deno.serve(async (req: Request) => {
     }
 
     const token = authHeader.slice("Bearer ".length);
-    const isServiceRole = serviceRoleKey !== undefined && token === serviceRoleKey;
+    const secretKey = Deno.env.get("SUPABASE_SECRET_KEY");
+    let isServiceRole =
+      (serviceRoleKey !== undefined && token === serviceRoleKey) ||
+      (secretKey !== undefined && token === secretKey);
+
+    if (!isServiceRole) {
+      try {
+        const parts = token.split(".");
+        if (parts.length === 3) {
+          const payload = JSON.parse(atob(parts[1]));
+          if (payload?.role === "service_role") {
+            isServiceRole = true;
+          }
+        }
+      } catch {}
+    }
 
     let isTrustedServer = false;
 
@@ -77,7 +92,7 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    const { to, subject, html, text } = await req.json();
+    const { to, subject, html, text, reply_to } = await req.json();
 
     if (!to || !subject) {
       return new Response(JSON.stringify({ error: "Missing 'to' or 'subject'" }), {
@@ -110,28 +125,65 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    const fromAddress =
+      Deno.env.get("RESEND_FROM") || "Jagire <notifications@jagire.aryalkiran21.com.np>";
+
+    const emailPayload: Record<string, unknown> = {
+      from: fromAddress,
+      to: recipients,
+      subject: safeSubject,
+      html: html || text || "",
+    };
+    if (reply_to && typeof reply_to === "string") {
+      emailPayload.reply_to = reply_to;
+    }
+
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${resendApiKey}`,
       },
-      body: JSON.stringify({
-        from: "Jagire <noreply@resend.dev>",
-        to: recipients,
-        subject: safeSubject,
-        html: html || text || "",
-      }),
+      body: JSON.stringify(emailPayload),
     });
 
     if (!res.ok) {
-      const err = await res.text();
-      console.warn("[send-email] Resend API error / sandbox notice:", res.status, err);
+      const errText = await res.text();
+      console.warn("[send-email] Resend API error:", res.status, errText);
+
+      let isSandboxRestriction = false;
+      try {
+        const parsed = JSON.parse(errText);
+        if (
+          res.status === 403 ||
+          parsed?.name === "validation_error" ||
+          parsed?.message?.includes("only send testing emails") ||
+          parsed?.message?.includes("verify a domain") ||
+          parsed?.message?.includes("not verified") ||
+          parsed?.message?.includes("domain")
+        ) {
+          isSandboxRestriction = true;
+        }
+      } catch {
+        if (
+          errText.includes("only send testing emails") ||
+          errText.includes("verify a domain") ||
+          errText.includes("not verified") ||
+          errText.includes("domain")
+        ) {
+          isSandboxRestriction = true;
+        }
+      }
+
       return new Response(
         JSON.stringify({
           success: false,
-          warning: "Resend test domain only delivers to account owner. Verify a custom domain at resend.com to send to all recipients.",
-          details: err,
+          emailSent: false,
+          emailRestricted: isSandboxRestriction,
+          errorCode: isSandboxRestriction ? "RESEND_TESTING_RESTRICTION" : "EMAIL_DELIVERY_FAILED",
+          message: isSandboxRestriction
+            ? "Interview scheduled successfully, but email could not be delivered because Resend is currently in testing mode."
+            : "Email delivery failed.",
         }),
         {
           status: 200,
@@ -141,14 +193,31 @@ Deno.serve(async (req: Request) => {
     }
 
     const data = await res.json();
-    return new Response(JSON.stringify({ success: true, id: data.id }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({
+        success: true,
+        emailSent: true,
+        emailRestricted: false,
+        id: data.id,
+      }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
+    );
   } catch (err) {
     console.error("[send-email] Internal error:", err);
-    return new Response(JSON.stringify({ error: "Internal server error" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({
+        success: false,
+        emailSent: false,
+        emailRestricted: false,
+        errorCode: "INTERNAL_ERROR",
+        message: "Internal server error",
+      }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
+    );
   }
 });

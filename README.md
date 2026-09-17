@@ -683,7 +683,7 @@ Applied → Viewed → Reviewing → Shortlisted → Interview Scheduled → Int
 
 - Set `RESEND_API_KEY` as a Supabase Edge Function secret
 - The `send-email` function uses Resend API (`https://api.resend.com/emails`)
-- From address: `Jagire <noreply@resend.dev>`
+- From address: `Jagire <notifications@jagire.aryalkiran21.com.np>`
 
 ### 5. Real-Time Messaging
 

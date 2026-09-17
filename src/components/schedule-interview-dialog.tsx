@@ -173,10 +173,23 @@ export function ScheduleInterviewDialog({
       });
     },
     onSuccess: (r) => {
-      toast.success("Interview scheduled! Candidate has been notified.");
+      if (r.emailSent) {
+        toast.success("Interview scheduled successfully. The candidate has been notified by email.");
+      } else if (r.emailRestricted) {
+        toast.warning(
+          "Interview scheduled successfully! The candidate was not emailed because email delivery is currently restricted by the Resend testing configuration. You can still share the meeting link with the candidate manually.",
+          { duration: 9000 },
+        );
+      } else {
+        toast.warning(
+          "Interview scheduled successfully! However, candidate email notification could not be delivered.",
+          { duration: 6000 },
+        );
+      }
+
       if (r.meetLink) {
         navigator.clipboard?.writeText(r.meetLink).catch(() => {});
-        toast.success(`Meeting link copied: ${r.meetLink}`);
+        toast.info(`Meeting link copied: ${r.meetLink}`, { duration: 5000 });
       }
       setOpen(false);
       setStart("");
