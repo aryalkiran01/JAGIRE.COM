@@ -15,11 +15,13 @@ import { Route as AboutRouteImport } from './routes/about'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ContactRouteImport } from './routes/contact'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
+import { Route as HiringTipsRouteImport } from './routes/hiring-tips'
 import { Route as PaymentFailureRouteImport } from './routes/payment-failure'
 import { Route as PaymentSuccessRouteImport } from './routes/payment-success'
 import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as PrivacyPolicyRouteImport } from './routes/privacy-policy'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as SuccessStoriesRouteImport } from './routes/success-stories'
 import { Route as SupportRouteImport } from './routes/support'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedAiAssistantRouteImport } from './routes/_authenticated/ai-assistant'
@@ -89,6 +91,11 @@ const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
   path: '/forgot-password',
   getParentRoute: () => rootRouteImport,
 } as any)
+const HiringTipsRoute = HiringTipsRouteImport.update({
+  id: '/hiring-tips',
+  path: '/hiring-tips',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PaymentFailureRoute = PaymentFailureRouteImport.update({
   id: '/payment-failure',
   path: '/payment-failure',
@@ -112,6 +119,11 @@ const PrivacyPolicyRoute = PrivacyPolicyRouteImport.update({
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SuccessStoriesRoute = SuccessStoriesRouteImport.update({
+  id: '/success-stories',
+  path: '/success-stories',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SupportRoute = SupportRouteImport.update({
@@ -334,11 +346,13 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/contact': typeof ContactRoute
   '/forgot-password': typeof ForgotPasswordRoute
+  '/hiring-tips': typeof HiringTipsRoute
   '/payment-failure': typeof PaymentFailureRoute
   '/payment-success': typeof PaymentSuccessRoute
   '/pricing': typeof PricingRoute
   '/privacy-policy': typeof PrivacyPolicyRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/success-stories': typeof SuccessStoriesRoute
   '/support': typeof SupportRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/ai-assistant': typeof AuthenticatedAiAssistantRoute
@@ -385,11 +399,13 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/contact': typeof ContactRoute
   '/forgot-password': typeof ForgotPasswordRoute
+  '/hiring-tips': typeof HiringTipsRoute
   '/payment-failure': typeof PaymentFailureRoute
   '/payment-success': typeof PaymentSuccessRoute
   '/pricing': typeof PricingRoute
   '/privacy-policy': typeof PrivacyPolicyRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/success-stories': typeof SuccessStoriesRoute
   '/support': typeof SupportRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/ai-assistant': typeof AuthenticatedAiAssistantRoute
@@ -437,11 +453,13 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/contact': typeof ContactRoute
   '/forgot-password': typeof ForgotPasswordRoute
+  '/hiring-tips': typeof HiringTipsRoute
   '/payment-failure': typeof PaymentFailureRoute
   '/payment-success': typeof PaymentSuccessRoute
   '/pricing': typeof PricingRoute
   '/privacy-policy': typeof PrivacyPolicyRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/success-stories': typeof SuccessStoriesRoute
   '/support': typeof SupportRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/ai-assistant': typeof AuthenticatedAiAssistantRoute
@@ -490,11 +508,13 @@ export interface FileRouteTypes {
     | '/auth'
     | '/contact'
     | '/forgot-password'
+    | '/hiring-tips'
     | '/payment-failure'
     | '/payment-success'
     | '/pricing'
     | '/privacy-policy'
     | '/reset-password'
+    | '/success-stories'
     | '/support'
     | '/admin'
     | '/ai-assistant'
@@ -541,11 +561,13 @@ export interface FileRouteTypes {
     | '/auth'
     | '/contact'
     | '/forgot-password'
+    | '/hiring-tips'
     | '/payment-failure'
     | '/payment-success'
     | '/pricing'
     | '/privacy-policy'
     | '/reset-password'
+    | '/success-stories'
     | '/support'
     | '/admin'
     | '/ai-assistant'
@@ -592,11 +614,13 @@ export interface FileRouteTypes {
     | '/auth'
     | '/contact'
     | '/forgot-password'
+    | '/hiring-tips'
     | '/payment-failure'
     | '/payment-success'
     | '/pricing'
     | '/privacy-policy'
     | '/reset-password'
+    | '/success-stories'
     | '/support'
     | '/_authenticated/admin'
     | '/_authenticated/ai-assistant'
@@ -645,11 +669,13 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   ContactRoute: typeof ContactRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
+  HiringTipsRoute: typeof HiringTipsRoute
   PaymentFailureRoute: typeof PaymentFailureRoute
   PaymentSuccessRoute: typeof PaymentSuccessRoute
   PricingRoute: typeof PricingRoute
   PrivacyPolicyRoute: typeof PrivacyPolicyRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  SuccessStoriesRoute: typeof SuccessStoriesRoute
   SupportRoute: typeof SupportRoute
   BlogSlugRoute: typeof BlogSlugRoute
   CheckoutPlanRoute: typeof CheckoutPlanRoute
@@ -705,6 +731,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ForgotPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/hiring-tips': {
+      id: '/hiring-tips'
+      path: '/hiring-tips'
+      fullPath: '/hiring-tips'
+      preLoaderRoute: typeof HiringTipsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/payment-failure': {
       id: '/payment-failure'
       path: '/payment-failure'
@@ -738,6 +771,13 @@ declare module '@tanstack/react-router' {
       path: '/reset-password'
       fullPath: '/reset-password'
       preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/success-stories': {
+      id: '/success-stories'
+      path: '/success-stories'
+      fullPath: '/success-stories'
+      preLoaderRoute: typeof SuccessStoriesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/support': {
@@ -1107,11 +1147,13 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   ContactRoute: ContactRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
+  HiringTipsRoute: HiringTipsRoute,
   PaymentFailureRoute: PaymentFailureRoute,
   PaymentSuccessRoute: PaymentSuccessRoute,
   PricingRoute: PricingRoute,
   PrivacyPolicyRoute: PrivacyPolicyRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  SuccessStoriesRoute: SuccessStoriesRoute,
   SupportRoute: SupportRoute,
   BlogSlugRoute: BlogSlugRoute,
   CheckoutPlanRoute: CheckoutPlanRoute,

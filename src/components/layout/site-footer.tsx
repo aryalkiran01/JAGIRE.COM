@@ -19,6 +19,7 @@ const JOB_SEEKER_SECTIONS = [
     title: "Resources",
     links: [
       { label: "Blog", to: "/blog" },
+      { label: "Success Stories", to: "/success-stories" },
       { label: "Learning Center", to: "/learn" },
       { label: "Community Feed", to: "/feed" },
       { label: "Assessments", to: "/assessments" },
@@ -40,12 +41,12 @@ const EMPLOYER_SECTIONS = [
   {
     title: "For Employers",
     links: [
-      { label: "Post a Job", to: "/employer" },
+      { label: "Post a Job", to: "/employer/jobs/new" },
       { label: "Employer Dashboard", to: "/employer" },
       { label: "Company Profile", to: "/employer/company" },
-      { label: "Manage Jobs", to: "/employer/jobs" },
-      { label: "Applications", to: "/employer/applications" },
-      { label: "Analytics", to: "/employer/analytics" },
+      { label: "Manage Jobs", to: "/employer" },
+      { label: "Applications", to: "/applications" },
+      { label: "Analytics", to: "/employer/intelligence" },
     ],
   },
   {
@@ -54,8 +55,8 @@ const EMPLOYER_SECTIONS = [
       { label: "Pricing", to: "/pricing" },
       { label: "Enterprise", to: "/enterprise" },
       { label: "Knowledge Base", to: "/employer/knowledge-base" },
-      { label: "Hiring Tips", to: "/blog" },
-      { label: "Success Stories", to: "/blog" },
+      { label: "Hiring Tips", to: "/hiring-tips" },
+      { label: "Success Stories", to: "/success-stories" },
     ],
   },
   {
@@ -85,6 +86,7 @@ const ADMIN_SECTIONS = [
     title: "Resources",
     links: [
       { label: "Blog", to: "/blog" },
+      { label: "Success Stories", to: "/success-stories" },
       { label: "Learning Center", to: "/learn" },
       { label: "Community Feed", to: "/feed" },
       { label: "Assessments", to: "/assessments" },
@@ -113,7 +115,8 @@ const PUBLIC_SECTIONS = [
   {
     title: "For Employers",
     links: [
-      { label: "Post a Job", to: "/employer" },
+      { label: "Post a Job", to: "/employer/jobs/new" },
+      { label: "Employer Dashboard", to: "/employer" },
       { label: "Pricing", to: "/pricing" },
       { label: "Enterprise", to: "/enterprise" },
     ],
@@ -122,6 +125,8 @@ const PUBLIC_SECTIONS = [
     title: "Resources",
     links: [
       { label: "Blog", to: "/blog" },
+      { label: "Success Stories", to: "/success-stories" },
+      { label: "Hiring Tips", to: "/hiring-tips" },
       { label: "Learning Center", to: "/learn" },
       { label: "Community Feed", to: "/feed" },
       { label: "Assessments", to: "/assessments" },

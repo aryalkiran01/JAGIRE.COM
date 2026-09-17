@@ -22,7 +22,7 @@ import { Loader as Loader2, Building2 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/employer/jobs/new")({
   component: NewJob,
-  validateSearch: (s: Record<string, unknown>) => ({
+  validateSearch: (s: Record<string, unknown>): { companyId?: string } => ({
     companyId: typeof s.companyId === "string" ? s.companyId : undefined,
   }),
 });

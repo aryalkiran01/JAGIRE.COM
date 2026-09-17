@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Search, Sparkles, Clock, Eye } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
+import { resolveBlogCoverUrl } from "@/lib/blog-utils";
+
 export const Route = createFileRoute("/blog/")({
   head: () => ({
     meta: [
@@ -121,9 +123,15 @@ function Blog() {
         {featured && page === 0 && !search && category === "all" && (
           <Link to="/blog/$slug" params={{ slug: featured.slug }} className="block mb-8">
             <Card className="hover:shadow-glow transition overflow-hidden">
-              {featured.cover_url && (
-                <img src={featured.cover_url} alt="" className="w-full h-64 object-cover" />
-              )}
+              <img
+                src={resolveBlogCoverUrl(featured)}
+                alt={featured.title || "Featured article"}
+                className="w-full h-64 object-cover"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src =
+                    "https://images.pexels.com/photos/3184291/pexels-photo-3184291.jpeg?auto=compress&cs=tinysrgb&w=800";
+                }}
+              />
               <CardContent className="p-6">
                 <div className="flex items-center gap-2 mb-2">
                   <Badge className="gradient-brand text-primary-foreground">
@@ -157,9 +165,15 @@ function Blog() {
             {paged.map((p) => (
               <Link key={p.id} to="/blog/$slug" params={{ slug: p.slug }}>
                 <Card className="hover:shadow-glow transition h-full overflow-hidden">
-                  {p.cover_url && (
-                    <img src={p.cover_url} alt="" className="w-full h-40 object-cover" />
-                  )}
+                  <img
+                    src={resolveBlogCoverUrl(p)}
+                    alt={p.title || "Blog article"}
+                    className="w-full h-40 object-cover"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src =
+                        "https://images.pexels.com/photos/3184291/pexels-photo-3184291.jpeg?auto=compress&cs=tinysrgb&w=800";
+                    }}
+                  />
                   <CardContent className="p-6">
                     {p.category && (
                       <Badge variant="secondary" className="mb-2">

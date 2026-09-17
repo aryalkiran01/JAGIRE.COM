@@ -15,6 +15,8 @@ import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { adminDeleteBlogComment } from "@/lib/admin.server";
 
+import { resolveBlogCoverUrl } from "@/lib/blog-utils";
+
 export const Route = createFileRoute("/blog/$slug")({
   head: () => ({
     meta: [
@@ -40,6 +42,8 @@ type RelatedBlog = {
   slug: string;
   excerpt: string | null;
   cover_url: string | null;
+  cover_image?: string | null;
+  category?: string | null;
 };
 
 function BlogPost() {
@@ -69,7 +73,7 @@ function BlogPost() {
       (
         await supabase
           .from("blogs")
-          .select("id, title, slug, excerpt, cover_url")
+          .select("id, title, slug, excerpt, cover_url, cover_image, category")
           .eq("published", true)
           .eq("category", post!.category!)
           .neq("slug", slug)
@@ -144,13 +148,15 @@ function BlogPost() {
         </Button>
         {post ? (
           <>
-            {post.cover_url && (
-              <img
-                src={post.cover_url}
-                alt=""
-                className="w-full h-64 object-cover rounded-xl mb-6"
-              />
-            )}
+            <img
+              src={resolveBlogCoverUrl(post)}
+              alt={post.title || "Blog post cover"}
+              className="w-full h-64 sm:h-80 object-cover rounded-xl mb-6 shadow-sm"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src =
+                  "https://images.pexels.com/photos/3184291/pexels-photo-3184291.jpeg?auto=compress&cs=tinysrgb&w=800";
+              }}
+            />
             {post.category && (
               <Badge variant="secondary" className="mb-3">
                 {post.category}
@@ -261,14 +267,16 @@ function BlogPost() {
                 <div className="grid md:grid-cols-3 gap-4">
                   {related.map((r) => (
                     <Link key={r.id} to="/blog/$slug" params={{ slug: r.slug }}>
-                      <Card className="hover:shadow-glow transition h-full">
-                        {r.cover_url && (
-                          <img
-                            src={r.cover_url}
-                            alt=""
-                            className="w-full h-24 object-cover rounded-t-lg"
-                          />
-                        )}
+                      <Card className="hover:shadow-glow transition h-full overflow-hidden">
+                        <img
+                          src={resolveBlogCoverUrl(r)}
+                          alt={r.title || "Related article"}
+                          className="w-full h-24 object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src =
+                              "https://images.pexels.com/photos/3184291/pexels-photo-3184291.jpeg?auto=compress&cs=tinysrgb&w=800";
+                          }}
+                        />
                         <CardContent className="p-4">
                           <div className="font-medium text-sm">{r.title}</div>
                           {r.excerpt && (
