@@ -106,13 +106,14 @@ async function updateApplication(
 
 export const shortlistApplication = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { applicationId: string }) => applicationInput.parse(input))
+  .validator((input: { applicationId: string }) => applicationInput.parse(input))
   .handler(({ data, context }) =>
     updateApplication(data.applicationId, context.userId, "shortlisted"),
   );
+
 export const rejectApplication = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { applicationId: string; remark: string }) =>
+  .validator((input: { applicationId: string; remark: string }) =>
     applicationInput.extend({ remark: z.string().trim().min(1).max(2000) }).parse(input),
   )
   .handler(({ data, context }) =>
@@ -121,7 +122,7 @@ export const rejectApplication = createServerFn({ method: "POST" })
 
 export const deleteJobAsAdmin = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { jobId: string }) => z.object({ jobId: z.string().uuid() }).parse(input))
+  .validator((input: { jobId: string }) => z.object({ jobId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     const { data: role, error: roleError } = await supabaseAdmin
       .from("user_roles")
@@ -140,4 +141,125 @@ export const deleteJobAsAdmin = createServerFn({ method: "POST" })
     const { error } = await supabaseAdmin.from("jobs").delete().eq("id", data.jobId);
     if (error) throw error;
     return { ok: true };
+  });
+
+export const getEmployerJobApplications = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: { jobId: string }) => z.object({ jobId: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { data: job, error: jobError } = await supabaseAdmin
+      .from("jobs")
+      .select("id, employer_id, posted_by, company_id")
+      .eq("id", data.jobId)
+      .maybeSingle();
+
+    if (jobError) throw jobError;
+    if (!job) throw new Error("Job not found");
+
+    let allowed = job.employer_id === context.userId || job.posted_by === context.userId;
+    if (!allowed && job.company_id) {
+      const { data: company } = await supabaseAdmin
+        .from("companies")
+        .select("owner_id")
+        .eq("id", job.company_id)
+        .maybeSingle();
+      allowed = company?.owner_id === context.userId;
+    }
+
+    if (!allowed) {
+      const { data: role } = await supabaseAdmin
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", context.userId)
+        .maybeSingle();
+      if (role?.role === "admin") allowed = true;
+    }
+
+    if (!allowed) {
+      throw new Error("You are not authorized to view applications for this job");
+    }
+
+    const { data: appsData, error: appsError } = await supabaseAdmin
+      .from("applications")
+      .select("*")
+      .eq("job_id", data.jobId)
+      .order("created_at", { ascending: false });
+
+    if (appsError) throw appsError;
+
+    const enrichedApps = await Promise.all(
+      (appsData ?? []).map(async (app: any) => {
+        let profileData: any = null;
+        let candidateEmail = "";
+
+        if (app.applicant_id) {
+          const { data: prof } = await supabaseAdmin
+            .from("profiles")
+            .select(
+              "id, full_name, email, avatar_url, headline, location, phone, skills, experience, education",
+            )
+            .eq("id", app.applicant_id)
+            .maybeSingle();
+          profileData = prof;
+
+          if (prof?.email) {
+            candidateEmail = prof.email;
+          } else {
+            // Fetch from auth.users
+            try {
+              const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(
+                app.applicant_id,
+              );
+              if (authUser?.user?.email) {
+                candidateEmail = authUser.user.email;
+                // Backfill profile
+                await supabaseAdmin
+                  .from("profiles")
+                  .update({ email: candidateEmail })
+                  .eq("id", app.applicant_id);
+                if (profileData) {
+                  profileData.email = candidateEmail;
+                }
+              }
+            } catch (e) {
+              console.warn("Failed to fetch auth user email:", e);
+            }
+          }
+        }
+
+        let resumeData: any = null;
+        if (app.resume_id) {
+          const { data: resume } = await supabaseAdmin
+            .from("resumes")
+            .select(
+              "id, file_name, file_url, file_path, file_type, mime_type, ats_score, overall_score, parsed_data",
+            )
+            .eq("id", app.resume_id)
+            .maybeSingle();
+          resumeData = resume;
+
+          if (!candidateEmail && resume?.parsed_data) {
+            const parsed = resume.parsed_data as any;
+            candidateEmail =
+              parsed?.email ||
+              parsed?.contact?.email ||
+              parsed?.personal_info?.email ||
+              parsed?.basic_info?.email ||
+              "";
+          }
+        }
+
+        if (profileData && candidateEmail && !profileData.email) {
+          profileData.email = candidateEmail;
+        }
+
+        return {
+          ...app,
+          profile: profileData || (candidateEmail ? { email: candidateEmail } : null),
+          resume: resumeData || null,
+        };
+      }),
+    );
+
+    return enrichedApps;
   });

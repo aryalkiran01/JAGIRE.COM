@@ -38,6 +38,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { updateApplicationStatus } from "@/lib/application-status.server";
+import { getEmployerJobApplications } from "@/lib/application.service";
 
 export const Route = createFileRoute("/_authenticated/employer/jobs/$jobId")({
   component: JobDetail,
@@ -101,6 +102,7 @@ function JobDetail() {
   const { user } = useAuth();
   const qc = useQueryClient();
   const updateStatusFn = useServerFn(updateApplicationStatus);
+  const getAppsFn = useServerFn(getEmployerJobApplications);
   const [rejectTarget, setRejectTarget] = useState<Application | null>(null);
   const [rejectRemark, setRejectRemark] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -132,45 +134,63 @@ function JobDetail() {
   const { data: applications, isLoading: appsLoading } = useQuery<Application[]>({
     queryKey: ["job-applications", jobId],
     queryFn: async () => {
-      const { data: appsData, error: appsError } = await supabase
-        .from("applications")
-        .select("*")
-        .eq("job_id", jobId)
-        .order("created_at", { ascending: false });
+      try {
+        const apps = await getAppsFn({ data: { jobId } });
+        return apps as Application[];
+      } catch (err) {
+        console.warn("Falling back to client applications query:", err);
+        const { data: appsData, error: appsError } = await supabase
+          .from("applications")
+          .select("*")
+          .eq("job_id", jobId)
+          .order("created_at", { ascending: false });
 
-      if (appsError) throw appsError;
+        if (appsError) throw appsError;
 
-      const enrichedApps = await Promise.all(
-        (appsData ?? []).map(async (app: any) => {
-          const { data: profileData } = await supabase
-            .from("profiles")
-            .select(
-              "id, full_name, email, avatar_url, headline, location, phone, skills, experience, education",
-            )
-            .eq("id", app.applicant_id)
-            .single();
-
-          let resumeData = null;
-          if (app.resume_id) {
-            const { data: resume } = await supabase
-              .from("resumes")
+        const enrichedApps = await Promise.all(
+          (appsData ?? []).map(async (app: any) => {
+            const { data: profileData } = await supabase
+              .from("profiles")
               .select(
-                "id, file_name, file_url, file_path, file_type, mime_type, ats_score, overall_score, parsed_data",
+                "id, full_name, email, avatar_url, headline, location, phone, skills, experience, education",
               )
-              .eq("id", app.resume_id)
-              .single();
-            resumeData = resume;
-          }
+              .eq("id", app.applicant_id)
+              .maybeSingle();
 
-          return {
-            ...app,
-            profile: profileData || null,
-            resume: resumeData || null,
-          };
-        }),
-      );
+            let resumeData = null;
+            if (app.resume_id) {
+              const { data: resume } = await supabase
+                .from("resumes")
+                .select(
+                  "id, file_name, file_url, file_path, file_type, mime_type, ats_score, overall_score, parsed_data",
+                )
+                .eq("id", app.resume_id)
+                .maybeSingle();
+              resumeData = resume;
+            }
 
-      return enrichedApps as Application[];
+            const parsed = resumeData?.parsed_data as any;
+            const candidateEmail =
+              profileData?.email ||
+              parsed?.email ||
+              parsed?.contact?.email ||
+              parsed?.personal_info?.email ||
+              "";
+
+            return {
+              ...app,
+              profile: profileData
+                ? { ...profileData, email: profileData.email || candidateEmail }
+                : candidateEmail
+                  ? { email: candidateEmail }
+                  : null,
+              resume: resumeData || null,
+            };
+          }),
+        );
+
+        return enrichedApps as Application[];
+      }
     },
   });
 
@@ -396,7 +416,10 @@ function JobDetail() {
                         </Badge>
                       </div>
                       <div className="text-xs text-muted-foreground mt-0.5">
-                        {app.profile?.email ?? "No email"} · Applied{" "}
+                        {app.profile?.email ||
+                          app.resume?.parsed_data?.contact?.email ||
+                          app.resume?.parsed_data?.email ||
+                          "No email"} · Applied{" "}
                         {new Date(app.created_at).toLocaleDateString()}
                       </div>
                       {app.profile?.headline && (
@@ -520,7 +543,12 @@ function JobDetail() {
                       <ScheduleInterviewDialog
                         applicationId={app.id}
                         candidateName={app.profile?.full_name ?? undefined}
-                        candidateEmail={app.profile?.email ?? ""}
+                        candidateEmail={
+                          app.profile?.email ||
+                          app.resume?.parsed_data?.contact?.email ||
+                          app.resume?.parsed_data?.email ||
+                          ""
+                        }
                       />
                     </div>
                   )}
@@ -610,7 +638,12 @@ function JobDetail() {
                   <div className="grid grid-cols-2 gap-3">
                     <div className="flex items-center gap-2">
                       <Mail className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm">{applicantProfile.email}</span>
+                      <span className="text-sm">
+                        {applicantProfile.email ||
+                          currentApplicant?.resume?.parsed_data?.contact?.email ||
+                          currentApplicant?.resume?.parsed_data?.email ||
+                          "No email provided"}
+                      </span>
                     </div>
                     {applicantProfile.phone && (
                       <div className="flex items-center gap-2">

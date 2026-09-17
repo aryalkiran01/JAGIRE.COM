@@ -1,6 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -39,13 +37,14 @@ type MeetingType = "google_meet" | "custom" | "in_person";
 export function ScheduleInterviewDialog({
   applicationId,
   candidateName,
-  candidateEmail,
+  candidateEmail: initialCandidateEmail,
 }: {
   applicationId: string;
   candidateName?: string;
-  candidateEmail: string;
+  candidateEmail?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const [candidateEmail, setCandidateEmail] = useState(initialCandidateEmail || "");
   const [title, setTitle] = useState(`Interview with ${candidateName ?? "candidate"}`);
   const [start, setStart] = useState("");
   const [duration, setDuration] = useState(30);
@@ -54,6 +53,13 @@ export function ScheduleInterviewDialog({
   const [location, setLocation] = useState("");
   const [notes, setNotes] = useState("");
   const qc = useQueryClient();
+
+  // Keep candidateEmail synced if prop changes or dialog opens
+  useEffect(() => {
+    if (initialCandidateEmail) {
+      setCandidateEmail(initialCandidateEmail);
+    }
+  }, [initialCandidateEmail, open]);
 
   const statusFn = useServerFn(getGoogleCalendarStatus);
   const startFn = useServerFn(startGoogleCalendarConnect);
@@ -120,6 +126,14 @@ export function ScheduleInterviewDialog({
 
   const schedule = useMutation({
     mutationFn: async () => {
+      const trimmedEmail = candidateEmail.trim();
+      if (!trimmedEmail) {
+        throw new Error("Candidate email is required.");
+      }
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(trimmedEmail)) {
+        throw new Error("Please enter a valid candidate email address.");
+      }
       if (!start) throw new Error("Pick a start time");
       const startDate = new Date(start);
       if (isNaN(startDate.getTime())) throw new Error("Invalid date/time");
@@ -145,7 +159,7 @@ export function ScheduleInterviewDialog({
       return scheduleFn({
         data: {
           applicationId,
-          candidateEmail,
+          candidateEmail: trimmedEmail,
           candidateName,
           title,
           startISO: new Date(start).toISOString(),
@@ -174,14 +188,20 @@ export function ScheduleInterviewDialog({
       qc.invalidateQueries({ queryKey: ["job-apps"] });
     },
     onError: (e: any) => {
-      const msg = e.message ?? "";
+      let msg = e.message ?? "";
+      try {
+        const parsed = JSON.parse(msg);
+        if (Array.isArray(parsed) && parsed[0]?.message) {
+          msg = parsed.map((err: any) => err.message).join(", ");
+        }
+      } catch {}
       if (msg.includes("GOOGLE_CALENDAR_RECONNECT_REQUIRED")) {
         toast.error(
           "Your Google Calendar connection has expired. Please reconnect Google Calendar.",
         );
         qc.invalidateQueries({ queryKey: ["gcal-status"] });
       } else {
-        toast.error(msg);
+        toast.error(msg || "Failed to schedule interview");
       }
     },
   });
@@ -377,6 +397,24 @@ export function ScheduleInterviewDialog({
             <Input value={title} onChange={(e) => setTitle(e.target.value)} />
           </div>
 
+          {/* Candidate Email */}
+          <div>
+            <Label htmlFor="candidate-email">
+              Candidate email <span className="text-destructive">*</span>
+            </Label>
+            <Input
+              id="candidate-email"
+              type="email"
+              placeholder="candidate@example.com"
+              value={candidateEmail}
+              onChange={(e) => setCandidateEmail(e.target.value)}
+              required
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Calendar invite and interview confirmation will be sent to this email.
+            </p>
+          </div>
+
           {/* Start time */}
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -428,8 +466,11 @@ export function ScheduleInterviewDialog({
           </div>
 
           <p className="text-xs text-muted-foreground">
-            Invite goes to <span className="font-medium">{candidateEmail}</span>. A notification is
-            sent automatically.
+            Invite goes to{" "}
+            <span className="font-medium">
+              {candidateEmail.trim() || "the candidate email above"}
+            </span>
+            . A notification is sent automatically.
           </p>
 
           <DialogFooter>

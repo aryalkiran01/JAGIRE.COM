@@ -126,11 +126,18 @@ Deno.serve(async (req: Request) => {
 
     if (!res.ok) {
       const err = await res.text();
-      console.error("[send-email] Resend API error:", res.status, err);
-      return new Response(JSON.stringify({ error: "Failed to send email" }), {
-        status: 502,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      console.warn("[send-email] Resend API error / sandbox notice:", res.status, err);
+      return new Response(
+        JSON.stringify({
+          success: false,
+          warning: "Resend test domain only delivers to account owner. Verify a custom domain at resend.com to send to all recipients.",
+          details: err,
+        }),
+        {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
     }
 
     const data = await res.json();

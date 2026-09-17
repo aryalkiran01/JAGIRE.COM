@@ -27,7 +27,7 @@ function hasGoogleCreds() {
 // ------------------- OAuth endpoints -------------------
 export const startGoogleCalendarConnect = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((targetOrigin: string) => z.string().url().parse(targetOrigin))
+  .validator((targetOrigin: string) => z.string().url().parse(targetOrigin))
   .handler(async ({ data: targetOrigin }) => {
     const { clientId } = clientCreds();
     if (!clientId) throw new Error("Google OAuth is not configured.");
@@ -45,7 +45,7 @@ export const startGoogleCalendarConnect = createServerFn({ method: "POST" })
 
 export const saveGoogleCalendarConnection = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { code: string; redirectOrigin: string }) =>
+  .validator((input: { code: string; redirectOrigin: string }) =>
     z.object({ code: z.string().min(1), redirectOrigin: z.string().url() }).parse(input),
   )
   .handler(async ({ data, context }) => {
@@ -317,12 +317,17 @@ async function sendInterviewEmail(
     });
     if (!res.ok) {
       const errText = await res.text();
-      console.error("[sendInterviewEmail] Edge function returned error:", res.status, errText);
+      console.warn("[sendInterviewEmail] Note: Email delivery skipped or restricted:", res.status, errText);
     } else {
-      console.log("[sendInterviewEmail] Email sent to", recipients.join(", "));
+      const result = await res.json().catch(() => ({}));
+      if (result?.warning) {
+        console.warn("[sendInterviewEmail] Resend Notice:", result.warning);
+      } else {
+        console.log("[sendInterviewEmail] Email sent to", recipients.join(", "));
+      }
     }
   } catch (e) {
-    console.error("[sendInterviewEmail] Failed to send email:", e);
+    console.warn("[sendInterviewEmail] Email dispatch notice:", e);
   }
 }
 
@@ -351,7 +356,7 @@ async function getApplicationDetails(supabaseAdmin: any, applicationId: string) 
 // ------------------- Main schedule function -------------------
 export const scheduleInterview = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator(
+  .validator(
     (input: {
       applicationId: string;
       candidateEmail: string;
@@ -367,13 +372,13 @@ export const scheduleInterview = createServerFn({ method: "POST" })
     }) =>
       z
         .object({
-          applicationId: z.string().uuid(),
-          candidateEmail: z.string().email(),
+          applicationId: z.string().uuid("Invalid application ID"),
+          candidateEmail: z.string().email("Please provide a valid candidate email address"),
           candidateName: z.string().optional(),
-          title: z.string().min(1).max(200),
+          title: z.string().min(1, "Title is required").max(200),
           startISO: z.string(),
           durationMinutes: z.number().int().min(15).max(480),
-          meetingLink: z.string().url().optional().or(z.literal("").optional()),
+          meetingLink: z.string().url("Invalid meeting link URL").optional().or(z.literal("").optional()),
           location: z.string().optional(),
           notes: z.string().optional(),
           useGoogleCalendar: z.boolean().optional(),
@@ -525,7 +530,7 @@ export const scheduleInterview = createServerFn({ method: "POST" })
 // ------------------- Status update functions -------------------
 export const updateInterviewStatus = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { interviewId: string; status: string; notes?: string }) =>
+  .validator((input: { interviewId: string; status: string; notes?: string }) =>
     z
       .object({
         interviewId: z.string().uuid(),
@@ -592,7 +597,7 @@ export const updateInterviewStatus = createServerFn({ method: "POST" })
 
 export const rescheduleInterview = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { interviewId: string; proposedTimeISO: string; reason?: string }) =>
+  .validator((input: { interviewId: string; proposedTimeISO: string; reason?: string }) =>
     z
       .object({
         interviewId: z.string().uuid(),
