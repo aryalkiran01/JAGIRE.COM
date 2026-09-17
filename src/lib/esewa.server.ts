@@ -8,11 +8,32 @@ import { createServerFn } from "@tanstack/react-start";
  * The frontend only receives the signed form fields needed to POST to eSewa.
  */
 
-function getEsewaConfig() {
-  const merchantCode = process.env.ESEWA_MERCHANT_CODE || "EPAYTEST";
-  const secret = process.env.ESEWA_SECRET_KEY || "8gBm/:&EnhH.1/q";
-  const esewaUrl = process.env.ESEWA_URL || "https://rc-epay.esewa.com.np/api/epay/main/v2/form";
-  return { merchantCode, secret, esewaUrl };
+const PUBLIC_SANDBOX_SECRET = "8gBm/:&EnhH.1/q";
+
+export function getEsewaConfig() {
+  const isProd = process.env.NODE_ENV === "production";
+  const merchantCode = process.env.ESEWA_MERCHANT_CODE || (isProd ? "" : "EPAYTEST");
+  const secret = process.env.ESEWA_SECRET_KEY;
+
+  if (isProd) {
+    if (!secret || secret.trim() === "" || secret === PUBLIC_SANDBOX_SECRET) {
+      throw new Error(
+        "CRITICAL_SECURITY_ERROR: ESEWA_SECRET_KEY is not configured or is using public sandbox secret in production.",
+      );
+    }
+    if (!merchantCode || merchantCode === "EPAYTEST") {
+      throw new Error(
+        "CRITICAL_SECURITY_ERROR: ESEWA_MERCHANT_CODE is not configured for production.",
+      );
+    }
+  }
+
+  const effectiveSecret = secret || PUBLIC_SANDBOX_SECRET;
+  const esewaUrl = process.env.ESEWA_URL || (isProd 
+    ? "https://epay.esewa.com.np/api/epay/main/v2/form" 
+    : "https://rc-epay.esewa.com.np/api/epay/main/v2/form");
+
+  return { merchantCode: merchantCode || "EPAYTEST", secret: effectiveSecret, esewaUrl };
 }
 
 async function hmacSha256Base64(message: string, secret: string) {

@@ -16,8 +16,6 @@ import {
   Building2,
 } from "lucide-react";
 import { useState, useEffect } from "react";
-import { toast } from "sonner";
-import { seedDemoData } from "@/lib/demo-seed";
 import {
   Select,
   SelectContent,
@@ -30,23 +28,7 @@ export const Route = createFileRoute("/_authenticated/employer/")({ component: E
 
 function EmployerDashboard() {
   const { user } = useAuth();
-  const qc = useQueryClient();
-  const [seeding, setSeeding] = useState(false);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
-
-  async function runSeed() {
-    if (!user) return;
-    setSeeding(true);
-    try {
-      const res = await seedDemoData(user.id);
-      toast.success(`Added ${res.jobs} demo jobs`);
-      window.location.reload();
-    } catch (e: any) {
-      toast.error(e.message ?? "Seed failed");
-    } finally {
-      setSeeding(false);
-    }
-  }
 
   // Fetch ALL companies for this user
   const { data: companies, isLoading: companiesLoading } = useQuery({
@@ -127,14 +109,6 @@ function EmployerDashboard() {
               <Button asChild className="gradient-brand text-primary-foreground">
                 <Link to="/employer/company">Create company</Link>
               </Button>
-              <Button variant="outline" onClick={runSeed} disabled={seeding}>
-                {seeding ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Sparkles className="mr-2 h-4 w-4" />
-                )}
-                Load demo company & jobs
-              </Button>
             </div>
           </CardContent>
         </Card>
@@ -181,14 +155,6 @@ function EmployerDashboard() {
               <Video className="mr-2 h-4 w-4" />
               Interviews
             </Link>
-          </Button>
-          <Button variant="outline" onClick={runSeed} disabled={seeding}>
-            {seeding ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Sparkles className="mr-2 h-4 w-4" />
-            )}
-            Seed demo jobs
           </Button>
           <Button asChild className="gradient-brand text-primary-foreground">
             <Link to="/employer/jobs/new" search={{ companyId: company?.id }}>

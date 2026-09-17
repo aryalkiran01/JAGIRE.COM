@@ -100,7 +100,7 @@ export const PLANS: Record<string, PlanConfig> = {
     features: [
       "Unlimited Job Posts",
       "Unlimited Candidates",
-      "Team Collaboration",
+      "Hiring Workflow Tools",
       "Google Calendar Integration",
       "Interview Scheduling",
       "Candidate Pipeline",

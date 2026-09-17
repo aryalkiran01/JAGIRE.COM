@@ -349,3 +349,49 @@ describe("P0-1 & P0-2: Idempotency & User Binding Security Model", () => {
     expect(second.plan_type).toBe("premium");
   });
 });
+
+describe("P0-Security: eSewa Production Fail-Closed Secret Enforcement", () => {
+  const originalEnv = process.env.NODE_ENV;
+  const originalSecret = process.env.ESEWA_SECRET_KEY;
+  const originalMerchant = process.env.ESEWA_MERCHANT_CODE;
+
+  it("fails closed in production if ESEWA_SECRET_KEY is missing or empty", async () => {
+    process.env.NODE_ENV = "production";
+    delete process.env.ESEWA_SECRET_KEY;
+    process.env.ESEWA_MERCHANT_CODE = "REAL_MERCHANT";
+
+    const { getEsewaConfig } = await import("./esewa.server");
+    expect(() => getEsewaConfig()).toThrow(/CRITICAL_SECURITY_ERROR/);
+
+    process.env.NODE_ENV = originalEnv;
+    process.env.ESEWA_SECRET_KEY = originalSecret;
+    process.env.ESEWA_MERCHANT_CODE = originalMerchant;
+  });
+
+  it("fails closed in production if ESEWA_SECRET_KEY uses the public sandbox default", async () => {
+    process.env.NODE_ENV = "production";
+    process.env.ESEWA_SECRET_KEY = "8gBm/:&EnhH.1/q";
+    process.env.ESEWA_MERCHANT_CODE = "REAL_MERCHANT";
+
+    const { getEsewaConfig } = await import("./esewa.server");
+    expect(() => getEsewaConfig()).toThrow(/CRITICAL_SECURITY_ERROR/);
+
+    process.env.NODE_ENV = originalEnv;
+    process.env.ESEWA_SECRET_KEY = originalSecret;
+    process.env.ESEWA_MERCHANT_CODE = originalMerchant;
+  });
+});
+
+describe("P0-Security: Production Demo Seeding Guard", () => {
+  const originalEnv = process.env.NODE_ENV;
+
+  it("strictly throws if seedDemoData is invoked in production mode", async () => {
+    process.env.NODE_ENV = "production";
+    const { seedDemoData } = await import("./demo-seed");
+
+    await expect(seedDemoData("user-123")).rejects.toThrow(/strictly disabled in production/);
+
+    process.env.NODE_ENV = originalEnv;
+  });
+});
+

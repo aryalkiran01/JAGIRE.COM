@@ -833,12 +833,12 @@ function FeedPage() {
 
                   {/* Image attachment - rendered only when an image exists */}
                   {p.image_url && (
-                    <div className="rounded-xl overflow-hidden border border-border/40">
+                    <div className="rounded-xl overflow-hidden border border-border/40 bg-muted/20 flex items-center justify-center">
                       <img
                         src={p.image_url}
                         alt="Post attachment"
                         loading="lazy"
-                        className="w-full h-auto block rounded-xl"
+                        className="max-h-[500px] w-full object-contain block rounded-xl"
                       />
                     </div>
                   )}

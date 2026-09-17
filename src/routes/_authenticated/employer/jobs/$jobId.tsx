@@ -109,6 +109,7 @@ function JobDetail() {
   const [resumeUrl, setResumeUrl] = useState<string | null>(null);
   const [loadingResume, setLoadingResume] = useState(false);
   const [activeTab, setActiveTab] = useState("resume");
+  const [stageFilter, setStageFilter] = useState<string>("all");
 
   const currentApplicant = viewingResume ?? viewingApplicant ?? null;
   const applicantProfile = currentApplicant?.profile ?? null;
@@ -331,16 +332,50 @@ function JobDetail() {
         </CardContent>
       </Card>
 
-      {/* Applicants List */}
+      {/* Applicants List & Pipeline Filter */}
       <div>
-        <h2 className="text-xl font-semibold flex items-center gap-2">
-          <Users className="h-5 w-5" /> Applicants ({applications?.length ?? 0})
-        </h2>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+          <h2 className="text-xl font-semibold flex items-center gap-2">
+            <Users className="h-5 w-5 text-primary" /> Candidates ({applications?.length ?? 0})
+          </h2>
+
+          {/* Pipeline Stage Filter Chips */}
+          <div className="flex flex-wrap gap-1.5">
+            {[
+              { id: "all", label: "All", count: applications?.length ?? 0 },
+              { id: "applied", label: "Applied", count: applications?.filter((a) => a.status === "applied" || a.status === "viewed").length ?? 0 },
+              { id: "shortlisted", label: "Shortlisted", count: applications?.filter((a) => a.status === "shortlisted").length ?? 0 },
+              { id: "selected", label: "Offer / Hired", count: applications?.filter((a) => a.status === "selected" || a.status === "offer").length ?? 0 },
+              { id: "rejected", label: "Rejected", count: applications?.filter((a) => a.status === "rejected").length ?? 0 },
+            ].map((st) => (
+              <Button
+                key={st.id}
+                variant={stageFilter === st.id ? "default" : "outline"}
+                size="sm"
+                className={`h-7 text-xs px-2.5 rounded-full ${
+                  stageFilter === st.id ? "gradient-brand text-primary-foreground font-medium" : ""
+                }`}
+                onClick={() => setStageFilter(st.id)}
+              >
+                {st.label} ({st.count})
+              </Button>
+            ))}
+          </div>
+        </div>
+
         {(!applications || applications.length === 0) && (
           <p className="text-muted-foreground text-sm mt-2">No applications yet.</p>
         )}
+
         <div className="space-y-3 mt-3">
-          {applications?.map((app) => (
+          {applications
+            ?.filter((app) => {
+              if (stageFilter === "all") return true;
+              if (stageFilter === "applied") return app.status === "applied" || app.status === "viewed";
+              if (stageFilter === "selected") return app.status === "selected" || app.status === "offer";
+              return app.status === stageFilter;
+            })
+            .map((app) => (
             <Card key={app.id} className="hover:shadow-md transition-shadow">
               <CardContent className="p-4 space-y-3">
                 <div className="flex items-start justify-between gap-3">

@@ -172,6 +172,10 @@ const NEPALI_COMPANIES = [
 ];
 
 export async function seedDemoData(userId: string) {
+  if (process.env.NODE_ENV === "production" || import.meta.env?.PROD) {
+    throw new Error("CRITICAL_SECURITY_ERROR: Demo seeding is strictly disabled in production environments.");
+  }
+
   console.log("Checking for existing companies for user:", userId);
 
   // Check if user already has companies

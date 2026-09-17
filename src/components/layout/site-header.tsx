@@ -177,34 +177,36 @@ export function SiteHeader() {
             </NavLink>
           ))}
 
-          {/* Features dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="flex items-center gap-0.5 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-muted/50">
-                Features
-                <ChevronDown className="h-3.5 w-3.5" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="center" className="w-[min(28rem,calc(100vw-2rem))] p-2">
-              <div className="grid grid-cols-2 gap-1">
-                {FEATURE_LINKS.map((f) => (
-                  <DropdownMenuItem key={f.to} asChild className="p-3 rounded-lg">
-                    <Link to={f.to}>
-                      <div className="flex items-start gap-3">
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                          <f.icon className="h-4 w-4 text-primary" />
+          {/* Features dropdown for guests */}
+          {!user && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex items-center gap-0.5 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-muted/50">
+                  Features
+                  <ChevronDown className="h-3.5 w-3.5" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="center" className="w-[min(28rem,calc(100vw-2rem))] p-2">
+                <div className="grid grid-cols-2 gap-1">
+                  {FEATURE_LINKS.map((f) => (
+                    <DropdownMenuItem key={f.to} asChild className="p-3 rounded-lg">
+                      <Link to={f.to}>
+                        <div className="flex items-start gap-3">
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                            <f.icon className="h-4 w-4 text-primary" />
+                          </div>
+                          <div>
+                            <div className="text-sm font-medium">{f.label}</div>
+                            <div className="text-xs text-muted-foreground">{f.desc}</div>
+                          </div>
                         </div>
-                        <div>
-                          <div className="text-sm font-medium">{f.label}</div>
-                          <div className="text-xs text-muted-foreground">{f.desc}</div>
-                        </div>
-                      </div>
-                    </Link>
-                  </DropdownMenuItem>
-                ))}
-              </div>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                      </Link>
+                    </DropdownMenuItem>
+                  ))}
+                </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </nav>
 
         {/* Right side */}

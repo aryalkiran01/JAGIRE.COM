@@ -45,49 +45,35 @@ const GUEST_NAV: NavItem[] = [
 
 const SEEKER_NAV: NavItem[] = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/jobs", label: "Browse Jobs", icon: Briefcase },
-  { to: "/companies", label: "Companies", icon: Building2 },
-  { to: "/applications", label: "Applications", icon: Target },
-  { to: "/saved", label: "Saved", icon: Bookmark },
-  { to: "/interviews", label: "Interviews", icon: Video },
-  { to: "/career-coach", label: "AI Career Coach", icon: BrainCircuit },
-  { to: "/ai-assistant", label: "AI Assistant", icon: Sparkles },
+  { to: "/jobs", label: "Find Jobs", icon: Briefcase },
+  { to: "/applications", label: "My Applications", icon: Target },
   { to: "/resume-builder", label: "Resume Builder", icon: FileText },
+  { to: "/resume-scanner", label: "Resume Scanner", icon: Target },
+  { to: "/career-coach", label: "AI Career Coach", icon: BrainCircuit },
+  { to: "/saved", label: "Saved Items", icon: Bookmark },
+  { to: "/messages", label: "Messages", icon: Rss },
+  { to: "/profile", label: "My Profile", icon: User },
   { to: "/feed", label: "Community Feed", icon: Rss },
   { to: "/learn", label: "Learning Center", icon: BookOpen },
-  { to: "/pricing", label: "Pricing", icon: TrendingUp },
-];
-
-const ADMIN_NAV: NavItem[] = [
-  { to: "/admin", label: "Admin Panel", icon: Shield },
-  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/jobs", label: "Browse Jobs", icon: Briefcase },
-  { to: "/companies", label: "Companies", icon: Building2 },
-  { to: "/applications", label: "Applications", icon: Target },
-  { to: "/saved", label: "Saved", icon: Bookmark },
-  { to: "/interviews", label: "Interviews", icon: Video },
-  { to: "/career-coach", label: "AI Career Coach", icon: BrainCircuit },
-  { to: "/ai-assistant", label: "AI Assistant", icon: Sparkles },
-  { to: "/resume-builder", label: "Resume Builder", icon: FileText },
-  { to: "/feed", label: "Community Feed", icon: Rss },
-  { to: "/learn", label: "Learning Center", icon: BookOpen },
-  { to: "/pricing", label: "Pricing", icon: TrendingUp },
 ];
 
 const EMPLOYER_NAV: NavItem[] = [
-  { to: "/employer", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/jobs", label: "Browse Jobs", icon: Briefcase },
-  { to: "/companies", label: "Companies", icon: Building2 },
-  { to: "/employer/intelligence", label: "Intelligence", icon: TrendingUp },
-  { to: "/employer/jobs/new", label: "Job Posts", icon: Briefcase },
-  { to: "/saved", label: "Saved", icon: Bookmark },
-  { to: "/employer/interviews", label: "Interviews", icon: Video },
-  { to: "/employer/company", label: "Company", icon: Building2 },
+  { to: "/employer", label: "Employer Dashboard", icon: LayoutDashboard },
+  { to: "/employer/jobs/new", label: "Post a Job", icon: Briefcase },
+  { to: "/employer/intelligence", label: "AI Recruitment", icon: BrainCircuit },
+  { to: "/employer/interviews", label: "Interview Sessions", icon: Video },
+  { to: "/employer/company", label: "Company Profile", icon: Building2 },
   { to: "/employer/knowledge-base", label: "Knowledge Base", icon: BookOpen },
-  { to: "/enterprise", label: "Enterprise", icon: Shield },
-  { to: "/applications", label: "Applications", icon: Target },
+  { to: "/messages", label: "Messages", icon: Rss },
   { to: "/feed", label: "Community Feed", icon: Rss },
-  { to: "/pricing", label: "Pricing", icon: TrendingUp },
+];
+
+const ADMIN_NAV: NavItem[] = [
+  { to: "/admin", label: "Admin Console", icon: Shield },
+  { to: "/dashboard", label: "User Dashboard", icon: LayoutDashboard },
+  { to: "/jobs", label: "Manage Jobs", icon: Briefcase },
+  { to: "/companies", label: "Manage Companies", icon: Building2 },
+  { to: "/feed", label: "Community Feed", icon: Rss },
 ];
 
 function NavLink({ item, onNavigate }: { item: NavItem; onNavigate?: () => void }) {

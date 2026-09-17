@@ -77,19 +77,19 @@ export const saveGoogleCalendarConnection = createServerFn({ method: "POST" })
     console.log("Google status:", res.status);
 
     const response = await res.text();
-    console.log("Google response:", response);
 
     if (!res.ok) {
-      throw new Error(response);
+      console.error("[GoogleCalendar] OAuth token exchange failed:", { status: res.status });
+      throw new Error("Failed to exchange authorization code for Google tokens.");
     }
 
     const tokens = JSON.parse(response);
 
-    console.log("Refresh token exists:", !!tokens.refresh_token);
+    if (!tokens.refresh_token) {
+      console.warn("[GoogleCalendar] No refresh_token returned by Google OAuth. Access prompt may be needed.");
+    }
 
     await saveConnectionKeyForUser(context.userId, "google_calendar", tokens.refresh_token);
-
-    console.log("=== SAVED SUCCESSFULLY ===");
 
     return { ok: true };
   });
