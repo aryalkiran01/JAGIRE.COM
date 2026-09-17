@@ -18,6 +18,7 @@ import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as PaymentFailureRouteImport } from './routes/payment-failure'
 import { Route as PaymentSuccessRouteImport } from './routes/payment-success'
 import { Route as PricingRouteImport } from './routes/pricing'
+import { Route as PrivacyPolicyRouteImport } from './routes/privacy-policy'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SupportRouteImport } from './routes/support'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
@@ -101,6 +102,11 @@ const PaymentSuccessRoute = PaymentSuccessRouteImport.update({
 const PricingRoute = PricingRouteImport.update({
   id: '/pricing',
   path: '/pricing',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyPolicyRoute = PrivacyPolicyRouteImport.update({
+  id: '/privacy-policy',
+  path: '/privacy-policy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
@@ -331,6 +337,7 @@ export interface FileRoutesByFullPath {
   '/payment-failure': typeof PaymentFailureRoute
   '/payment-success': typeof PaymentSuccessRoute
   '/pricing': typeof PricingRoute
+  '/privacy-policy': typeof PrivacyPolicyRoute
   '/reset-password': typeof ResetPasswordRoute
   '/support': typeof SupportRoute
   '/admin': typeof AuthenticatedAdminRoute
@@ -381,6 +388,7 @@ export interface FileRoutesByTo {
   '/payment-failure': typeof PaymentFailureRoute
   '/payment-success': typeof PaymentSuccessRoute
   '/pricing': typeof PricingRoute
+  '/privacy-policy': typeof PrivacyPolicyRoute
   '/reset-password': typeof ResetPasswordRoute
   '/support': typeof SupportRoute
   '/admin': typeof AuthenticatedAdminRoute
@@ -432,6 +440,7 @@ export interface FileRoutesById {
   '/payment-failure': typeof PaymentFailureRoute
   '/payment-success': typeof PaymentSuccessRoute
   '/pricing': typeof PricingRoute
+  '/privacy-policy': typeof PrivacyPolicyRoute
   '/reset-password': typeof ResetPasswordRoute
   '/support': typeof SupportRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
@@ -484,6 +493,7 @@ export interface FileRouteTypes {
     | '/payment-failure'
     | '/payment-success'
     | '/pricing'
+    | '/privacy-policy'
     | '/reset-password'
     | '/support'
     | '/admin'
@@ -534,6 +544,7 @@ export interface FileRouteTypes {
     | '/payment-failure'
     | '/payment-success'
     | '/pricing'
+    | '/privacy-policy'
     | '/reset-password'
     | '/support'
     | '/admin'
@@ -584,6 +595,7 @@ export interface FileRouteTypes {
     | '/payment-failure'
     | '/payment-success'
     | '/pricing'
+    | '/privacy-policy'
     | '/reset-password'
     | '/support'
     | '/_authenticated/admin'
@@ -636,6 +648,7 @@ export interface RootRouteChildren {
   PaymentFailureRoute: typeof PaymentFailureRoute
   PaymentSuccessRoute: typeof PaymentSuccessRoute
   PricingRoute: typeof PricingRoute
+  PrivacyPolicyRoute: typeof PrivacyPolicyRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SupportRoute: typeof SupportRoute
   BlogSlugRoute: typeof BlogSlugRoute
@@ -711,6 +724,13 @@ declare module '@tanstack/react-router' {
       path: '/pricing'
       fullPath: '/pricing'
       preLoaderRoute: typeof PricingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy-policy': {
+      id: '/privacy-policy'
+      path: '/privacy-policy'
+      fullPath: '/privacy-policy'
+      preLoaderRoute: typeof PrivacyPolicyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reset-password': {
@@ -1090,6 +1110,7 @@ const rootRouteChildren: RootRouteChildren = {
   PaymentFailureRoute: PaymentFailureRoute,
   PaymentSuccessRoute: PaymentSuccessRoute,
   PricingRoute: PricingRoute,
+  PrivacyPolicyRoute: PrivacyPolicyRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SupportRoute: SupportRoute,
   BlogSlugRoute: BlogSlugRoute,

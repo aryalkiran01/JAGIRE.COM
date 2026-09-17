@@ -254,14 +254,14 @@ export function SiteFooter() {
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-muted-foreground">
           <p>&copy; {new Date().getFullYear()} Jagire. All rights reserved.</p>
           <div className="flex items-center gap-6 flex-wrap justify-center">
-            <Link to="/support" className="hover:text-foreground transition-colors">
-              Privacy
+            <Link to="/privacy-policy" className="hover:text-foreground transition-colors">
+              Privacy Policy
             </Link>
             <Link to="/support" className="hover:text-foreground transition-colors">
-              Terms
+              Terms of Service
             </Link>
             <Link to="/support" className="hover:text-foreground transition-colors">
-              Cookies
+              Support & FAQ
             </Link>
           </div>
         </div>
