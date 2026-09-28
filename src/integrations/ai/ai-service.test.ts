@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { z } from "zod";
 import { AIServiceImpl } from "./ai-service";
-import { AIProvider, AIRequest } from "./types";
+import { AIProvider, AIRequest, AITransientError } from "./types";
 import { sanitizeUserFacingResponse } from "@/lib/ai.service";
 
 describe("AIService Robust JSON Handling & Normalization", () => {
@@ -37,7 +37,6 @@ describe("AIService Robust JSON Handling & Normalization", () => {
   });
 
   it("normalizes dictionary/object-based compensation_benchmarks_npr and non-standard profile keys", async () => {
-    // Mock provider returning loose JSON format (common LLM failure mode)
     const mockProvider: AIProvider = {
       name: "mock-gemini",
       async generateText() {
@@ -63,7 +62,6 @@ describe("AIService Robust JSON Handling & Normalization", () => {
             },
           ],
           interview_focus_areas: "System Architecture, Team Culture",
-          // Object/map format instead of array
           compensation_benchmarks_npr: {
             "Senior Fullstack Engineer": {
               min_salary: "Rs. 120,000",
@@ -184,6 +182,78 @@ describe("AIService Robust JSON Handling & Normalization", () => {
     expect(callCount).toBe(2);
     expect(receivedPromptOnRetry).toContain("[CRITICAL CORRECTION REQUIRED]");
     expect(result.target_talent_profiles[0].role_title).toBe("Product Manager");
+  });
+
+  it("immediately falls back without retry storm when primary provider encounters 408 timeout", async () => {
+    let primaryAttempts = 0;
+    let fallbackAttempts = 0;
+
+    const primaryProvider: AIProvider = {
+      name: "primary-failing",
+      async generateText() {
+        return "";
+      },
+      async generateJson<T>(_req: AIRequest): Promise<T> {
+        primaryAttempts++;
+        throw new AITransientError("Gemini request timed out", 408);
+      },
+    };
+
+    const fallbackProvider: AIProvider = {
+      name: "fallback-working",
+      async generateText() {
+        return "";
+      },
+      async generateJson<T>(_req: AIRequest): Promise<T> {
+        fallbackAttempts++;
+        return {
+          target_talent_profiles: [
+            {
+              role_title: "Frontend Developer",
+              seniority: "Mid",
+              required_skills: ["React"],
+              why: "UI development",
+            },
+          ],
+          skill_demands: ["React"],
+          recruitment_strategy: ["Online job posting"],
+          candidate_screening_criteria: [
+            {
+              category: "Frontend",
+              must_have: "React proficiency",
+              good_to_have: "TypeScript",
+            },
+          ],
+          interview_focus_areas: ["React components"],
+          compensation_benchmarks_npr: [
+            {
+              role: "Frontend Developer",
+              min_salary: "Rs. 60,000",
+              max_salary: "Rs. 100,000",
+              market_trend: "High",
+            },
+          ],
+          employer_branding_suggestions: ["Modern tech stack"],
+          hiring_velocity_assessment: "Fast turnaround",
+        } as unknown as T;
+      },
+    };
+
+    const service = new AIServiceImpl([primaryProvider, fallbackProvider]);
+
+    const result = await service.generateJsonValidated(
+      {
+        prompt: "Test timeout fallback",
+        task: "company-intelligence",
+      },
+      companyHiringStrategySchema,
+    );
+
+    // Primary provider must only be called ONCE (no retry storm on 408)
+    expect(primaryAttempts).toBe(1);
+    // Fallback provider successfully took over
+    expect(fallbackAttempts).toBe(1);
+    expect(result.target_talent_profiles[0].role_title).toBe("Frontend Developer");
   });
 });
 

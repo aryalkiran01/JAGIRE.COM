@@ -37,6 +37,7 @@ export interface AIRequest {
   json?: boolean;
   responseSchema?: Record<string, unknown>;
   maxTokens?: number;
+  timeoutMs?: number;
 }
 
 export interface AIResponse {
@@ -50,6 +51,7 @@ export interface AIResponse {
 export interface AIEmbeddingRequest {
   input: string;
   model?: string;
+  timeoutMs?: number;
 }
 
 export interface AIEmbeddingResponse {

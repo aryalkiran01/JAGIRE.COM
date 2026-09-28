@@ -6,13 +6,7 @@ import { OllamaProvider } from "./ollama-provider";
 import { isTransient, isFatal } from "./errors";
 import { AITransientError } from "./types";
 import { zodToGeminiSchema, zodToSchemaShapeDescription } from "./schema-converter";
-
-const MAX_RETRIES = 0;
-const BACKOFF_BASE_MS = 500;
-const VALIDATION_RETRY_LIMIT = 1;
-const TOTAL_OPERATION_TIMEOUT_MS = 25_000;
-const CACHE_TTL_MS = 5 * 60 * 1000;
-const MAX_CACHE_ENTRIES = 200;
+import { AI_CONFIG } from "./config";
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -26,7 +20,7 @@ function log(
   const ts = new Date().toISOString();
   const line = `[${ts}] [AIService] [${level.toUpperCase()}] ${message}`;
   if (meta) {
-    console[level === "error" ? "error" : level === "warn" ? "warn" : "log"](line, meta ?? "");
+    console[level === "error" ? "error" : level === "warn" ? "warn" : "log"](line, meta);
   } else {
     console[level === "error" ? "error" : level === "warn" ? "warn" : "log"](line);
   }
@@ -38,12 +32,12 @@ function getConfiguredProviderOrder(): AIProvider[] {
     process.env.VERCEL === "1" ||
     Boolean(process.env.NETLIFY);
 
-  const configuredProvider = (process.env.AI_PROVIDER || "gemini").toLowerCase().trim();
-
   // In production, Google Gemini is strictly the sole permitted provider
-  if (isProduction || configuredProvider === "gemini") {
+  if (isProduction) {
     return [new GeminiProvider()];
   }
+
+  const configuredProvider = (process.env.AI_PROVIDER || "gemini").toLowerCase().trim();
 
   // Local development with Ollama-first: if developer sets AI_PROVIDER=ollama
   if (configuredProvider === "ollama") {
@@ -57,9 +51,10 @@ async function retryWithBackoff<T>(
   provider: AIProvider,
   fn: (p: AIProvider) => Promise<T>,
   label: string,
+  timeoutMs: number,
 ): Promise<T> {
   let lastError: unknown;
-  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+  for (let attempt = 0; attempt <= AI_CONFIG.PROVIDER_NETWORK_RETRIES; attempt++) {
     const start = Date.now();
     try {
       const result = await fn(provider);
@@ -67,20 +62,22 @@ async function retryWithBackoff<T>(
       log("info", `${provider.name} succeeded for ${label}`, {
         provider: provider.name,
         label,
-        attempt,
+        attempt: attempt + 1,
         latencyMs,
+        configuredTimeoutMs: timeoutMs,
       });
       return result;
     } catch (err) {
       lastError = err;
       const latencyMs = Date.now() - start;
-      if (attempt < MAX_RETRIES && isTransient(err)) {
-        const delay = BACKOFF_BASE_MS * Math.pow(2, attempt);
+      if (attempt < AI_CONFIG.PROVIDER_NETWORK_RETRIES && isTransient(err)) {
+        const delay = AI_CONFIG.VALIDATION_BACKOFF_MS * Math.pow(2, attempt);
         log("warn", `${provider.name} transient error — retrying in ${delay}ms`, {
           provider: provider.name,
           attempt: attempt + 1,
           error: (err as Error).message,
           latencyMs,
+          configuredTimeoutMs: timeoutMs,
         });
         await sleep(delay);
       } else {
@@ -113,11 +110,11 @@ function getCached(key: string): unknown | undefined {
 }
 
 function setCached(key: string, value: unknown): void {
-  if (responseCache.size >= MAX_CACHE_ENTRIES) {
+  if (responseCache.size >= AI_CONFIG.MAX_CACHE_ENTRIES) {
     const oldestKey = responseCache.keys().next().value;
     if (oldestKey) responseCache.delete(oldestKey);
   }
-  responseCache.set(key, { value, expires: Date.now() + CACHE_TTL_MS });
+  responseCache.set(key, { value, expires: Date.now() + AI_CONFIG.CACHE_TTL_MS });
 }
 
 function normalizeAndSanitizeTaskOutput(task: AITask | undefined, raw: unknown): unknown {
@@ -582,7 +579,6 @@ function normalizeAndSanitizeTaskOutput(task: AITask | undefined, raw: unknown):
       }
     }
 
-    // Ensure non-empty arrays for required fields
     if (!result.skill_demands || result.skill_demands.length === 0) {
       result.skill_demands = ["Technical Skills", "Problem Solving", "Communication"];
     }
@@ -648,7 +644,7 @@ class AIServiceImpl {
     const key = cacheKey(req);
     const cached = getCached(key);
     if (cached !== undefined) return cached as string;
-    const result = await this.executeWithFallback((p) => p.generateText(req), "generateText", req);
+    const result = await this.executeWithFallback((p, timeout) => p.generateText({ ...req, timeoutMs: timeout }), "generateText", req);
     setCached(key, result);
     return result;
   }
@@ -658,7 +654,7 @@ class AIServiceImpl {
     const cached = getCached(key);
     if (cached !== undefined) return cached as T;
     const result = await this.executeWithFallback(
-      (p) => p.generateJson<T>(req),
+      (p, timeout) => p.generateJson<T>({ ...req, timeoutMs: timeout }),
       "generateJson",
       req,
     );
@@ -675,7 +671,7 @@ class AIServiceImpl {
       throw new Error("No AI providers configured");
     }
 
-    // Convert Zod schema to Gemini OpenAPI format and human-readable shape description
+    // Convert Zod schema to OpenAPI format and shape description
     const responseSchema = zodToGeminiSchema(schema) as unknown as Record<string, unknown>;
     const schemaShape = zodToSchemaShapeDescription(schema);
 
@@ -696,19 +692,37 @@ class AIServiceImpl {
     let lastZodIssues: string | null = null;
 
     for (let i = 0; i < this.providers.length; i++) {
-      if (Date.now() - overallStart > TOTAL_OPERATION_TIMEOUT_MS) {
-        log("warn", `Overall AI total operation budget (15s) exceeded, stopping provider attempts`);
+      const elapsedSoFar = Date.now() - overallStart;
+      const remainingBudgetMs = Math.max(0, AI_CONFIG.TOTAL_OPERATION_TIMEOUT_MS - elapsedSoFar);
+
+      if (remainingBudgetMs < AI_CONFIG.MIN_FALLBACK_BUDGET_MS) {
+        log("warn", `Total AI operation budget exceeded (${elapsedSoFar}ms elapsed), stopping provider attempts`, {
+          task: req.task ?? "general",
+          elapsedMs: elapsedSoFar,
+          remainingBudgetMs,
+        });
         break;
       }
+
       const provider = this.providers[i];
       const isFallback = i > 0;
       const providerLabel = isFallback ? `${provider.name}_fallback` : provider.name;
 
-      for (let attempt = 0; attempt <= VALIDATION_RETRY_LIMIT; attempt++) {
-        if (Date.now() - overallStart > TOTAL_OPERATION_TIMEOUT_MS) {
-          log("warn", `Overall AI operation budget (15s) exceeded during validation loop`);
+      for (let attempt = 0; attempt <= AI_CONFIG.VALIDATION_RETRY_LIMIT; attempt++) {
+        const attemptRemainingBudget = Math.max(0, AI_CONFIG.TOTAL_OPERATION_TIMEOUT_MS - (Date.now() - overallStart));
+        if (attemptRemainingBudget < 2_000) {
+          log("warn", `Insufficient remaining budget (${attemptRemainingBudget}ms) for validation retry`, {
+            task: req.task ?? "general",
+            provider: provider.name,
+            attempt: attempt + 1,
+          });
           break;
         }
+
+        // Use per-provider timeout cap: Ollama gets shorter timeout for fast fail-to-fallback
+        const providerMaxTimeout = provider.name === "ollama" ? AI_CONFIG.DEFAULT_OLLAMA_TIMEOUT_MS : AI_CONFIG.DEFAULT_PROVIDER_TIMEOUT_MS;
+        const providerTimeoutMs = Math.min(providerMaxTimeout, attemptRemainingBudget);
+        const callStart = Date.now();
 
         try {
           // If this is a retry attempt, augment the prompt with the exact validation errors
@@ -723,25 +737,31 @@ class AIServiceImpl {
             systemInstruction: systemInstructionWithSchema,
             responseSchema,
             json: true,
+            timeoutMs: providerTimeoutMs,
           };
 
           const raw = await retryWithBackoff(
             provider,
             (p) => p.generateJson<T>(providerReq),
             `generateJsonValidated:${providerLabel}`,
+            providerTimeoutMs,
           );
 
           const normalized = normalizeAndSanitizeTaskOutput(req.task, raw);
           const parsed = schema.parse(normalized);
+          const actualElapsedMs = Date.now() - callStart;
 
           log(
             "info",
             `${providerLabel} successfully produced validated output for ${req.task ?? "task"}`,
             {
+              task: req.task ?? "general",
               provider: provider.name,
               provider_type: isFallback ? `${provider.name}_fallback` : provider.name,
-              task: req.task,
-              attempt,
+              attempt: attempt + 1,
+              configuredTimeoutMs: providerTimeoutMs,
+              actualElapsedMs,
+              remainingBudgetMs: Math.max(0, AI_CONFIG.TOTAL_OPERATION_TIMEOUT_MS - (Date.now() - overallStart)),
             },
           );
 
@@ -749,32 +769,57 @@ class AIServiceImpl {
           return parsed;
         } catch (err) {
           lastError = err;
+          const actualElapsedMs = Date.now() - callStart;
+          const hasFallback = i < this.providers.length - 1;
+          const fallbackProvider = hasFallback ? this.providers[i + 1].name : null;
+
           if (err instanceof z.ZodError) {
             lastZodIssues = err.issues
               .map((iss) => `- Field "${iss.path.join(".") || "root"}": ${iss.message}`)
               .join("\n");
+
+            log(
+              "warn",
+              `${providerLabel} attempt ${attempt + 1} validation failure (schema mismatch)`,
+              {
+                task: req.task ?? "general",
+                provider: provider.name,
+                attempt: attempt + 1,
+                configuredTimeoutMs: providerTimeoutMs,
+                actualElapsedMs,
+                remainingBudgetMs: Math.max(0, AI_CONFIG.TOTAL_OPERATION_TIMEOUT_MS - (Date.now() - overallStart)),
+                errorType: "ZodValidationError",
+                validationIssues: lastZodIssues,
+              },
+            );
+
+            if (attempt < AI_CONFIG.VALIDATION_RETRY_LIMIT) {
+              await sleep(AI_CONFIG.VALIDATION_BACKOFF_MS);
+              continue;
+            }
           } else {
             lastZodIssues = null;
-          }
+            const errMessage = err instanceof Error ? err.message : String(err);
+            const errorType = (err as any)?.name || (err as any)?.statusCode || "UnknownExecutionError";
 
-          const errMessage = err instanceof Error ? err.message : String(err);
-          log(
-            "warn",
-            `${providerLabel} attempt ${attempt + 1} execution/validation failure: ${errMessage}`,
-            {
-              provider: provider.name,
-              task: req.task,
-              attempt,
-            },
-          );
+            log(
+              "warn",
+              `${providerLabel} attempt ${attempt + 1} execution failure: ${errMessage}`,
+              {
+                task: req.task ?? "general",
+                provider: provider.name,
+                attempt: attempt + 1,
+                configuredTimeoutMs: providerTimeoutMs,
+                actualElapsedMs,
+                remainingBudgetMs: Math.max(0, AI_CONFIG.TOTAL_OPERATION_TIMEOUT_MS - (Date.now() - overallStart)),
+                errorType,
+                fallbackAttempted: hasFallback,
+                fallbackProvider,
+              },
+            );
 
-          // CRITICAL: Non-validation errors (e.g. 408 timeout, 503, network drop) must NOT trigger schema-correction retries.
-          if (!(err instanceof z.ZodError)) {
+            // CRITICAL: Non-validation errors (e.g. 408 timeout, 503, connection drop) must NOT retry the same provider; break immediately to fallback.
             break;
-          }
-
-          if (attempt < VALIDATION_RETRY_LIMIT) {
-            await sleep(BACKOFF_BASE_MS);
           }
         }
       }
@@ -784,9 +829,10 @@ class AIServiceImpl {
           "warn",
           `Primary provider ${provider.name} failed. Automatically falling back to ${this.providers[i + 1].name}`,
           {
+            task: req.task ?? "general",
             from_provider: provider.name,
             to_provider: this.providers[i + 1].name,
-            task: req.task,
+            remainingBudgetMs: Math.max(0, AI_CONFIG.TOTAL_OPERATION_TIMEOUT_MS - (Date.now() - overallStart)),
           },
         );
       }
@@ -794,6 +840,8 @@ class AIServiceImpl {
 
     const msg = "AI operation could not be completed. Please try again.";
     log("error", `All AI providers failed for ${req.task ?? "task"}`, {
+      task: req.task ?? "general",
+      totalElapsedMs: Date.now() - overallStart,
       error: (lastError as Error)?.message,
     });
     throw new Error(msg);
@@ -804,7 +852,7 @@ class AIServiceImpl {
       if (!provider.generateEmbedding) continue;
       try {
         const start = Date.now();
-        const res = await provider.generateEmbedding(req);
+        const res = await provider.generateEmbedding({ ...req, timeoutMs: AI_CONFIG.DEFAULT_PROVIDER_TIMEOUT_MS });
         log("info", `Embedding generated`, {
           provider: provider.name,
           model: res.model,
@@ -822,7 +870,7 @@ class AIServiceImpl {
   }
 
   private async executeWithFallback<T>(
-    fn: (p: AIProvider) => Promise<T>,
+    fn: (p: AIProvider, timeoutMs: number) => Promise<T>,
     label: string,
     req: AIRequest,
   ): Promise<T> {
@@ -830,38 +878,72 @@ class AIServiceImpl {
       throw new Error("No AI providers configured");
     }
 
+    const overallStart = Date.now();
     let lastError: unknown;
+
     for (let i = 0; i < this.providers.length; i++) {
+      const elapsed = Date.now() - overallStart;
+      const remainingBudgetMs = Math.max(0, AI_CONFIG.TOTAL_OPERATION_TIMEOUT_MS - elapsed);
+
+      if (remainingBudgetMs < AI_CONFIG.MIN_FALLBACK_BUDGET_MS) {
+        log("warn", `Total AI operation budget exceeded for ${label}, stopping provider attempts`, {
+          label,
+          elapsedMs: elapsed,
+          remainingBudgetMs,
+        });
+        break;
+      }
+
       const provider = this.providers[i];
       const isFallback = i > 0;
       const providerLabel = isFallback ? `${provider.name}_fallback` : provider.name;
+      // Use per-provider timeout cap: Ollama gets shorter timeout for fast fail-to-fallback
+      const providerMaxTimeout = provider.name === "ollama" ? AI_CONFIG.DEFAULT_OLLAMA_TIMEOUT_MS : AI_CONFIG.DEFAULT_PROVIDER_TIMEOUT_MS;
+      const providerTimeoutMs = Math.min(providerMaxTimeout, remainingBudgetMs);
+      const callStart = Date.now();
 
       try {
-        const result = await retryWithBackoff(provider, fn, `${label}:${providerLabel}`);
+        const result = await retryWithBackoff(provider, (p) => fn(p, providerTimeoutMs), `${label}:${providerLabel}`, providerTimeoutMs);
+        const actualElapsedMs = Date.now() - callStart;
         log("info", `${providerLabel} successfully handled request`, {
+          task: req.task ?? "general",
           provider: provider.name,
           provider_type: isFallback ? `${provider.name}_fallback` : provider.name,
           label,
+          actualElapsedMs,
+          remainingBudgetMs: Math.max(0, AI_CONFIG.TOTAL_OPERATION_TIMEOUT_MS - (Date.now() - overallStart)),
         });
         return result;
       } catch (err) {
         lastError = err;
-        if (i < this.providers.length - 1) {
-          log(
-            "warn",
-            `Provider ${provider.name} failed (${(err as Error).message}) — automatically falling back to ${this.providers[i + 1].name}`,
-            {
-              from_provider: provider.name,
-              to_provider: this.providers[i + 1].name,
-              error: (err as Error).message,
-            },
-          );
-        }
+        const actualElapsedMs = Date.now() - callStart;
+        const hasFallback = i < this.providers.length - 1;
+        const fallbackProvider = hasFallback ? this.providers[i + 1].name : null;
+
+        log(
+          "warn",
+          `Provider ${provider.name} failed (${(err as Error).message})`,
+          {
+            task: req.task ?? "general",
+            provider: provider.name,
+            label,
+            configuredTimeoutMs: providerTimeoutMs,
+            actualElapsedMs,
+            remainingBudgetMs: Math.max(0, AI_CONFIG.TOTAL_OPERATION_TIMEOUT_MS - (Date.now() - overallStart)),
+            errorType: (err as any)?.name || (err as any)?.statusCode || "UnknownError",
+            fallbackAttempted: hasFallback,
+            fallbackProvider,
+          },
+        );
       }
     }
 
     const msg = "AI service temporarily unavailable. Please try again shortly.";
-    log("error", `All AI providers failed for ${label}`, { error: (lastError as Error)?.message });
+    log("error", `All AI providers failed for ${label}`, {
+      task: req.task ?? "general",
+      totalElapsedMs: Date.now() - overallStart,
+      error: (lastError as Error)?.message,
+    });
     throw new Error(msg);
   }
 }

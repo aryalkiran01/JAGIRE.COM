@@ -1,10 +1,10 @@
 import { AIProvider, AIRequest, AIEmbeddingRequest, AIEmbeddingResponse } from "./types";
 import { classifyError, safeJsonParse } from "./errors";
+import { AI_CONFIG } from "./config";
 
 const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models";
 export const DEFAULT_GEMINI_MODEL = "gemini-3.1-flash-lite";
 export const DEFAULT_GEMINI_EMBEDDING_MODEL = "gemini-embedding-001";
-const GEMINI_TIMEOUT_MS = 22_000;
 
 const FALLBACK_CANDIDATE_MODELS = [
   "gemini-3.1-flash-lite",
@@ -39,6 +39,7 @@ export class GeminiProvider implements AIProvider {
   async generateText(req: AIRequest): Promise<string> {
     const models = resolveModelCandidates(req);
     const key = apiKey();
+    const timeoutMs = req.timeoutMs ?? AI_CONFIG.DEFAULT_PROVIDER_TIMEOUT_MS;
     let lastError: unknown;
 
     for (const model of models) {
@@ -59,7 +60,7 @@ export class GeminiProvider implements AIProvider {
       let res: Response;
       try {
         const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
+        const timer = setTimeout(() => controller.abort(), timeoutMs);
         res = await fetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -103,6 +104,7 @@ export class GeminiProvider implements AIProvider {
   async generateJson<T>(req: AIRequest): Promise<T> {
     const models = resolveModelCandidates(req);
     const key = apiKey();
+    const timeoutMs = req.timeoutMs ?? AI_CONFIG.DEFAULT_PROVIDER_TIMEOUT_MS;
     let lastError: unknown;
 
     for (const model of models) {
@@ -138,7 +140,7 @@ export class GeminiProvider implements AIProvider {
       let res: Response;
       try {
         const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
+        const timer = setTimeout(() => controller.abort(), timeoutMs);
         res = await fetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -187,6 +189,7 @@ export class GeminiProvider implements AIProvider {
   async generateEmbedding(req: AIEmbeddingRequest): Promise<AIEmbeddingResponse> {
     const models = resolveEmbeddingModelCandidates(req);
     const key = apiKey();
+    const timeoutMs = req.timeoutMs ?? AI_CONFIG.DEFAULT_PROVIDER_TIMEOUT_MS;
     let lastError: unknown;
 
     for (const model of models) {
@@ -199,7 +202,7 @@ export class GeminiProvider implements AIProvider {
       let res: Response;
       try {
         const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
+        const timer = setTimeout(() => controller.abort(), timeoutMs);
         res = await fetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },

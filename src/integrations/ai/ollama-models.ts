@@ -1,7 +1,8 @@
 // LOCAL DEVELOPMENT ONLY — Ollama model mapping for offline local development
 import type { AITask } from "./types";
 
-export const OLLAMA_TIMEOUT_MS = 120_000;
+/** @deprecated Use AI_CONFIG.DEFAULT_OLLAMA_TIMEOUT_MS from ./config.ts instead */
+export const OLLAMA_TIMEOUT_MS = 15_000;
 
 // Model constants — all overridable via env vars
 const DEFAULT_FAST = "llama3.2"; // for analysis, extraction, scoring

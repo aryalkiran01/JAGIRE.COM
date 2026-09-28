@@ -1,12 +1,12 @@
 // LOCAL DEVELOPMENT ONLY — Ollama Provider for offline local AI execution
 import { Ollama } from "ollama";
 import type { ChatRequest } from "ollama";
-import { AIProvider, AIRequest, AIEmbeddingRequest, AIEmbeddingResponse, AITask } from "./types";
+import { AIProvider, AIRequest, AIEmbeddingRequest, AIEmbeddingResponse } from "./types";
 import { classifyError, safeJsonParse } from "./errors";
-import { resolveOllamaModel, OLLAMA_TIMEOUT_MS } from "./ollama-models";
+import { resolveOllamaModel } from "./ollama-models";
+import { AI_CONFIG } from "./config";
 
 function host(): string {
-  // LOCAL DEVELOPMENT ONLY
   return process.env.OLLAMA_HOST ?? "http://localhost:11434";
 }
 
@@ -29,7 +29,6 @@ function buildMessages(req: AIRequest): Array<{ role: "system" | "user"; content
 }
 
 function pickModel(req: AIRequest): string {
-  // Ensure we always return a string
   if (req.model) {
     return String(req.model);
   }
@@ -41,15 +40,15 @@ async function callChat(req: AIRequest, json: boolean): Promise<string> {
   const model = pickModel(req);
   const messages = buildMessages(req);
   const ollama = getClient();
+  const timeoutMs = req.timeoutMs ?? AI_CONFIG.DEFAULT_OLLAMA_TIMEOUT_MS;
 
-  // Build the request with explicit typing to match Ollama's overloads
   const chatRequest = {
     model: String(model),
     messages,
-    stream: false as const, // Use 'as const' to make it literal type 'false'
+    stream: false as const,
     options: { temperature: 0.3 },
     ...(json ? { format: "json" as const } : {}),
-  } satisfies ChatRequest; // Use 'satisfies' for type checking without widening
+  } satisfies ChatRequest;
 
   let response;
   try {
@@ -59,7 +58,7 @@ async function callChat(req: AIRequest, json: boolean): Promise<string> {
         const error = new Error("Ollama request timed out");
         error.name = "AbortError";
         reject(error);
-      }, OLLAMA_TIMEOUT_MS);
+      }, timeoutMs);
     });
     try {
       response = await Promise.race([ollama.chat(chatRequest), timeoutPromise]);
@@ -98,29 +97,22 @@ export class OllamaProvider implements AIProvider {
   }
 
   async generateJson<T>(req: AIRequest): Promise<T> {
-    const systemWithJson =
-      (req.systemInstruction ?? "") +
-      "\n\nReturn ONLY valid JSON, no markdown fences, no commentary.";
-    const raw = await callChat({ ...req, systemInstruction: systemWithJson }, true);
+    const raw = await callChat(req, true);
     return safeJsonParse<T>(raw);
   }
 
   async generateEmbedding(req: AIEmbeddingRequest): Promise<AIEmbeddingResponse> {
-    const model = String(req.model ?? resolveOllamaModel("embedding"));
     const ollama = getClient();
+    const model = req.model ?? "nomic-embed-text";
     try {
       const res = await ollama.embeddings({ model, prompt: req.input });
-      return { embedding: res.embedding, provider: this.name, model };
+      return {
+        embedding: res.embedding,
+        provider: "ollama",
+        model,
+      };
     } catch (e) {
-      const msg = (e as Error).message ?? "Ollama embedding failed";
-      if (/model.*not.*found/i.test(msg)) {
-        throw classifyError(
-          404,
-          `Ollama embedding model not found: ${model}. Run: ollama pull ${model}`,
-          e,
-        );
-      }
-      throw classifyError(undefined, msg, e);
+      throw classifyError(undefined, `Ollama embedding failed: ${(e as Error).message}`, e);
     }
   }
 }
