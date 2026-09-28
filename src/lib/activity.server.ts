@@ -70,19 +70,74 @@ export const getUserResumeScans = createServerFn({ method: "GET" })
     const userId = context.userId;
     if (!userId) throw new Error("Not authenticated");
 
-    const { data: scans, error } = await supabaseAdmin
+    // 1. Fetch persistent resume_scans records
+    const { data: scans, error: scanError } = await supabaseAdmin
       .from("resume_scans")
       .select("*")
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
       .limit(50);
 
-    if (error) {
-      console.error("Error fetching user resume scans:", error.message);
-      return [];
+    if (scanError) {
+      console.error("Error fetching user resume scans:", scanError.message);
     }
 
-    return scans ?? [];
+    // 2. Fetch all user resumes from resumes table
+    const { data: resumes, error: resumeError } = await supabaseAdmin
+      .from("resumes")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false });
+
+    if (resumeError) {
+      console.error("Error fetching user resumes:", resumeError.message);
+    }
+
+    const allScans = [...(scans || [])];
+    const scannedResumeIds = new Set(allScans.map((s) => s.resume_id).filter(Boolean));
+
+    // 3. Include any resumes from resumes table not yet represented in resume_scans
+    if (resumes && resumes.length > 0) {
+      for (const res of resumes) {
+        if (!scannedResumeIds.has(res.id)) {
+          const hasAnalysis = res.overall_score != null || res.career_roadmap != null;
+          allScans.push({
+            id: res.id,
+            user_id: userId,
+            resume_id: res.id,
+            file_name: res.file_name ?? "Resume",
+            file_type: res.mime_type ?? "application/pdf",
+            file_size: res.file_size ?? 0,
+            file_path: res.file_path ?? null,
+            source: "uploaded_resume",
+            scan_status: hasAnalysis ? "completed" : "not_analyzed",
+            overall_score: res.overall_score ?? null,
+            ats_score: res.ats_score ?? res.overall_score ?? null,
+            grammar_score: res.grammar_score ?? null,
+            formatting_score: res.formatting_score ?? null,
+            keyword_score: res.keyword_score ?? null,
+            professionalism_score: res.professionalism_score ?? null,
+            score_improvement: 0,
+            candidate_name: null,
+            extracted_skills: (res.parsed_data as any)?.skills ?? [],
+            parsed_data: res.parsed_data ?? {},
+            career_roadmap: res.career_roadmap ?? {},
+            suggestions: (res.suggestions as any) ?? [],
+            ai_model: "gemini-3.1-flash-lite",
+            ai_provider: "gemini",
+            duration_ms: 0,
+            failure_reason: null,
+            created_at: res.created_at,
+            updated_at: res.updated_at,
+          });
+        }
+      }
+    }
+
+    // Sort by created_at DESC
+    allScans.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+    return allScans;
   });
 
 /**

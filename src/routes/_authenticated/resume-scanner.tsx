@@ -38,6 +38,11 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   UserCheck,
+  Eye,
+  EyeOff,
+  ExternalLink,
+  ChevronDown,
+  ChevronUp,
   type LucideIcon,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -46,7 +51,14 @@ import { getUserResumeScans, updatePreferredName } from "@/lib/activity.server";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
+type ScannerSearch = {
+  scanId?: string;
+};
+
 export const Route = createFileRoute("/_authenticated/resume-scanner")({
+  validateSearch: (s: Record<string, unknown>): ScannerSearch => ({
+    scanId: typeof s.scanId === "string" && s.scanId ? s.scanId : undefined,
+  }),
   component: ResumeScanner,
   head: () => ({ meta: [{ title: "AI Resume Scanner — Jagire" }] }),
 });
@@ -77,7 +89,9 @@ type Roadmap = {
 type ResumeData = {
   id: string;
   file_name?: string;
+  file_path?: string | null;
   file_size?: number;
+  mime_type?: string;
   overall_score?: number;
   ats_score?: number;
   grammar_score?: number;
@@ -88,6 +102,8 @@ type ResumeData = {
   parsed_data?: Record<string, any>;
   resume_data?: any;
   career_roadmap?: Roadmap;
+  created_at?: string;
+  updated_at?: string;
 };
 
 type JobMatch = {
@@ -373,12 +389,10 @@ function JobMatchCard({ match, onApply }: { match: JobMatch; onApply: (match: Jo
         </div>
       </div>
 
-      {/* Match reasoning */}
       {match.matchReasoning && (
         <p className="text-xs text-muted-foreground mt-2">{match.matchReasoning}</p>
       )}
 
-      {/* Required Skills */}
       {match.requiredSkills && match.requiredSkills.length > 0 && (
         <div className="flex flex-wrap gap-1 mt-3">
           {match.requiredSkills.slice(0, 5).map((skill, i) => (
@@ -401,6 +415,8 @@ function JobMatchCard({ match, onApply }: { match: JobMatch; onApply: (match: Jo
 
 function ResumeScanner() {
   const { user } = useAuth();
+  const search = Route.useSearch();
+  const navigate = Route.useNavigate();
   const qc = useQueryClient();
   const runScan = useServerFn(scanResumeFromStorage);
   const fetchUserScans = useServerFn(getUserResumeScans);
@@ -410,10 +426,30 @@ function ResumeScanner() {
   const [matches, setMatches] = useState<JobMatch[]>([]);
   const [isExporting, setIsExporting] = useState(false);
   const [hasAttemptedScan, setHasAttemptedScan] = useState(false);
-  const [selectedScanId, setSelectedScanId] = useState<string | null>(null);
+  const [showAllHistory, setShowAllHistory] = useState(false);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [isLoadingPreview, setIsLoadingPreview] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   const [preferredNameInput, setPreferredNameInput] = useState("");
   const [isSavingName, setIsSavingName] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Read selected scan ID directly from URL search params for 100% persistence on refresh
+  const selectedScanId = search.scanId || null;
+
+  const handleSelectScan = useCallback(
+    (id: string | null) => {
+      navigate({
+        search: (prev) => ({
+          ...prev,
+          scanId: id || undefined,
+        }),
+        replace: true,
+      });
+    },
+    [navigate],
+  );
 
   // Fetch user profile to check name personalization
   const { data: profile, refetch: refetchProfile } = useQuery({
@@ -440,7 +476,7 @@ function ResumeScanner() {
     },
   });
 
-  // Improved query with better error handling
+  // Fetch active default resume
   const {
     data: resume,
     isLoading,
@@ -449,7 +485,7 @@ function ResumeScanner() {
   } = useQuery({
     queryKey: ["my-resume-full", user?.id],
     enabled: !!user,
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    staleTime: 5 * 60 * 1000,
     retry: 2,
     queryFn: async () => {
       if (!user) return null;
@@ -466,11 +502,28 @@ function ResumeScanner() {
         throw error;
       }
 
+      if (data && (data.overall_score != null || data.career_roadmap)) {
+        return data as ResumeData;
+      }
+
+      const { data: analyzedResume } = await supabase
+        .from("resumes")
+        .select("*")
+        .eq("user_id", user.id)
+        .not("overall_score", "is", null)
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (analyzedResume) {
+        return analyzedResume as ResumeData;
+      }
+
       return data as ResumeData | null;
     },
   });
 
-  // Improved scan mutation
+  // Scan mutation
   const scanMutation = useMutation({
     mutationFn: async (resumeId: string) => {
       console.log("Starting scan for resume:", resumeId);
@@ -479,7 +532,6 @@ function ResumeScanner() {
     onSuccess: (result: any) => {
       console.log("Scan result:", result);
 
-      // Normalize matches data
       const normalizedMatches = (result.matches ?? []).map((match: any) => ({
         ...match,
         jobType: match.jobType ?? undefined,
@@ -490,15 +542,13 @@ function ResumeScanner() {
 
       setMatches(normalizedMatches);
       setHasAttemptedScan(true);
-      setSelectedScanId(null); // Return to viewing latest scan
+      handleSelectScan(null); // Return to active resume view
       toast.success("Analysis complete! Career roadmap and ATS score saved.");
 
-      // Force refetch to get updated data
       qc.invalidateQueries({ queryKey: ["my-resume-full"] });
       qc.invalidateQueries({ queryKey: ["my-resume"] });
       qc.invalidateQueries({ queryKey: ["user-resume-scans"] });
 
-      // Add slight delay for UI consistency
       setTimeout(() => {
         refetch();
         refetchHistory();
@@ -528,7 +578,6 @@ function ResumeScanner() {
     }
   };
 
-  // Check for existing analysis data
   useEffect(() => {
     if (resume?.career_roadmap || resume?.overall_score != null) {
       setHasAttemptedScan(true);
@@ -566,8 +615,6 @@ function ResumeScanner() {
         const up = await supabase.storage.from("resumes").upload(path, file, { upsert: true });
         if (up.error) throw up.error;
 
-        await supabase.from("resumes").update({ is_default: false }).eq("user_id", user.id);
-
         const ins = await supabase
           .from("resumes")
           .insert({
@@ -576,7 +623,7 @@ function ResumeScanner() {
             file_path: path,
             file_size: file.size,
             mime_type: file.type,
-            is_default: true,
+            is_default: false,
           })
           .select()
           .single();
@@ -585,13 +632,18 @@ function ResumeScanner() {
 
         toast.success("Resume uploaded — analyzing...", { id: uploadToast });
         setHasAttemptedScan(true);
+
         await scanMutation.mutateAsync(ins.data.id);
+
+        await supabase.from("resumes").update({ is_default: false }).eq("user_id", user.id);
+        await supabase.from("resumes").update({ is_default: true }).eq("id", ins.data.id);
+        qc.invalidateQueries({ queryKey: ["my-resume-full"] });
       } catch (err) {
-        console.error("Upload error:", err);
+        console.error("Upload/scan error:", err);
         toast.error((err as Error).message, { id: uploadToast });
       }
     },
-    [user, scanMutation],
+    [user, scanMutation, qc],
   );
 
   const handleDrop = useCallback(
@@ -612,7 +664,6 @@ function ResumeScanner() {
 
     try {
       let scanId = resume.id;
-
       const parsedData = resume.parsed_data as Record<string, any> | null;
       const hasStoredText = parsedData?.raw_text || resume.resume_data;
 
@@ -648,7 +699,6 @@ function ResumeScanner() {
       }
 
       try {
-        // Check if already applied
         const { data: existingApplication } = await supabase
           .from("applications")
           .select("id")
@@ -661,7 +711,6 @@ function ResumeScanner() {
           return;
         }
 
-        // Create application
         const { error: applicationError } = await supabase.from("applications").insert({
           job_id: match.id,
           applicant_id: user.id,
@@ -672,8 +721,6 @@ function ResumeScanner() {
         if (applicationError) throw applicationError;
 
         toast.success(`Applied to ${match.title} at ${match.company}!`);
-
-        // Invalidate applications query
         qc.invalidateQueries({ queryKey: ["applications"] });
       } catch (error) {
         console.error("Application error:", error);
@@ -683,52 +730,254 @@ function ResumeScanner() {
     [user, resume, qc],
   );
 
+  // Find exact active historical scan if selected
   const activeHistoricalScan = useMemo(() => {
     if (!selectedScanId || !scanHistory.length) return null;
-    return scanHistory.find((s: any) => s.id === selectedScanId) || null;
+    return (
+      scanHistory.find(
+        (s: any) => s.id === selectedScanId || s.resume_id === selectedScanId,
+      ) || null
+    );
   }, [selectedScanId, scanHistory]);
 
   const latestScan = scanHistory[0] || null;
 
+  // Compute strictly isolated display data
   const currentDisplay = useMemo(() => {
     if (activeHistoricalScan) {
+      const histRoadmap = (activeHistoricalScan.career_roadmap as Roadmap) || null;
+      const histSuggestions = Array.isArray(activeHistoricalScan.suggestions)
+        ? (activeHistoricalScan.suggestions as string[])
+        : Array.isArray(activeHistoricalScan.recommendations)
+          ? (activeHistoricalScan.recommendations as string[])
+          : [];
+      const parsed = (activeHistoricalScan.parsed_data as Record<string, any>) || {};
+
+      const skills =
+        Array.isArray(activeHistoricalScan.extracted_skills) &&
+        activeHistoricalScan.extracted_skills.length > 0
+          ? activeHistoricalScan.extracted_skills
+          : Array.isArray(parsed.skills)
+            ? parsed.skills
+            : [];
+
+      const strengths =
+        Array.isArray(parsed.strengths) && parsed.strengths.length > 0
+          ? parsed.strengths
+          : Array.isArray(histRoadmap?.strengths)
+            ? histRoadmap.strengths
+            : [];
+
+      const weaknesses =
+        Array.isArray(parsed.weaknesses) && parsed.weaknesses.length > 0
+          ? parsed.weaknesses
+          : Array.isArray(histRoadmap?.weaknesses)
+            ? histRoadmap.weaknesses
+            : [];
+
+      const suggestionsList =
+        histSuggestions.length > 0
+          ? histSuggestions
+          : Array.isArray(histRoadmap?.resume_improvements)
+            ? histRoadmap.resume_improvements
+            : [];
+
       return {
         isHistorical: true,
-        fileName: activeHistoricalScan.file_name || "Resume",
+        scanId: activeHistoricalScan.id,
+        resumeId: activeHistoricalScan.resume_id,
+        fileName: activeHistoricalScan.file_name || "Historical Resume",
+        fileSize: activeHistoricalScan.file_size ?? 0,
+        fileType: activeHistoricalScan.file_type ?? "application/pdf",
+        filePath: activeHistoricalScan.file_path ?? null,
+        summary: parsed.summary || "",
         overallScore: activeHistoricalScan.overall_score,
-        atsScore: activeHistoricalScan.ats_score,
-        grammarScore: activeHistoricalScan.skills_score ?? activeHistoricalScan.overall_score,
+        atsScore: activeHistoricalScan.ats_score ?? activeHistoricalScan.overall_score,
+        grammarScore:
+          activeHistoricalScan.grammar_score ??
+          activeHistoricalScan.skills_score ??
+          activeHistoricalScan.overall_score,
         formattingScore: activeHistoricalScan.formatting_score,
         keywordScore: activeHistoricalScan.keyword_score,
         professionalismScore:
-          activeHistoricalScan.experience_score ?? activeHistoricalScan.overall_score,
-        suggestions: activeHistoricalScan.recommendations ?? [],
-        roadmap: (activeHistoricalScan.career_roadmap as Roadmap) ?? null,
+          activeHistoricalScan.professionalism_score ??
+          activeHistoricalScan.experience_score ??
+          activeHistoricalScan.overall_score,
+        skills,
+        strengths,
+        weaknesses,
+        suggestions: suggestionsList,
+        roadmap: histRoadmap,
         scoreImprovement: activeHistoricalScan.score_improvement,
-        previousAtsScore: activeHistoricalScan.previous_ats_score,
+        previousAtsScore: activeHistoricalScan.previous_ats_score ?? null,
         scanDate: activeHistoricalScan.created_at,
-        source: activeHistoricalScan.extraction_source,
+        source:
+          activeHistoricalScan.source ??
+          activeHistoricalScan.extraction_source ??
+          "historical_scan",
       };
     }
 
+    // Active / default resume
+    const parsed = (resume?.parsed_data as Record<string, any>) || {};
+    const activeRoadmap = (resume?.career_roadmap as Roadmap) || null;
+    const activeSuggestions = Array.isArray(resume?.suggestions) ? resume.suggestions : [];
+
+    const skills =
+      Array.isArray(parsed.skills) && parsed.skills.length > 0
+        ? parsed.skills
+        : Array.isArray(latestScan?.extracted_skills)
+          ? latestScan.extracted_skills
+          : [];
+
+    const strengths =
+      Array.isArray(parsed.strengths) && parsed.strengths.length > 0
+        ? parsed.strengths
+        : Array.isArray(activeRoadmap?.strengths)
+          ? activeRoadmap.strengths
+          : [];
+
+    const weaknesses =
+      Array.isArray(parsed.weaknesses) && parsed.weaknesses.length > 0
+        ? parsed.weaknesses
+        : Array.isArray(activeRoadmap?.weaknesses)
+          ? activeRoadmap.weaknesses
+          : [];
+
+    const suggestionsList =
+      activeSuggestions.length > 0
+        ? activeSuggestions
+        : Array.isArray(activeRoadmap?.resume_improvements)
+          ? activeRoadmap.resume_improvements
+          : Array.isArray(latestScan?.suggestions)
+            ? latestScan.suggestions
+            : [];
+
     return {
       isHistorical: false,
-      fileName: resume?.file_name || "Resume",
-      overallScore: resume?.overall_score,
-      atsScore: resume?.ats_score,
-      grammarScore: resume?.grammar_score,
-      formattingScore: resume?.formatting_score,
-      keywordScore: resume?.keyword_score,
-      professionalismScore: resume?.professionalism_score,
-      suggestions: resume?.suggestions ?? [],
-      roadmap: (resume?.career_roadmap as Roadmap) ?? null,
+      scanId: null,
+      resumeId: resume?.id ?? null,
+      fileName: resume?.file_name || latestScan?.file_name || "Resume",
+      fileSize: resume?.file_size ?? latestScan?.file_size ?? 0,
+      fileType: (resume as any)?.mime_type ?? latestScan?.file_type ?? "application/pdf",
+      filePath: (resume as any)?.file_path ?? latestScan?.file_path ?? null,
+      summary: parsed.summary || "",
+      overallScore: resume?.overall_score ?? latestScan?.overall_score ?? null,
+      atsScore: resume?.ats_score ?? latestScan?.ats_score ?? null,
+      grammarScore:
+        resume?.grammar_score ??
+        latestScan?.skills_score ??
+        latestScan?.overall_score ??
+        null,
+      formattingScore: resume?.formatting_score ?? latestScan?.formatting_score ?? null,
+      keywordScore: resume?.keyword_score ?? latestScan?.keyword_score ?? null,
+      professionalismScore:
+        resume?.professionalism_score ??
+        latestScan?.experience_score ??
+        latestScan?.overall_score ??
+        null,
+      skills,
+      strengths,
+      weaknesses,
+      suggestions: suggestionsList,
+      roadmap: activeRoadmap ?? (latestScan?.career_roadmap as Roadmap) ?? null,
       scoreImprovement: latestScan?.score_improvement ?? null,
       previousAtsScore: latestScan?.previous_ats_score ?? null,
-      scanDate: latestScan?.created_at ?? null,
-      source: latestScan?.extraction_source ?? "parsed_data",
+      scanDate: latestScan?.created_at ?? resume?.updated_at ?? resume?.created_at ?? null,
+      source: (resume as any)?.source ?? latestScan?.source ?? "active_resume",
     };
   }, [activeHistoricalScan, resume, latestScan]);
 
+  // Load preview URL for the currently selected resume file
+  const activeFilePath = currentDisplay?.filePath;
+
+  useEffect(() => {
+    let isMounted = true;
+    if (!activeFilePath) {
+      setPreviewUrl(null);
+      return;
+    }
+
+    setIsLoadingPreview(true);
+    (async () => {
+      try {
+        const { data, error } = await supabase.storage
+          .from("resumes")
+          .createSignedUrl(activeFilePath, 3600);
+        if (!error && data?.signedUrl && isMounted) {
+          setPreviewUrl(data.signedUrl);
+          return;
+        }
+      } catch (e) {
+        console.warn("Signed URL error:", e);
+      }
+
+      try {
+        const { data: pub } = supabase.storage.from("resumes").getPublicUrl(activeFilePath);
+        if (pub?.publicUrl && isMounted) {
+          setPreviewUrl(pub.publicUrl);
+          return;
+        }
+      } catch (e) {
+        console.warn("Public URL error:", e);
+      }
+
+      if (isMounted) setPreviewUrl(null);
+    })().finally(() => {
+      if (isMounted) setIsLoadingPreview(false);
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [activeFilePath]);
+
+  // Download resume file directly
+  const handleDownloadResume = useCallback(async () => {
+    if (!activeFilePath) {
+      toast.error("Resume file path is not available for this record");
+      return;
+    }
+
+    setIsDownloading(true);
+    const fileName = currentDisplay.fileName || "resume.pdf";
+    const toastId = toast.loading(`Downloading ${fileName}...`);
+
+    try {
+      const { data, error } = await supabase.storage.from("resumes").download(activeFilePath);
+      if (error || !data) {
+        if (previewUrl) {
+          const a = document.createElement("a");
+          a.href = previewUrl;
+          a.target = "_blank";
+          a.download = fileName;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          toast.success(`Download started for ${fileName}`, { id: toastId });
+          return;
+        }
+        throw new Error(error?.message || "Failed to download file from storage");
+      }
+
+      const blobUrl = URL.createObjectURL(data);
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(blobUrl);
+      toast.success(`Downloaded ${fileName}`, { id: toastId });
+    } catch (err: any) {
+      console.error("Resume download error:", err);
+      toast.error(err.message || "Failed to download resume", { id: toastId });
+    } finally {
+      setIsDownloading(false);
+    }
+  }, [activeFilePath, currentDisplay.fileName, previewUrl]);
+
+  // PDF Roadmap Export
   const exportRoadmapPDF = useCallback(async () => {
     const activeRoadmap = currentDisplay?.roadmap;
     if (!activeRoadmap) return;
@@ -741,11 +990,17 @@ function ResumeScanner() {
       let y = 20;
 
       doc.setFontSize(20);
-      doc.text("Career Roadmap", 20, y);
+      doc.text("Career Roadmap & Analysis Report", 20, y);
       y += 10;
 
       doc.setFontSize(10);
-      doc.text(`Generated: ${new Date().toLocaleDateString()}`, 20, y);
+      doc.text(`Resume: ${currentDisplay.fileName}`, 20, y);
+      y += 6;
+      doc.text(
+        `ATS Score: ${currentDisplay.atsScore ?? currentDisplay.overallScore ?? "N/A"}/100 | Generated: ${new Date().toLocaleDateString()}`,
+        20,
+        y,
+      );
       y += 10;
 
       const addSection = (title: string, lines: string[]) => {
@@ -768,6 +1023,19 @@ function ResumeScanner() {
         }
         y += 5;
       };
+
+      if (currentDisplay.skills?.length) {
+        addSection("Extracted Skills", [currentDisplay.skills.join(", ")]);
+      }
+      if (currentDisplay.strengths?.length) {
+        addSection("Key Strengths", currentDisplay.strengths);
+      }
+      if (currentDisplay.weaknesses?.length) {
+        addSection("Areas for Improvement", currentDisplay.weaknesses);
+      }
+      if (currentDisplay.suggestions?.length) {
+        addSection("Actionable Suggestions", currentDisplay.suggestions);
+      }
 
       if (activeRoadmap.career_paths?.length)
         addSection(
@@ -812,8 +1080,8 @@ function ResumeScanner() {
         addSection("180-Day Plan", activeRoadmap.interview_prep_plan.one_eighty_days ?? []);
       }
 
-      doc.save("career-roadmap.pdf");
-      toast.success("Roadmap exported successfully");
+      doc.save(`resume-analysis-${currentDisplay.fileName.replace(/\.[^/.]+$/, "")}.pdf`);
+      toast.success("Analysis report exported successfully");
     } catch (error) {
       console.error("PDF export error:", error);
       toast.error("Failed to export PDF");
@@ -869,7 +1137,11 @@ function ResumeScanner() {
   const roadmap = currentDisplay.roadmap ?? null;
   const isBusy = scanMutation.isPending;
 
-  // Sort matches: Nepal-based first, then by score
+  // Maximum 5 resumes in history view by default
+  const displayedHistory = useMemo(() => {
+    return showAllHistory ? scanHistory : scanHistory.slice(0, 5);
+  }, [scanHistory, showAllHistory]);
+
   const sortedMatches = useMemo(() => {
     return [...matches].sort((a, b) => {
       if (a.isNepalBased !== b.isNepalBased) {
@@ -878,6 +1150,13 @@ function ResumeScanner() {
       return b.score - a.score;
     });
   }, [matches]);
+
+  const isPdf =
+    currentDisplay.fileType?.includes("pdf") ||
+    currentDisplay.fileName?.toLowerCase().endsWith(".pdf");
+  const isImage =
+    currentDisplay.fileType?.includes("image") ||
+    /\.(jpg|jpeg|png|webp)$/i.test(currentDisplay.fileName || "");
 
   return (
     <div className="container mx-auto px-3 sm:px-4 py-6 sm:py-8 max-w-5xl space-y-6">
@@ -913,7 +1192,7 @@ function ResumeScanner() {
         )}
       </div>
 
-      {/* AI Name Personalization Banner (If user name is not yet set) */}
+      {/* AI Name Personalization Banner */}
       {user && !profile?.full_name?.trim() && (
         <Card className="border-primary/30 bg-gradient-to-r from-primary/10 via-primary/5 to-accent/10 animate-fade-in">
           <CardContent className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -1063,28 +1342,203 @@ function ResumeScanner() {
       {/* Loading skeleton */}
       {isLoading && <SkeletonCard />}
 
-      {/* Historical View Warning Banner */}
-      {currentDisplay.isHistorical && (
-        <div className="flex items-center justify-between p-3.5 rounded-xl border border-primary/30 bg-primary/5">
-          <div className="flex items-center gap-2 text-sm">
-            <History className="h-4 w-4 text-primary" />
-            <span>
-              Viewing historical scan: <strong>{currentDisplay.fileName}</strong> (
-              {currentDisplay.scanDate
-                ? new Date(currentDisplay.scanDate).toLocaleDateString()
-                : "Past scan"}
-              )
-            </span>
+      {/* Comprehensive Resume Analysis Report Banner / Historical Bar */}
+      {currentDisplay.isHistorical ? (
+        <Card className="border-primary/40 bg-gradient-to-r from-primary/10 via-primary/5 to-muted/20 animate-fade-in-up">
+          <CardContent className="p-4 sm:p-5">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="space-y-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Badge variant="outline" className="border-primary/50 text-primary font-semibold">
+                    Historical Analysis Report
+                  </Badge>
+                  <span className="font-bold text-base sm:text-lg truncate">
+                    {currentDisplay.fileName}
+                  </span>
+                  {currentDisplay.fileSize > 0 && (
+                    <Badge variant="secondary" className="text-xs">
+                      {(currentDisplay.fileSize / 1024).toFixed(0)} KB
+                    </Badge>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
+                  <span>
+                    Analyzed on:{" "}
+                    <strong>
+                      {currentDisplay.scanDate
+                        ? new Date(currentDisplay.scanDate).toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })
+                        : "Past scan"}
+                    </strong>
+                  </span>
+                  {currentDisplay.source && (
+                    <span>
+                      • Source: <span className="uppercase">{currentDisplay.source.replace("_", " ")}</span>
+                    </span>
+                  )}
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap shrink-0">
+                {currentDisplay.filePath && (
+                  <>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-8 text-xs flex items-center gap-1.5"
+                      onClick={() => setIsPreviewOpen(!isPreviewOpen)}
+                    >
+                      {isPreviewOpen ? (
+                        <>
+                          <EyeOff className="h-3.5 w-3.5" /> Hide Preview
+                        </>
+                      ) : (
+                        <>
+                          <Eye className="h-3.5 w-3.5 text-primary" /> Preview Resume
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-8 text-xs flex items-center gap-1.5"
+                      onClick={handleDownloadResume}
+                      disabled={isDownloading}
+                    >
+                      {isDownloading ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Download className="h-3.5 w-3.5 text-primary" />
+                      )}
+                      Download Resume
+                    </Button>
+                  </>
+                )}
+                <Button
+                  size="sm"
+                  variant="default"
+                  className="h-8 text-xs gradient-brand text-primary-foreground"
+                  onClick={() => handleSelectScan(null)}
+                >
+                  Back to Active Resume
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        currentDisplay.filePath &&
+        currentDisplay.overallScore != null && (
+          <div className="flex items-center justify-end gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 text-xs flex items-center gap-1.5"
+              onClick={() => setIsPreviewOpen(!isPreviewOpen)}
+            >
+              {isPreviewOpen ? (
+                <>
+                  <EyeOff className="h-3.5 w-3.5" /> Hide Resume Preview
+                </>
+              ) : (
+                <>
+                  <Eye className="h-3.5 w-3.5 text-primary" /> Preview Resume Document
+                </>
+              )}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 text-xs flex items-center gap-1.5"
+              onClick={handleDownloadResume}
+              disabled={isDownloading}
+            >
+              {isDownloading ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Download className="h-3.5 w-3.5 text-primary" />
+              )}
+              Download Resume
+            </Button>
           </div>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-7 text-xs text-primary hover:text-primary"
-            onClick={() => setSelectedScanId(null)}
-          >
-            Back to Latest Resume
-          </Button>
-        </div>
+        )
+      )}
+
+      {/* Embedded Resume Document Preview Accordion / Frame */}
+      {isPreviewOpen && (
+        <Card className="glass animate-fade-in-up border-primary/30">
+          <CardHeader className="pb-3 flex flex-row items-center justify-between">
+            <CardTitle className="text-base flex items-center gap-2">
+              <FileText className="h-4 w-4 text-primary" />
+              Resume Document Preview: {currentDisplay.fileName}
+            </CardTitle>
+            <div className="flex items-center gap-2">
+              {previewUrl && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 text-xs"
+                  onClick={() => window.open(previewUrl, "_blank")}
+                >
+                  <ExternalLink className="h-3.5 w-3.5 mr-1" /> Open in New Tab
+                </Button>
+              )}
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 text-xs"
+                onClick={() => setIsPreviewOpen(false)}
+              >
+                <EyeOff className="h-3.5 w-3.5 mr-1" /> Close Preview
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="p-4 pt-0">
+            {isLoadingPreview ? (
+              <div className="h-64 flex flex-col items-center justify-center gap-2 text-muted-foreground text-sm">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                Loading resume document preview…
+              </div>
+            ) : previewUrl ? (
+              isPdf ? (
+                <div className="w-full h-[550px] rounded-xl overflow-hidden border bg-muted/20">
+                  <iframe
+                    src={`${previewUrl}#toolbar=0`}
+                    className="w-full h-full border-0"
+                    title={currentDisplay.fileName}
+                  />
+                </div>
+              ) : isImage ? (
+                <div className="w-full flex justify-center p-4 bg-muted/20 rounded-xl border">
+                  <img
+                    src={previewUrl}
+                    alt={currentDisplay.fileName}
+                    className="max-h-[550px] object-contain rounded-lg shadow-sm"
+                  />
+                </div>
+              ) : (
+                <div className="p-8 text-center bg-muted/20 rounded-xl border space-y-3">
+                  <FileText className="h-10 w-10 text-primary mx-auto" />
+                  <p className="text-sm font-medium">
+                    Inline preview is not supported for this format ({currentDisplay.fileType}).
+                  </p>
+                  <Button size="sm" onClick={handleDownloadResume}>
+                    <Download className="h-4 w-4 mr-1.5" /> Download File to View
+                  </Button>
+                </div>
+              )
+            ) : (
+              <div className="p-6 text-center text-sm text-muted-foreground bg-muted/20 rounded-xl border">
+                Unable to load preview for this file. Click Download Resume above to view.
+              </div>
+            )}
+          </CardContent>
+        </Card>
       )}
 
       {/* Scores & ATS Breakdown */}
@@ -1094,7 +1548,9 @@ function ResumeScanner() {
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-2">
                 <Target className="h-5 w-5 text-primary" />
-                <h2 className="text-xl font-bold">ATS & Resume Intelligence</h2>
+                <h2 className="text-xl font-bold">
+                  {currentDisplay.isHistorical ? "Historical ATS & Resume Intelligence" : "ATS & Resume Intelligence"}
+                </h2>
               </div>
               <div className="flex items-center gap-2">
                 {currentDisplay.scoreImprovement != null && (
@@ -1145,6 +1601,14 @@ function ResumeScanner() {
                     Previous scan score: <strong>{currentDisplay.previousAtsScore}/100</strong>
                   </div>
                 )}
+                {currentDisplay.summary && (
+                  <div className="mt-3 p-3 bg-muted/30 rounded-lg text-xs text-muted-foreground text-left">
+                    <strong className="text-foreground font-semibold block mb-1">
+                      Professional Summary:
+                    </strong>
+                    {currentDisplay.summary}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1167,6 +1631,58 @@ function ResumeScanner() {
                 );
               })}
             </div>
+
+            {/* Extracted Skills Badges */}
+            {currentDisplay.skills.length > 0 && (
+              <div className="pt-3 border-t space-y-2">
+                <h3 className="font-semibold text-sm flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-primary" /> Extracted Skills & Competencies
+                </h3>
+                <div className="flex flex-wrap gap-1.5">
+                  {currentDisplay.skills.map((skill: string, i: number) => (
+                    <Badge key={i} variant="secondary" className="text-xs px-2.5 py-0.5 font-medium">
+                      {skill}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Key Strengths & Weaknesses Grid */}
+            {(currentDisplay.strengths.length > 0 || currentDisplay.weaknesses.length > 0) && (
+              <div className="grid sm:grid-cols-2 gap-4 pt-3 border-t">
+                {currentDisplay.strengths.length > 0 && (
+                  <div className="space-y-2 rounded-xl bg-emerald-500/5 border border-emerald-500/20 p-3.5">
+                    <h4 className="font-semibold text-xs text-emerald-600 uppercase tracking-wider flex items-center gap-1.5">
+                      <CheckCircle2 className="h-4 w-4" /> Key Resume Strengths
+                    </h4>
+                    <ul className="space-y-1.5">
+                      {currentDisplay.strengths.map((str: string, i: number) => (
+                        <li key={i} className="text-xs flex items-start gap-2 text-foreground/90">
+                          <span className="text-emerald-500 font-bold">•</span>
+                          <span>{str}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {currentDisplay.weaknesses.length > 0 && (
+                  <div className="space-y-2 rounded-xl bg-amber-500/5 border border-amber-500/20 p-3.5">
+                    <h4 className="font-semibold text-xs text-amber-600 uppercase tracking-wider flex items-center gap-1.5">
+                      <AlertCircle className="h-4 w-4" /> Areas for Improvement
+                    </h4>
+                    <ul className="space-y-1.5">
+                      {currentDisplay.weaknesses.map((weak: string, i: number) => (
+                        <li key={i} className="text-xs flex items-start gap-2 text-foreground/90">
+                          <span className="text-amber-500 font-bold">•</span>
+                          <span>{weak}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Suggestions */}
             {suggestions.length > 0 && (
@@ -1194,35 +1710,48 @@ function ResumeScanner() {
         </Card>
       )}
 
-      {/* Resume Version History & Improvement Timeline */}
+      {/* Resume Version History (Limited to Max 5 by Default) */}
       {scanHistory.length > 0 && !isBusy && (
         <Card className="glass animate-fade-in-up">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2 text-lg">
                 <History className="h-5 w-5 text-primary" />
-                Resume Version History & Score Improvement
+                Resume Version History & Score Timeline
               </CardTitle>
-              <Badge variant="secondary" className="text-xs">
-                {scanHistory.length} {scanHistory.length === 1 ? "Version" : "Versions"}
-              </Badge>
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary" className="text-xs">
+                  Showing {displayedHistory.length} of {scanHistory.length}{" "}
+                  {scanHistory.length === 1 ? "Version" : "Versions"}
+                </Badge>
+              </div>
             </div>
           </CardHeader>
-          <CardContent className="p-4 sm:p-6 pt-0">
+          <CardContent className="p-4 sm:p-6 pt-0 space-y-3">
             <div className="space-y-2.5">
-              {scanHistory.map((scan: any, idx: number) => {
+              {displayedHistory.map((scan: any, idx: number) => {
                 const versionNumber = scanHistory.length - idx;
-                const isSelected = selectedScanId === scan.id || (!selectedScanId && idx === 0);
+                const isSelected =
+                  selectedScanId === scan.id ||
+                  selectedScanId === scan.resume_id ||
+                  (!selectedScanId && idx === 0 && !currentDisplay.isHistorical);
                 const scoreDiff = scan.score_improvement;
+                const isNotAnalyzed =
+                  scan.scan_status === "not_analyzed" ||
+                  (scan.overall_score == null && !scan.career_roadmap);
 
                 return (
                   <div
                     key={scan.id}
-                    onClick={() => setSelectedScanId(scan.id)}
+                    onClick={() => {
+                      if (!isNotAnalyzed) {
+                        handleSelectScan(scan.id);
+                      }
+                    }}
                     className={cn(
                       "flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-xl border transition-all cursor-pointer gap-2",
                       isSelected
-                        ? "border-primary bg-primary/5 shadow-sm"
+                        ? "border-primary bg-primary/5 shadow-sm ring-1 ring-primary/20"
                         : "hover:bg-muted/30 hover:border-border",
                     )}
                   >
@@ -1245,14 +1774,14 @@ function ResumeScanner() {
                               Latest
                             </Badge>
                           )}
-                          {scan.extraction_source && (
+                          {scan.source && (
                             <Badge variant="outline" className="text-[10px] px-1.5 py-0 uppercase">
-                              {scan.extraction_source.replace("_", " ")}
+                              {String(scan.source).replace("_", " ")}
                             </Badge>
                           )}
                         </div>
                         <div className="text-xs text-muted-foreground mt-0.5">
-                          Scanned:{" "}
+                          {isNotAnalyzed ? "Uploaded: " : "Scanned: "}
                           {new Date(scan.created_at).toLocaleDateString("en-US", {
                             month: "short",
                             day: "numeric",
@@ -1265,54 +1794,96 @@ function ResumeScanner() {
                     </div>
 
                     <div className="flex items-center gap-3 shrink-0 self-end sm:self-center">
-                      <div className="text-right">
-                        <div className="text-sm font-bold flex items-center gap-1 justify-end">
-                          <span>ATS: {scan.ats_score ?? scan.overall_score ?? "—"}</span>
-                        </div>
-                        {scoreDiff != null ? (
-                          <div
-                            className={cn(
-                              "text-[11px] font-medium flex items-center gap-0.5 justify-end",
-                              scoreDiff > 0
-                                ? "text-emerald-600"
-                                : scoreDiff < 0
-                                  ? "text-red-500"
-                                  : "text-muted-foreground",
-                            )}
+                      {isNotAnalyzed ? (
+                        <div className="flex items-center gap-2">
+                          <Badge
+                            variant="outline"
+                            className="text-[11px] text-amber-600 border-amber-500/30 bg-amber-500/10"
                           >
-                            {scoreDiff > 0 ? (
-                              <>
-                                <ArrowUpRight className="h-3 w-3" /> +{scoreDiff} improvement
-                              </>
-                            ) : scoreDiff < 0 ? (
-                              <>
-                                <ArrowDownRight className="h-3 w-3" /> {scoreDiff} change
-                              </>
+                            Not analyzed
+                          </Badge>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-xs"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              scanMutation.mutate(scan.resume_id || scan.id);
+                            }}
+                            disabled={isBusy}
+                          >
+                            Scan Now
+                          </Button>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="text-right">
+                            <div className="text-sm font-bold flex items-center gap-1 justify-end">
+                              <span>ATS: {scan.ats_score ?? scan.overall_score}/100</span>
+                            </div>
+                            {scoreDiff != null && scoreDiff !== 0 ? (
+                              <div
+                                className={cn(
+                                  "text-[11px] font-medium flex items-center gap-0.5 justify-end",
+                                  scoreDiff > 0 ? "text-emerald-600" : "text-red-500",
+                                )}
+                              >
+                                {scoreDiff > 0 ? (
+                                  <>
+                                    <ArrowUpRight className="h-3 w-3" /> +{scoreDiff} improvement
+                                  </>
+                                ) : (
+                                  <>
+                                    <ArrowDownRight className="h-3 w-3" /> {scoreDiff} change
+                                  </>
+                                )}
+                              </div>
                             ) : (
-                              "No score change"
+                              <div className="text-[10px] text-muted-foreground">Saved analysis</div>
                             )}
                           </div>
-                        ) : (
-                          <div className="text-[10px] text-muted-foreground">Baseline scan</div>
-                        )}
-                      </div>
 
-                      <Button
-                        size="sm"
-                        variant={isSelected ? "default" : "outline"}
-                        className="h-7 text-xs"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedScanId(scan.id);
-                        }}
-                      >
-                        {isSelected ? "Viewing" : "View"}
-                      </Button>
+                          <Button
+                            size="sm"
+                            variant={isSelected ? "default" : "outline"}
+                            className="h-7 text-xs"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleSelectScan(scan.id);
+                            }}
+                          >
+                            {isSelected ? "Viewing" : "View"}
+                          </Button>
+                        </>
+                      )}
                     </div>
                   </div>
                 );
               })}
             </div>
+
+            {/* Pagination / Expand Option if more than 5 resumes exist */}
+            {scanHistory.length > 5 && (
+              <div className="pt-2 text-center border-t">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs text-muted-foreground hover:text-foreground h-8"
+                  onClick={() => setShowAllHistory(!showAllHistory)}
+                >
+                  {showAllHistory ? (
+                    <>
+                      <ChevronUp className="h-3.5 w-3.5 mr-1" /> Show 5 most recent
+                    </>
+                  ) : (
+                    <>
+                      <ChevronDown className="h-3.5 w-3.5 mr-1" /> View all ({scanHistory.length}{" "}
+                      versions)
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
@@ -1320,9 +1891,12 @@ function ResumeScanner() {
       {/* Career Roadmap */}
       {roadmap && !isBusy && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-2">
             <h2 className="text-2xl font-bold flex items-center gap-2">
-              <Rocket className="h-6 w-6 text-primary" /> Career Roadmap
+              <Rocket className="h-6 w-6 text-primary" />
+              {currentDisplay.isHistorical
+                ? `Career Roadmap (${currentDisplay.fileName})`
+                : "Career Roadmap"}
             </h2>
             <Button variant="outline" size="sm" onClick={exportRoadmapPDF} disabled={isExporting}>
               {isExporting ? (
@@ -1330,12 +1904,12 @@ function ResumeScanner() {
               ) : (
                 <Download className="h-4 w-4 mr-1" />
               )}
-              Export PDF
+              Export Analysis PDF
             </Button>
           </div>
 
           {roadmap.career_paths && roadmap.career_paths.length > 0 && (
-            <SectionCard icon={Target} title="Career Paths">
+            <SectionCard icon={Target} title="Career Paths & Next Milestones">
               <div className="space-y-3">
                 {roadmap.career_paths.map((c, i) => (
                   <div
@@ -1362,7 +1936,7 @@ function ResumeScanner() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {roadmap.skill_gaps && roadmap.skill_gaps.length > 0 && (
-              <SectionCard icon={TrendingUp} title="Skill Gaps">
+              <SectionCard icon={TrendingUp} title="Identified Skill Gaps">
                 <div className="flex flex-wrap gap-2">
                   {roadmap.skill_gaps.map((s, i) => (
                     <Badge
@@ -1378,7 +1952,7 @@ function ResumeScanner() {
             )}
 
             {roadmap.missing_skills && roadmap.missing_skills.length > 0 && (
-              <SectionCard icon={Target} title="Missing Skills">
+              <SectionCard icon={Target} title="Missing Skills for Target Roles">
                 <div className="flex flex-wrap gap-2">
                   {roadmap.missing_skills.map((s, i) => (
                     <Badge key={i} variant="outline">
@@ -1410,7 +1984,7 @@ function ResumeScanner() {
           )}
 
           {roadmap.suggested_projects && roadmap.suggested_projects.length > 0 && (
-            <SectionCard icon={Rocket} title="Suggested Projects">
+            <SectionCard icon={Rocket} title="Suggested Portfolio Projects">
               <div className="space-y-2">
                 {roadmap.suggested_projects.map((p, i) => (
                   <div
@@ -1429,7 +2003,7 @@ function ResumeScanner() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {roadmap.recommended_jobs && roadmap.recommended_jobs.length > 0 && (
-              <SectionCard icon={Briefcase} title="Recommended Jobs">
+              <SectionCard icon={Briefcase} title="Recommended Target Jobs">
                 <div className="space-y-2">
                   {roadmap.recommended_jobs.map((j, i) => (
                     <div
@@ -1445,7 +2019,7 @@ function ResumeScanner() {
             )}
 
             {roadmap.companies_hiring && roadmap.companies_hiring.length > 0 && (
-              <SectionCard icon={Building2} title="Companies Hiring">
+              <SectionCard icon={Building2} title="Companies Hiring in This Domain">
                 <div className="space-y-2">
                   {roadmap.companies_hiring.map((c, i) => (
                     <div
@@ -1465,7 +2039,7 @@ function ResumeScanner() {
           </div>
 
           {roadmap.resume_improvements && roadmap.resume_improvements.length > 0 && (
-            <SectionCard icon={Lightbulb} title="Resume Improvements">
+            <SectionCard icon={Lightbulb} title="Resume Enhancement Steps">
               <ul className="space-y-2">
                 {roadmap.resume_improvements.map((s, i) => (
                   <li key={i} className="flex items-start gap-2 text-sm">
@@ -1478,7 +2052,7 @@ function ResumeScanner() {
           )}
 
           {roadmap.interview_prep_plan && (
-            <SectionCard icon={Target} title="Interview Preparation Plan">
+            <SectionCard icon={Target} title="Interview Preparation Timeline">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {[
                   {

@@ -88,32 +88,65 @@ export function safeJsonParse<T>(text: string): T {
     /* continue to fallbacks */
   }
 
-  // Attempt 2: extract first JSON object
-  const objMatch = cleaned.match(/\{[\s\S]*\}/);
-  if (objMatch) {
+  // Attempt 2: extract outermost JSON object
+  const firstBrace = cleaned.indexOf("{");
+  const lastBrace = cleaned.lastIndexOf("}");
+  if (firstBrace !== -1 && lastBrace > firstBrace) {
     try {
-      return JSON.parse(objMatch[0]) as T;
+      return JSON.parse(cleaned.slice(firstBrace, lastBrace + 1)) as T;
     } catch {
       /* continue */
     }
   }
 
-  // Attempt 3: extract first JSON array
-  const arrMatch = cleaned.match(/\[[\s\S]*\]/);
-  if (arrMatch) {
+  // Attempt 3: extract outermost JSON array
+  const firstBracket = cleaned.indexOf("[");
+  const lastBracket = cleaned.lastIndexOf("]");
+  if (firstBracket !== -1 && lastBracket > firstBracket) {
     try {
-      return JSON.parse(arrMatch[0]) as T;
+      return JSON.parse(cleaned.slice(firstBracket, lastBracket + 1)) as T;
     } catch {
       /* continue */
     }
   }
 
-  // Attempt 4: fix common issues (trailing commas, single quotes)
-  const fixed = cleaned.replace(/,\s*([}\]])/g, "$1").replace(/'/g, '"');
+  // Attempt 4: fix common syntax issues (trailing commas, unescaped newlines in strings, single quotes)
   try {
+    const fixed = cleaned
+      .replace(/,\s*([}\]])/g, "$1")
+      .replace(/'/g, '"');
     return JSON.parse(fixed) as T;
   } catch {
     /* continue */
+  }
+
+  // Attempt 5: Repair truncated JSON by closing unclosed quotes, brackets, and braces
+  try {
+    let candidate = cleaned.slice(firstBrace !== -1 ? firstBrace : 0);
+    // If odd number of unescaped quotes, close the open string
+    const quoteMatches = candidate.match(/(?<!\\)"/g);
+    if (quoteMatches && quoteMatches.length % 2 !== 0) {
+      candidate += '"';
+    }
+    // Remove any trailing dangling comma or colon
+    candidate = candidate.replace(/[:,]\s*$/, "");
+
+    // Count open vs close braces and brackets
+    const openBraces = (candidate.match(/\{/g) || []).length;
+    const closeBraces = (candidate.match(/\}/g) || []).length;
+    const openBrackets = (candidate.match(/\[/g) || []).length;
+    const closeBrackets = (candidate.match(/\]/g) || []).length;
+
+    for (let i = 0; i < openBrackets - closeBrackets; i++) {
+      candidate += "]";
+    }
+    for (let i = 0; i < openBraces - closeBraces; i++) {
+      candidate += "}";
+    }
+
+    return JSON.parse(candidate) as T;
+  } catch {
+    /* final throw */
   }
 
   throw new AIFatalError("AI returned invalid JSON");

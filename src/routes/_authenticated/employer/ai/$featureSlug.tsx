@@ -413,6 +413,7 @@ function AiFeaturePage() {
 
   const handleSuggestionClick = useCallback(
     (q: string) => {
+      if (ask.isPending) return;
       setInput(q);
       if (isPremium && hasCompany) {
         ask.mutate(q);

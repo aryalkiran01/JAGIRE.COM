@@ -235,6 +235,7 @@ function JobSeekerAiFeaturePage() {
 
   const handleSuggestionClick = useCallback(
     (q: string) => {
+      if (ask.isPending) return;
       setInput(q);
       if (isPremium) {
         ask.mutate(q);

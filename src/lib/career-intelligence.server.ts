@@ -616,7 +616,7 @@ export async function getAuthoritativeCareerContextText(
   optionalUserId?: string,
 ): Promise<string> {
   const userId = optionalUserId || (typeof supabaseOrUserId === "string" ? supabaseOrUserId : "");
-  if (!userId) return "Candidate profile context not yet synchronized.";
+  if (!userId) return "";
 
   const { data: ci } = await supabaseAdmin
     .from("user_career_intelligence")
@@ -624,7 +624,7 @@ export async function getAuthoritativeCareerContextText(
     .eq("user_id", userId)
     .maybeSingle();
 
-  if (!ci) return "Candidate profile context not yet synchronized.";
+  if (!ci) return "";
 
   const skills = Array.isArray(ci.skills) ? ci.skills.join(", ") : "None listed";
   const projects = Array.isArray(ci.projects)

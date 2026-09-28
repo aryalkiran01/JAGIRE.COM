@@ -9,6 +9,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { getAiFeature } from "@/lib/employer-ai-features";
 import { getAuthoritativeCompanyContextText } from "@/lib/company-intelligence.server";
 import { recordUserActivity } from "@/lib/activity.server";
+import { isTrivialInput, getTrivialEmployerResponse } from "@/integrations/ai/trivial-intent";
 import { z } from "zod";
 import {
   candidateMatchSchema,
@@ -1002,15 +1003,27 @@ export const runEmployerAiFeature = (
     companyName,
   } = await buildEmployerContext(supabase, userId, config.contextFields || [], companyId);
 
-  // RAG context from knowledge base
+  // Fast path for trivial inputs (greetings, simple queries) — instant <5ms response
+  if (isTrivialInput(message)) {
+    const fastResult = getTrivialEmployerResponse(featureSlug, companyName ?? undefined);
+    if (fastResult) {
+      return {
+        response: fastResult as any,
+        structured: fastResult as any,
+        featureTitle: feature.title,
+      };
+    }
+  }
+
+  // RAG context from knowledge base — only if explicitly requested
   let ragContext = "";
-  try {
-    if (contextCompanyId) {
+  if (config.contextFields?.includes("knowledgeBase") && contextCompanyId) {
+    try {
       const embRes = await aiGenerateEmbedding(message);
       const { data: chunks } = await (supabaseAdmin as any).rpc("search_knowledge_base", {
         query_embedding: embRes.embedding,
         match_company_id: contextCompanyId,
-        match_limit: 5,
+        match_limit: 3,
       });
 
       const chunkList = Array.isArray(chunks) ? chunks : [];
@@ -1019,10 +1032,9 @@ export const runEmployerAiFeature = (
           .map((c: any, i: number) => `[${i + 1}] From "${c.document_title}":\n${c.content}`)
           .join("\n\n---\n\n");
       }
+    } catch (error) {
+      console.warn("RAG context retrieval failed:", error);
     }
-  } catch (error) {
-    console.warn("RAG context retrieval failed:", error);
-    // RAG is optional — continue without it
   }
 
   // Build complete prompt with explicit company and no-data instructions
@@ -1038,7 +1050,7 @@ export const runEmployerAiFeature = (
     `## Request\n${message}`,
     ``,
     `## Instructions
-1. You are advising the hiring team for "${companyName || "the employer"}". Always base your analysis and recommendations specifically on "${companyName || "the employer"}" and its actual business context.
+1. You are the "${feature.title}" tool, advising the hiring team for "${companyName || "the employer"}". Always base your analysis and recommendations specifically on "${companyName || "the employer"}" and its actual business context.
 2. Use ONLY the provided company context to personalize your response
 3. If no applications are listed, do NOT invent or generate fake candidate names
 4. If no jobs are listed, state that clearly
@@ -1049,7 +1061,9 @@ export const runEmployerAiFeature = (
 9. Format response as valid JSON per the schema
 10. If there's no data for a requested analysis, return empty arrays and explain why
 11. NEVER fabricate candidate names, applications, or metrics
-12. INTENT AWARENESS: If the user request is a casual greeting (e.g. "hi", "hello"), introduce this tool's capabilities in the summary field and provide guidance on how to run this feature effectively rather than creating fake matches or mock candidates.`,
+12. INTENT AWARENESS: If the user request is a casual greeting (e.g. "hi", "hello"), introduce this tool's capabilities in the summary field and provide guidance on how to use it effectively. Do NOT generate fake data for greetings.
+13. CAPABILITY AWARENESS: If the user asks something outside this tool's scope, briefly explain what this tool does and suggest which Jagire AI tool would be more appropriate.
+14. NATURAL LANGUAGE: The user may type anything — a formal request, a casual question, a follow-up, or incomplete information. Interpret their intent and respond helpfully.`,
   );
 
   const prompt = promptParts.join("\n\n");

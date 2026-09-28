@@ -2,23 +2,17 @@ import { AIProvider, AIRequest, AIEmbeddingRequest, AIEmbeddingResponse } from "
 import { classifyError, safeJsonParse } from "./errors";
 
 const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models";
-export const DEFAULT_GEMINI_MODEL = "gemini-3.1-flash-lite-preview";
+export const DEFAULT_GEMINI_MODEL = "gemini-3.1-flash-lite";
 export const DEFAULT_GEMINI_EMBEDDING_MODEL = "gemini-embedding-001";
-const GEMINI_TIMEOUT_MS = 25_000;
+const GEMINI_TIMEOUT_MS = 22_000;
 
 const FALLBACK_CANDIDATE_MODELS = [
+  "gemini-3.1-flash-lite",
   "gemini-3.1-flash-lite-preview",
-  "gemini-3.6-flash",
-  "gemini-3.8-flash",
-  "gemini-3.7-flash",
-  "gemma-4-26b-a4b-it",
+  "gemini-3.5-flash-lite",
 ];
 
-const FALLBACK_EMBEDDING_MODELS = [
-  "gemini-embedding-001",
-  "gemini-embedding-2",
-  "gemini-embedding-2-preview",
-];
+const FALLBACK_EMBEDDING_MODELS = ["gemini-embedding-001", "gemini-embedding-2-preview"];
 
 function apiKey(): string {
   const key = process.env.GEMINI_API_KEY;
@@ -55,6 +49,7 @@ export class GeminiProvider implements AIProvider {
           temperature: 0.3,
           topK: 1,
           topP: 0.95,
+          maxOutputTokens: 1024,
         },
       };
       if (req.systemInstruction) {
@@ -74,8 +69,7 @@ export class GeminiProvider implements AIProvider {
         clearTimeout(timer);
       } catch (e) {
         if ((e as Error).name === "AbortError") {
-          lastError = classifyError(408, "Gemini request timed out", e);
-          continue;
+          throw classifyError(408, "Gemini request timed out", e);
         }
         lastError = classifyError(undefined, (e as Error).message, e);
         continue;
@@ -84,9 +78,11 @@ export class GeminiProvider implements AIProvider {
       if (!res.ok) {
         const text = await res.text();
         lastError = classifyError(res.status, text);
-        // If 404 (unavailable), 503 (high demand), or 429 (rate limit quota spike), try next candidate model
-        if (res.status === 404 || res.status === 503 || res.status === 429) {
-          await new Promise((r) => setTimeout(r, 800));
+        // Try next candidate model on 404 (not found) or 503 (temporary high traffic)
+        if (res.status === 404 || res.status === 503) {
+          if (res.status === 503) {
+            await new Promise((r) => setTimeout(r, 400));
+          }
           continue;
         }
         throw lastError;
@@ -101,7 +97,7 @@ export class GeminiProvider implements AIProvider {
       return out as string;
     }
 
-    throw lastError ?? new Error("Gemini generateText failed across all candidate models");
+    throw lastError ?? new Error("Gemini generateText failed across candidate models");
   }
 
   async generateJson<T>(req: AIRequest): Promise<T> {
@@ -112,10 +108,16 @@ export class GeminiProvider implements AIProvider {
     for (const model of models) {
       const url = `${GEMINI_URL}/${model}:generateContent?key=${key}`;
       const isGemma = model.startsWith("gemma-");
+      const maxTokens =
+        req.task === "resume-analysis" || req.task === "resume-optimizer" || req.task === "full-scan"
+          ? 2500
+          : (req.maxTokens ?? 1500);
+
       const generationConfig: Record<string, unknown> = {
         temperature: 0.2,
         topK: 1,
         topP: 0.95,
+        maxOutputTokens: maxTokens,
       };
 
       if (!isGemma) {
@@ -146,8 +148,7 @@ export class GeminiProvider implements AIProvider {
         clearTimeout(timer);
       } catch (e) {
         if ((e as Error).name === "AbortError") {
-          lastError = classifyError(408, "Gemini request timed out", e);
-          continue;
+          throw classifyError(408, "Gemini request timed out", e);
         }
         lastError = classifyError(undefined, (e as Error).message, e);
         continue;
@@ -156,9 +157,11 @@ export class GeminiProvider implements AIProvider {
       if (!res.ok) {
         const text = await res.text();
         lastError = classifyError(res.status, text);
-        // If 404 (unavailable), 503 (high demand), or 429 (rate limit quota spike), try next candidate model
-        if (res.status === 404 || res.status === 503 || res.status === 429) {
-          await new Promise((r) => setTimeout(r, 800));
+        // Try next candidate model on 404 (not found) or 503 (temporary high traffic)
+        if (res.status === 404 || res.status === 503) {
+          if (res.status === 503) {
+            await new Promise((r) => setTimeout(r, 400));
+          }
           continue;
         }
         throw lastError;
@@ -178,7 +181,7 @@ export class GeminiProvider implements AIProvider {
       }
     }
 
-    throw lastError ?? new Error("Gemini generateJson failed across all candidate models");
+    throw lastError ?? new Error("Gemini generateJson failed across candidate models");
   }
 
   async generateEmbedding(req: AIEmbeddingRequest): Promise<AIEmbeddingResponse> {

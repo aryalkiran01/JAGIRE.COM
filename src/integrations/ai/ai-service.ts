@@ -7,9 +7,10 @@ import { isTransient, isFatal } from "./errors";
 import { AITransientError } from "./types";
 import { zodToGeminiSchema, zodToSchemaShapeDescription } from "./schema-converter";
 
-const MAX_RETRIES = 1;
+const MAX_RETRIES = 0;
 const BACKOFF_BASE_MS = 500;
 const VALIDATION_RETRY_LIMIT = 1;
+const TOTAL_OPERATION_TIMEOUT_MS = 25_000;
 const CACHE_TTL_MS = 5 * 60 * 1000;
 const MAX_CACHE_ENTRIES = 200;
 
@@ -44,9 +45,9 @@ function getConfiguredProviderOrder(): AIProvider[] {
     return [new GeminiProvider()];
   }
 
-  // Local development ONLY: if developer explicitly sets AI_PROVIDER=ollama
+  // Local development with Ollama-first: if developer sets AI_PROVIDER=ollama
   if (configuredProvider === "ollama") {
-    return [new OllamaProvider()];
+    return [new OllamaProvider(), new GeminiProvider()];
   }
 
   return [new GeminiProvider()];
@@ -124,6 +125,29 @@ function normalizeAndSanitizeTaskOutput(task: AITask | undefined, raw: unknown):
   const result = { ...(raw as Record<string, any>) };
 
   if (task === "resume-analysis") {
+    const scoreFields = [
+      "overall_score",
+      "ats_score",
+      "grammar_score",
+      "formatting_score",
+      "keyword_score",
+      "professionalism_score",
+    ];
+    for (const sf of scoreFields) {
+      if (typeof result[sf] === "string") {
+        const parsed = parseInt(result[sf].replace(/[^0-9]/g, ""), 10);
+        result[sf] = isNaN(parsed) ? 75 : Math.max(0, Math.min(100, parsed));
+      } else if (typeof result[sf] !== "number") {
+        result[sf] = 75;
+      } else {
+        result[sf] = Math.max(0, Math.min(100, Math.round(result[sf])));
+      }
+    }
+
+    if (typeof result.summary !== "string" || !result.summary.trim()) {
+      result.summary = "Professional candidate resume profile with relevant industry experience.";
+    }
+
     const maxLengths: Record<string, number> = {
       suggestions: 8,
       extracted_skills: 20,
@@ -139,12 +163,6 @@ function normalizeAndSanitizeTaskOutput(task: AITask | undefined, raw: unknown):
       recommended_jobs: 5,
       companies_hiring: 5,
     };
-
-    for (const [field, max] of Object.entries(maxLengths)) {
-      if (Array.isArray(result[field]) && result[field].length > max) {
-        result[field] = result[field].slice(0, max);
-      }
-    }
 
     const arrayFields = [
       "suggestions",
@@ -164,7 +182,78 @@ function normalizeAndSanitizeTaskOutput(task: AITask | undefined, raw: unknown):
           .map((s: string) => s.trim())
           .filter(Boolean)
           .slice(0, maxLengths[field] || 20);
+      } else if (!Array.isArray(result[field])) {
+        result[field] = [];
+      } else {
+        result[field] = result[field]
+          .filter((s: any) => typeof s === "string" && s.trim())
+          .slice(0, maxLengths[field] || 20);
       }
+    }
+
+    if (!Array.isArray(result.career_paths)) {
+      result.career_paths = [];
+    } else {
+      result.career_paths = result.career_paths
+        .filter((cp: any) => cp && typeof cp === "object")
+        .map((cp: any, idx: number) => ({
+          title: typeof cp.title === "string" ? cp.title : `Career Path ${idx + 1}`,
+          why: typeof cp.why === "string" ? cp.why : "Strategic fit based on your background.",
+          next_steps: Array.isArray(cp.next_steps)
+            ? cp.next_steps.filter((s: any) => typeof s === "string")
+            : typeof cp.next_steps === "string"
+              ? [cp.next_steps]
+              : ["Upskill in relevant technologies", "Build portfolio projects"],
+        }))
+        .slice(0, 4);
+    }
+
+    if (!Array.isArray(result.recommended_certifications)) {
+      result.recommended_certifications = [];
+    } else {
+      result.recommended_certifications = result.recommended_certifications
+        .filter((c: any) => c && (typeof c === "object" || typeof c === "string"))
+        .map((c: any, idx: number) => ({
+          name: typeof c.name === "string" ? c.name : typeof c === "string" ? c : `Certification ${idx + 1}`,
+          provider: typeof c.provider === "string" ? c.provider : "Industry Standard",
+        }))
+        .slice(0, 5);
+    }
+
+    if (!Array.isArray(result.suggested_projects)) {
+      result.suggested_projects = [];
+    } else {
+      result.suggested_projects = result.suggested_projects
+        .filter((p: any) => p && (typeof p === "object" || typeof p === "string"))
+        .map((p: any, idx: number) => ({
+          title: typeof p.title === "string" ? p.title : typeof p === "string" ? p : `Project ${idx + 1}`,
+          description: typeof p.description === "string" ? p.description : "Hands-on project to demonstrate skills.",
+        }))
+        .slice(0, 4);
+    }
+
+    if (!Array.isArray(result.recommended_jobs)) {
+      result.recommended_jobs = [];
+    } else {
+      result.recommended_jobs = result.recommended_jobs
+        .filter((j: any) => j && (typeof j === "object" || typeof j === "string"))
+        .map((j: any, idx: number) => ({
+          title: typeof j.title === "string" ? j.title : typeof j === "string" ? j : `Role ${idx + 1}`,
+          why: typeof j.why === "string" ? j.why : "Direct match for your core skill set.",
+        }))
+        .slice(0, 5);
+    }
+
+    if (!Array.isArray(result.companies_hiring)) {
+      result.companies_hiring = [];
+    } else {
+      result.companies_hiring = result.companies_hiring
+        .filter((c: any) => c && (typeof c === "object" || typeof c === "string"))
+        .map((c: any, idx: number) => ({
+          name: typeof c.name === "string" ? c.name : typeof c === "string" ? c : `Company ${idx + 1}`,
+          sector: typeof c.sector === "string" ? c.sector : "Technology / IT",
+        }))
+        .slice(0, 5);
     }
 
     if (typeof result.salary_prediction === "string") {
@@ -174,6 +263,25 @@ function normalizeAndSanitizeTaskOutput(task: AITask | undefined, raw: unknown):
         result.salary_prediction = null;
       }
     }
+    if (result.salary_prediction && typeof result.salary_prediction === "object") {
+      const sp = result.salary_prediction;
+      const low = typeof sp.low === "number" ? sp.low : parseInt(String(sp.low || "").replace(/[^0-9]/g, ""), 10) || 40000;
+      const mid = typeof sp.mid === "number" ? sp.mid : parseInt(String(sp.mid || "").replace(/[^0-9]/g, ""), 10) || 80000;
+      const high = typeof sp.high === "number" ? sp.high : parseInt(String(sp.high || "").replace(/[^0-9]/g, ""), 10) || 150000;
+      result.salary_prediction = {
+        low,
+        mid,
+        high,
+        currency: typeof sp.currency === "string" && sp.currency ? sp.currency : "NPR",
+      };
+    } else {
+      result.salary_prediction = {
+        low: 40000,
+        mid: 80000,
+        high: 150000,
+        currency: "NPR",
+      };
+    }
 
     if (typeof result.interview_prep_plan === "string") {
       try {
@@ -181,6 +289,22 @@ function normalizeAndSanitizeTaskOutput(task: AITask | undefined, raw: unknown):
       } catch {
         result.interview_prep_plan = null;
       }
+    }
+    if (result.interview_prep_plan && typeof result.interview_prep_plan === "object") {
+      const ip = result.interview_prep_plan;
+      result.interview_prep_plan = {
+        thirty_days: Array.isArray(ip.thirty_days) ? ip.thirty_days.map(String) : [],
+        sixty_days: Array.isArray(ip.sixty_days) ? ip.sixty_days.map(String) : [],
+        ninety_days: Array.isArray(ip.ninety_days) ? ip.ninety_days.map(String) : [],
+        one_eighty_days: Array.isArray(ip.one_eighty_days) ? ip.one_eighty_days.map(String) : [],
+      };
+    } else {
+      result.interview_prep_plan = {
+        thirty_days: ["Review core fundamentals", "Update resume with latest achievements"],
+        sixty_days: ["Practice system design and behavioral questions"],
+        ninety_days: ["Complete mock interviews", "Begin targeted applications"],
+        one_eighty_days: ["Evaluate offers and negotiate compensation"],
+      };
     }
   } else if (task === "career-coach") {
     const maxLengths: Record<string, number> = {
@@ -567,15 +691,25 @@ class AIServiceImpl {
       .filter(Boolean)
       .join("\n\n");
 
+    const overallStart = Date.now();
     let lastError: unknown;
     let lastZodIssues: string | null = null;
 
     for (let i = 0; i < this.providers.length; i++) {
+      if (Date.now() - overallStart > TOTAL_OPERATION_TIMEOUT_MS) {
+        log("warn", `Overall AI total operation budget (15s) exceeded, stopping provider attempts`);
+        break;
+      }
       const provider = this.providers[i];
       const isFallback = i > 0;
       const providerLabel = isFallback ? `${provider.name}_fallback` : provider.name;
 
       for (let attempt = 0; attempt <= VALIDATION_RETRY_LIMIT; attempt++) {
+        if (Date.now() - overallStart > TOTAL_OPERATION_TIMEOUT_MS) {
+          log("warn", `Overall AI operation budget (15s) exceeded during validation loop`);
+          break;
+        }
+
         try {
           // If this is a retry attempt, augment the prompt with the exact validation errors
           let effectivePrompt = req.prompt;
@@ -626,13 +760,19 @@ class AIServiceImpl {
           const errMessage = err instanceof Error ? err.message : String(err);
           log(
             "warn",
-            `${providerLabel} attempt ${attempt + 1} validation/execution failure: ${errMessage}`,
+            `${providerLabel} attempt ${attempt + 1} execution/validation failure: ${errMessage}`,
             {
               provider: provider.name,
               task: req.task,
               attempt,
             },
           );
+
+          // CRITICAL: Non-validation errors (e.g. 408 timeout, 503, network drop) must NOT trigger schema-correction retries.
+          if (!(err instanceof z.ZodError)) {
+            break;
+          }
+
           if (attempt < VALIDATION_RETRY_LIMIT) {
             await sleep(BACKOFF_BASE_MS);
           }

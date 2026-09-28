@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { z } from "zod";
 import { AIServiceImpl } from "./ai-service";
 import { AIProvider, AIRequest } from "./types";
+import { sanitizeUserFacingResponse } from "@/lib/ai.service";
 
 describe("AIService Robust JSON Handling & Normalization", () => {
   const companyHiringStrategySchema = z.object({
@@ -183,5 +184,24 @@ describe("AIService Robust JSON Handling & Normalization", () => {
     expect(callCount).toBe(2);
     expect(receivedPromptOnRetry).toContain("[CRITICAL CORRECTION REQUIRED]");
     expect(result.target_talent_profiles[0].role_title).toBe("Product Manager");
+  });
+});
+
+describe("AI Assistant Prompt Leakage Prevention & Sanitization", () => {
+  it("strips internal metadata headers and internal synchronization fallback text", () => {
+    const rawLeakedOutput = `User Message: "hi"
+Goal: Greet user warmly
+Greeting: Namaste, Kiran! 👋
+Candidate profile context not yet synchronized.
+I'm Jagire AI Assistant. How can I help you today?`;
+
+    const sanitized = sanitizeUserFacingResponse(rawLeakedOutput);
+
+    expect(sanitized).not.toContain("User Message:");
+    expect(sanitized).not.toContain("Goal:");
+    expect(sanitized).not.toContain("Greeting:");
+    expect(sanitized).not.toContain("Candidate profile context not yet synchronized");
+    expect(sanitized).toContain("Namaste, Kiran! 👋");
+    expect(sanitized).toContain("I'm Jagire AI Assistant.");
   });
 });

@@ -6,6 +6,7 @@ import { aiGenerateJsonValidated } from "@/integrations/ai/ai-service";
 import { requirePremium } from "@/lib/premium.server";
 import { getJobSeekerAiFeature } from "@/lib/jobseeker-ai-features";
 import { getAuthoritativeCareerContextText } from "@/lib/career-intelligence.server";
+import { isTrivialInput, getTrivialJobSeekerResponse } from "@/integrations/ai/trivial-intent";
 import { z } from "zod";
 import {
   coverLetterGeneratorSchema,
@@ -80,20 +81,14 @@ Return JSON with:
 
   RESUME_OPTIMIZER: `You are an ATS (Applicant Tracking System) resume optimization expert.
 
-Analyze the provided resume content and optimize it for:
-1. ATS parsing accuracy
-2. Keyword optimization
-3. Impact and action verbs
-4. Quantifiable achievements
-5. Clear formatting and structure
+Analyze the provided resume content and optimize it for ATS scoring and recruiter appeal.
 
 Optimization guidelines:
+- Focus on the top 2-3 key sections needing the most improvement (e.g. summary, experience, skills)
+- Keep "original" to a brief 1-2 sentence excerpt, and "optimized" to the refined, punchy version
 - Replace weak verbs with strong action verbs
-- Add metrics and numbers where possible
-- Remove first-person pronouns
-- Use industry-standard terminology
+- Add quantifiable metrics where applicable
 - Keep bullet points concise and scannable
-- Ensure keywords match job descriptions
 
 Return JSON with:
 {
@@ -102,7 +97,7 @@ Return JSON with:
       "section": string (summary | experience | skills | education),
       "original": string,
       "optimized": string,
-      "improvements": string[] (specific changes made)
+      "improvements": string[] (2-3 specific changes made)
     }
   ],
   "overall_recommendation": string,
@@ -838,7 +833,7 @@ const FEATURE_CONFIGS: Record<string, FeatureConfig> = {
   "resume-optimizer": {
     schema: resumeOptimizerSchema,
     systemPrompt: PROMPTS.RESUME_OPTIMIZER,
-    contextFields: ["profile", "resume", "activeJobs"],
+    contextFields: ["profile", "resume"],
   },
   "linkedin-optimizer": {
     schema: linkedinOptimizerSchema,
@@ -1042,12 +1037,14 @@ async function buildJobSeekerContext(
   userId: string,
   neededFields: string[] = [],
 ): Promise<string> {
-  // Fetch combined 360-degree career intelligence context (profile + resume + GitHub + LinkedIn + applications)
+  // Only fetch 360-degree career context if specifically requested
   let authoritativeContext = "";
-  try {
-    authoritativeContext = await getAuthoritativeCareerContextText(supabase, userId);
-  } catch (err) {
-    console.warn("Could not load authoritative career context:", err);
+  if (neededFields.includes("careerIntelligence")) {
+    try {
+      authoritativeContext = await getAuthoritativeCareerContextText(supabase, userId);
+    } catch (err) {
+      console.warn("Could not load authoritative career context:", err);
+    }
   }
 
   const { profile, resume, applications, savedJobs, activeJobs } = await fetchUserContext(
@@ -1069,27 +1066,17 @@ async function buildJobSeekerContext(
 - Experience: ${profile.experience_years || 0} years
 - Current Position: ${profile.current_position || "N/A"}
 - Skills: ${(profile.skills || []).join(", ") || "None listed"}
-- Education: ${JSON.stringify(profile.education || [])}
-- Expected Salary: ${profile.expected_salary ? `Rs. ${profile.expected_salary}/month` : "Not specified"}
-- Preferred Job Type: ${profile.preferred_job_type || "Any"}
-- Preferred Location: ${profile.preferred_location || "Any"}`,
+- Education: ${JSON.stringify(profile.education || [])}`,
     );
   }
 
   // Resume Analysis
   if (resume) {
     const parsed = resume.parsed_data as any;
-    const roadmap = resume.career_roadmap as any;
     ctx.push(
-      `## Resume Analysis
-- Overall Score: ${resume.overall_score ?? "Not scored"}
-- ATS Score: ${resume.ats_score ?? "Not scored"}
-- Grammar Score: ${resume.grammar_score ?? "Not scored"}
+      `## Resume Summary
 - Extracted Skills: ${(parsed?.skills || []).join(", ") || "None"}
-- Summary: ${parsed?.summary || "No summary available"}
-- Strengths: ${(roadmap?.strengths || []).join(", ") || "Not identified"}
-- Missing Skills: ${(roadmap?.missing_skills || []).join(", ") || "Not identified"}
-- Recent Suggestions: ${(resume.suggestions || []).slice(0, 3).join("; ") || "None"}`,
+- Summary: ${parsed?.summary || "No summary available"}`,
     );
   }
 
@@ -1118,13 +1105,10 @@ ${savedJobs.map((s: any) => `- ${s.job?.title} at ${s.job?.company?.name || "Unk
     ctx.push(
       `## Current Job Market (Sample)
 ${activeJobs
+  .slice(0, 5)
   .map(
     (j: any) =>
-      `- ${j.title} at ${j.company?.name || "Unknown"} (${j.company?.industry || "Unknown"})
-  Skills Required: ${(j.required_skills || []).join(", ") || "Not specified"}
-  Salary Range: ${j.salary_min && j.salary_max ? `Rs. ${j.salary_min} - Rs. ${j.salary_max}/month` : "Not disclosed"}
-  Location: ${j.location || "Remote"}
-  Type: ${j.job_type || "Full-time"}`,
+      `- ${j.title} at ${j.company?.name || "Unknown"} (${j.location || "Remote"})`,
   )
   .join("\n")}`,
     );
@@ -1152,20 +1136,48 @@ export const runJobSeekerAiFeature = createServerFn({ method: "POST" })
     const feature = getJobSeekerAiFeature(data.featureSlug);
     if (!feature) throw new Error("Unknown AI feature");
 
+    const t0 = Date.now();
+    // Fast path for trivial inputs (greetings, simple hello) - instant <5ms response
+    if (isTrivialInput(data.message)) {
+      const { data: profile } = await context.supabase
+        .from("profiles")
+        .select("full_name, headline, skills")
+        .eq("id", context.userId)
+        .maybeSingle();
+
+      const fastResult = getTrivialJobSeekerResponse(data.featureSlug, profile ? {
+        full_name: profile.full_name ?? undefined,
+        headline: profile.headline ?? undefined,
+        skills: Array.isArray(profile.skills) ? (profile.skills as string[]) : undefined,
+      } : undefined);
+      if (fastResult) {
+        console.log(`[JobSeeker AI Fast-Path] ${data.featureSlug} latency: ${Date.now() - t0}ms`);
+        return {
+          response: fastResult as SerializableJsonObject,
+          structured: fastResult as SerializableJsonObject,
+          featureTitle: feature.title,
+          contextUsed: ["trivial_fast_path"],
+        };
+      }
+    }
+
     const config = FEATURE_CONFIGS[data.featureSlug];
     if (!config) throw new Error("AI feature not configured");
 
+    const t1Start = Date.now();
     // Build context with only needed fields for this feature
     const userContext = await buildJobSeekerContext(
       context.supabase,
       context.userId,
       config.contextFields || [],
     );
+    const contextMs = Date.now() - t1Start;
 
+    const t2Start = Date.now();
     // Create comprehensive prompt
     const prompt = [
       `## Role & Context
-You are assisting a job seeker on Jagire.com, a Nepal-focused job platform.
+You are the "${feature.title}" tool on Jagire.com, a Nepal-focused job platform.
 
 ${userContext || "No profile data available yet."}`,
       `## User Request
@@ -1173,21 +1185,27 @@ ${data.message}`,
       ``,
       `## Instructions
 1. Use the provided context to personalize your response
-2. Be specific and actionable
+2. Be specific, actionable, concise, and direct (2-3 high-impact items per list, avoid fluff)
 3. Consider the Nepali job market
 4. Use NPR (Rs.) for all salary figures
-5. Provide realistic, practical advice
-6. Format response as valid JSON per the schema
-7. INTENT AWARENESS: If the user request is a casual greeting (e.g. "hi", "hello"), introduce this tool's capabilities in the main response fields and guide the user on how to use it effectively with their specific career target.`,
+5. Format response as valid JSON per the schema
+6. CAPABILITY AWARENESS: If the user asks something outside this tool's scope, briefly explain what this tool does.
+7. NATURAL LANGUAGE: Respond dynamically and helpfully to the user's input.`,
     ].join("\n\n");
+    const promptMs = Date.now() - t2Start;
 
     try {
+      const t3Start = Date.now();
       const result = await aiGenerateJsonValidated(
         prompt,
         config.systemPrompt,
         config.schema,
-        "general",
+        data.featureSlug,
       );
+      const aiAndValMs = Date.now() - t3Start;
+      const totalMs = Date.now() - t0;
+
+      console.log(`[JobSeeker AI: ${data.featureSlug}] Timing -> Context: ${contextMs}ms, Prompt: ${promptMs}ms, AI+Validation: ${aiAndValMs}ms | Total: ${totalMs}ms`);
 
       return {
         response: result as SerializableJsonObject,

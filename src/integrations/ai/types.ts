@@ -1,5 +1,6 @@
 export type AITask =
   | "resume-analysis"
+  | "resume-optimizer"
   | "ats-score"
   | "grammar"
   | "resume-improvement"
@@ -25,7 +26,8 @@ export type AITask =
   | "career-assistant"
   | "reasoning"
   | "fast"
-  | "general";
+  | "general"
+  | (string & {});
 
 export interface AIRequest {
   prompt: string;
@@ -34,6 +36,7 @@ export interface AIRequest {
   task?: AITask;
   json?: boolean;
   responseSchema?: Record<string, unknown>;
+  maxTokens?: number;
 }
 
 export interface AIResponse {
