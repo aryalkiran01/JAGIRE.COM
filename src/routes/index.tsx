@@ -175,18 +175,21 @@ function Landing() {
                 e.preventDefault();
                 window.location.href = `/jobs?q=${encodeURIComponent(q)}`;
               }}
-              className="glass mx-auto max-w-2xl rounded-2xl p-2 flex items-center gap-2 shadow-glow animate-scale-in"
+              className="glass mx-auto max-w-2xl rounded-2xl p-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shadow-glow animate-scale-in"
             >
-              <div className="flex items-center flex-1 gap-2 px-3">
-                <Search className="h-5 w-5 text-muted-foreground" />
+              <div className="flex items-center flex-1 gap-2 px-3 py-1 sm:py-0 min-w-0">
+                <Search className="h-5 w-5 text-muted-foreground shrink-0" />
                 <Input
                   placeholder="Job title, skill, or company"
                   value={q}
                   onChange={(e) => setQ(e.target.value)}
-                  className="border-0 bg-transparent focus-visible:ring-0 shadow-none text-base"
+                  className="border-0 bg-transparent focus-visible:ring-0 shadow-none text-base w-full min-w-0"
                 />
               </div>
-              <Button type="submit" className="gradient-brand text-primary-foreground">
+              <Button
+                type="submit"
+                className="gradient-brand text-primary-foreground shrink-0 h-10 px-6"
+              >
                 Search <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </form>
@@ -206,7 +209,7 @@ function Landing() {
               )}
             </div>
 
-            <div className="mt-16 grid grid-cols-3 gap-8 max-w-xl mx-auto">
+            <div className="mt-16 grid grid-cols-3 gap-3 sm:gap-8 max-w-xl mx-auto">
               <StatCard value={stats?.jobs ?? 0} label="Active jobs" icon={Briefcase} />
               <StatCard value={stats?.companies ?? 0} label="Companies" icon={Building2} />
               <StatCard value={stats?.users ?? 0} label="Candidates" icon={Users} />

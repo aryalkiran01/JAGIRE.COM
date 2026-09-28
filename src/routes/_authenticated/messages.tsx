@@ -251,7 +251,9 @@ function Messages() {
         qc.setQueryData(["msgs", chatId], (old: Message[] | undefined) => {
           if (!old) return old;
           return old.map((m) =>
-            m.sender_id !== user.id ? { ...m, is_read: true, read_at: new Date().toISOString() } : m,
+            m.sender_id !== user.id
+              ? { ...m, is_read: true, read_at: new Date().toISOString() }
+              : m,
           );
         });
 

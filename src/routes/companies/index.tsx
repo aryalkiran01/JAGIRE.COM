@@ -107,20 +107,20 @@ function Companies() {
         {/* Search & filters */}
         <div className="glass rounded-2xl p-4 mb-8 space-y-4">
           <div className="flex flex-col md:flex-row gap-3">
-            <div className="flex items-center gap-2 flex-1 rounded-lg border bg-background px-3">
-              <Search className="h-4 w-4 text-muted-foreground" />
+            <div className="flex items-center gap-2 flex-1 rounded-lg border bg-background px-3 min-w-0">
+              <Search className="h-4 w-4 text-muted-foreground shrink-0" />
               <Input
                 placeholder="Search companies by name, industry, or keyword…"
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
-                className="border-0 bg-transparent focus-visible:ring-0 shadow-none"
+                className="border-0 bg-transparent focus-visible:ring-0 shadow-none w-full min-w-0"
               />
             </div>
-            <div className="flex gap-3">
+            <div className="flex flex-wrap sm:flex-nowrap gap-3">
               <select
                 value={industry}
                 onChange={(e) => setIndustry(e.target.value)}
-                className="rounded-lg border bg-background px-3 py-2 text-sm"
+                className="rounded-lg border bg-background px-3 py-2 text-sm flex-1 sm:flex-initial"
               >
                 {industries.map((ind) => (
                   <option key={ind} value={ind}>
@@ -131,7 +131,7 @@ function Companies() {
               <select
                 value={sort}
                 onChange={(e) => setSort(e.target.value)}
-                className="rounded-lg border bg-background px-3 py-2 text-sm"
+                className="rounded-lg border bg-background px-3 py-2 text-sm flex-1 sm:flex-initial"
               >
                 <option value="recent">Most recent</option>
                 <option value="name">Name (A-Z)</option>

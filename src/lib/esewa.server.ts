@@ -29,9 +29,11 @@ export function getEsewaConfig() {
   }
 
   const effectiveSecret = secret || PUBLIC_SANDBOX_SECRET;
-  const esewaUrl = process.env.ESEWA_URL || (isProd 
-    ? "https://epay.esewa.com.np/api/epay/main/v2/form" 
-    : "https://rc-epay.esewa.com.np/api/epay/main/v2/form");
+  const esewaUrl =
+    process.env.ESEWA_URL ||
+    (isProd
+      ? "https://epay.esewa.com.np/api/epay/main/v2/form"
+      : "https://rc-epay.esewa.com.np/api/epay/main/v2/form");
 
   return { merchantCode: merchantCode || "EPAYTEST", secret: effectiveSecret, esewaUrl };
 }

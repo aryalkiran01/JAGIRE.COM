@@ -14,12 +14,16 @@ const PUBLIC_SANDBOX_SECRET = "8gBm/:&EnhH.1/q";
 
 const ESEWA_STATUS_URL =
   Deno.env.get("ESEWA_STATUS_URL") ||
-  (IS_PROD ? "https://epay.esewa.com.np/api/epay/status/v2" : "https://rc-epay.esewa.com.np/api/epay/status/v2");
+  (IS_PROD
+    ? "https://epay.esewa.com.np/api/epay/status/v2"
+    : "https://rc-epay.esewa.com.np/api/epay/status/v2");
 const MERCHANT_CODE = Deno.env.get("ESEWA_MERCHANT_CODE") || (IS_PROD ? "" : "EPAYTEST");
 const ESEWA_SECRET = Deno.env.get("ESEWA_SECRET_KEY") || (IS_PROD ? "" : PUBLIC_SANDBOX_SECRET);
 
 if (IS_PROD && (!ESEWA_SECRET || ESEWA_SECRET === PUBLIC_SANDBOX_SECRET)) {
-  console.error("[CRITICAL_SECURITY_ALERT] ESEWA_SECRET_KEY is not configured or using public sandbox default in production!");
+  console.error(
+    "[CRITICAL_SECURITY_ALERT] ESEWA_SECRET_KEY is not configured or using public sandbox default in production!",
+  );
 }
 
 const PLAN_PRICES: Record<string, number> = {

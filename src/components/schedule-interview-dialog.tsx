@@ -174,7 +174,9 @@ export function ScheduleInterviewDialog({
     },
     onSuccess: (r) => {
       if (r.emailSent) {
-        toast.success("Interview scheduled successfully. The candidate has been notified by email.");
+        toast.success(
+          "Interview scheduled successfully. The candidate has been notified by email.",
+        );
       } else if (r.emailRestricted) {
         toast.warning(
           "Interview scheduled successfully! The candidate was not emailed because email delivery is currently restricted by the Resend testing configuration. You can still share the meeting link with the candidate manually.",

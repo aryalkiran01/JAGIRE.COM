@@ -66,7 +66,7 @@ function JobsPage() {
 
         <Card className="mb-6 shadow-card-soft">
           <CardContent className="p-4">
-            <div className="grid md:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -105,7 +105,7 @@ function JobsPage() {
             {jobs.map((job: any) => (
               <Link key={job.id} to="/jobs/$jobId" params={{ jobId: job.id }}>
                 <Card className="hover:shadow-glow transition-all">
-                  <CardContent className="p-6 flex gap-4">
+                  <CardContent className="p-4 sm:p-6 flex flex-col sm:flex-row gap-4">
                     <div className="h-14 w-14 rounded-lg bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
                       {job.company?.logo_url ? (
                         <img

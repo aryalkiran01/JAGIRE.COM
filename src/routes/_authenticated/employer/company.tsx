@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
+import { z } from "zod";
 import {
   Building2,
   Globe,
@@ -18,24 +19,14 @@ import {
   BriefcaseBusiness,
   Users,
   Image as ImageIcon,
-  FileText,
   Sparkles,
   Save,
   ArrowLeft,
-  CheckCircle2,
   Plus,
   Trash2,
   AlertTriangle,
   ExternalLink,
   ShieldCheck,
-  Calendar,
-  Layers,
-  Linkedin,
-  Twitter,
-  Facebook,
-  Instagram,
-  Mail,
-  Award,
   TrendingUp,
 } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
@@ -57,17 +48,17 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { type WorkModel, normalizeWorkModel, slugify } from "@/lib/company-utils";
 
-export const Route = createFileRoute("/_authenticated/employer/company")({
-  component: CompanyForm,
+const companySearchSchema = z.object({
+  companyId: z.string().optional(),
+  mode: z.enum(["create", "edit"]).optional(),
 });
 
-function slugify(s: string) {
-  return s
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
-}
+export const Route = createFileRoute("/_authenticated/employer/company")({
+  validateSearch: companySearchSchema,
+  component: CompanyForm,
+});
 
 const emptyForm = {
   name: "",
@@ -80,7 +71,7 @@ const emptyForm = {
   logo_url: "",
   banner_url: "",
   founded_year: "",
-  work_model: "Hybrid",
+  work_model: "hybrid" as WorkModel,
   linkedin_url: "",
   twitter_url: "",
   facebook_url: "",
@@ -95,16 +86,31 @@ const emptyForm = {
 };
 
 function CompanyForm() {
+  const search = Route.useSearch();
   const { user } = useAuth();
   const qc = useQueryClient();
   const syncCI = useServerFn(syncCompanyIntelligence);
-  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
+
+  // If search.mode === "create", start explicitly in create mode (null).
+  // Otherwise, use search.companyId if provided.
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(
+    search.mode === "create" ? null : (search.companyId ?? null),
+  );
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [companyToDelete, setCompanyToDelete] = useState<string | null>(null);
   const [deleteJobCount, setDeleteJobCount] = useState(0);
 
+  // Synchronize when URL search params change
+  useEffect(() => {
+    if (search.mode === "create") {
+      setSelectedCompanyId(null);
+    } else if (search.companyId) {
+      setSelectedCompanyId(search.companyId);
+    }
+  }, [search.companyId, search.mode]);
+
   // Fetch all companies owned by the user
-  const { data: companies } = useQuery({
+  const { data: companies = [] } = useQuery({
     queryKey: ["my-companies", user?.id],
     enabled: !!user,
     queryFn: async () => {
@@ -119,13 +125,17 @@ function CompanyForm() {
     },
   });
 
-  // Get the selected company
-  const selectedCompany = companies?.find((c) => c.id === selectedCompanyId);
+  // Get the selected company if in Edit mode
+  const selectedCompany = selectedCompanyId
+    ? companies.find((c) => c.id === selectedCompanyId)
+    : undefined;
+
+  const isEditMode = Boolean(selectedCompanyId && selectedCompany);
 
   const [form, setForm] = useState<any>(emptyForm);
 
   useEffect(() => {
-    if (selectedCompany) {
+    if (isEditMode && selectedCompany) {
       // Format array fields as comma-separated strings
       const benStr = Array.isArray(selectedCompany.benefits)
         ? (selectedCompany.benefits as string[]).join(", ")
@@ -156,7 +166,7 @@ function CompanyForm() {
         logo_url: selectedCompany.logo_url ?? "",
         banner_url: selectedCompany.banner_url ?? "",
         founded_year: selectedCompany.founded_year ? String(selectedCompany.founded_year) : "",
-        work_model: selectedCompany.work_model ?? "Hybrid",
+        work_model: normalizeWorkModel(selectedCompany.work_model),
         linkedin_url: selectedCompany.linkedin_url ?? "",
         twitter_url: selectedCompany.twitter_url ?? "",
         facebook_url: selectedCompany.facebook_url ?? "",
@@ -169,34 +179,33 @@ function CompanyForm() {
         technologies: techStr,
         locations: locStr,
       });
-    } else if (companies && companies.length === 0) {
+    } else {
+      // In Create mode, ensure the form has fresh empty defaults
       setForm(emptyForm);
     }
-  }, [selectedCompany, companies]);
+  }, [selectedCompany, isEditMode]);
 
-  // Set initial selected company when companies load
-  useEffect(() => {
-    if (companies && companies.length > 0 && !selectedCompanyId) {
-      setSelectedCompanyId(companies[0].id);
-    }
-  }, [companies, selectedCompanyId]);
-
-  const updateField = (field: string, value: string) => {
+  const updateField = (field: string, value: any) => {
     setForm((prev: any) => ({
       ...prev,
       [field]: value,
     }));
   };
 
-  const resetForm = () => {
-    setForm(emptyForm);
+  const switchToCreateMode = () => {
     setSelectedCompanyId(null);
+    setForm(emptyForm);
   };
 
   const upsert = useMutation({
     mutationFn: async () => {
       if (!user) {
-        throw new Error("You must be signed in");
+        throw new Error("You must be signed in to manage companies.");
+      }
+
+      const trimmedName = form.name?.trim();
+      if (!trimmedName) {
+        throw new Error("Company name is required.");
       }
 
       const parsedBenefits = form.benefits
@@ -220,72 +229,108 @@ function CompanyForm() {
             .filter(Boolean)
         : null;
 
+      const canonicalWorkModel = normalizeWorkModel(form.work_model);
+
       const editable: any = {
-        name: form.name.trim(),
-        tagline: form.tagline.trim() || null,
-        description: form.description.trim() || null,
-        website: form.website.trim() || null,
-        industry: form.industry.trim() || null,
-        size: form.size.trim() || null,
-        company_size: form.size.trim() || null,
-        headquarters: form.headquarters.trim() || null,
-        location: form.headquarters.trim() || null,
-        logo_url: form.logo_url.trim() || null,
-        banner_url: form.banner_url.trim() || null,
+        name: trimmedName,
+        tagline: form.tagline?.trim() || null,
+        description: form.description?.trim() || null,
+        website: form.website?.trim() || null,
+        industry: form.industry?.trim() || null,
+        size: form.size?.trim() || null,
+        company_size: form.size?.trim() || null,
+        headquarters: form.headquarters?.trim() || null,
+        location: form.headquarters?.trim() || null,
+        logo_url: form.logo_url?.trim() || null,
+        banner_url: form.banner_url?.trim() || null,
         founded_year: form.founded_year ? parseInt(form.founded_year, 10) || null : null,
-        work_model: form.work_model || "Hybrid",
-        linkedin_url: form.linkedin_url.trim() || null,
-        twitter_url: form.twitter_url.trim() || null,
-        facebook_url: form.facebook_url.trim() || null,
-        instagram_url: form.instagram_url.trim() || null,
-        hr_contact_name: form.hr_contact_name.trim() || null,
-        hr_contact_email: form.hr_contact_email.trim() || null,
-        mission: form.mission.trim() || null,
-        vision: form.vision.trim() || null,
+        work_model: canonicalWorkModel,
+        linkedin_url: form.linkedin_url?.trim() || null,
+        twitter_url: form.twitter_url?.trim() || null,
+        facebook_url: form.facebook_url?.trim() || null,
+        instagram_url: form.instagram_url?.trim() || null,
+        hr_contact_name: form.hr_contact_name?.trim() || null,
+        hr_contact_email: form.hr_contact_email?.trim() || null,
+        mission: form.mission?.trim() || null,
+        vision: form.vision?.trim() || null,
         benefits: parsedBenefits,
         technologies: parsedTech,
         locations: parsedLocations,
       };
 
-      if (selectedCompany) {
-        // Update existing company
-        const nextSlug = slugify(form.name) || selectedCompany.slug;
+      const baseSlug = slugify(trimmedName) || `company-${Date.now()}`;
 
-        const { error } = await supabase
+      if (isEditMode && selectedCompany) {
+        // Explicit UPDATE on this specific existing company only
+        const nextSlug = slugify(trimmedName) || selectedCompany.slug || baseSlug;
+
+        const { data: updated, error } = await supabase
           .from("companies")
           .update({
             ...editable,
             slug: nextSlug,
           })
-          .eq("id", selectedCompany.id);
+          .eq("id", selectedCompany.id)
+          .select("*")
+          .single();
 
         if (error) throw error;
+        return { id: selectedCompany.id, company: updated, isNew: false };
       } else {
-        // Create new company
+        // Explicit INSERT of a brand new company record
+        let targetSlug = baseSlug;
+        const { data: existingWithSlug } = await supabase
+          .from("companies")
+          .select("id")
+          .eq("slug", targetSlug)
+          .maybeSingle();
+
+        if (existingWithSlug) {
+          targetSlug = `${baseSlug}-${Math.random().toString(36).substring(2, 7)}`;
+        }
+
         const { data: inserted, error } = await supabase
           .from("companies")
           .insert({
             ...editable,
             owner_id: user.id,
-            slug: slugify(form.name) || `co-${Date.now()}`,
+            slug: targetSlug,
           })
-          .select("id")
+          .select("*")
           .single();
 
         if (error) throw error;
-
-        setSelectedCompanyId(inserted.id);
+        return { id: inserted.id, company: inserted, isNew: true };
       }
     },
 
-    onSuccess: async () => {
-      toast.success(selectedCompany ? "Company profile updated" : "Company created successfully");
+    onSuccess: async (res) => {
+      toast.success(res?.isNew ? "Company created successfully" : "Company profile updated");
 
-      await qc.invalidateQueries({
-        queryKey: ["my-companies", user?.id],
-      });
+      if (res?.company && user?.id) {
+        qc.setQueryData(["my-companies", user.id], (old: any[] | undefined) => {
+          const list = Array.isArray(old) ? [...old] : [];
+          const idx = list.findIndex((c) => c.id === res.company.id);
+          if (idx >= 0) {
+            list[idx] = res.company;
+            return list;
+          }
+          return [res.company, ...list];
+        });
+      }
 
-      const cid = selectedCompany?.id || selectedCompanyId;
+      if (res?.id) {
+        setSelectedCompanyId(res.id);
+      }
+
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["my-companies"] }),
+        qc.invalidateQueries({ queryKey: ["companies"] }),
+        qc.invalidateQueries({ queryKey: ["companies-list"] }),
+        qc.invalidateQueries({ queryKey: ["employer-dashboard"] }),
+      ]);
+
+      const cid = res?.id || selectedCompany?.id || selectedCompanyId;
       if (cid) {
         try {
           await syncCI({ data: { companyId: cid } });
@@ -297,7 +342,34 @@ function CompanyForm() {
     },
 
     onError: (e: any) => {
-      toast.error(e.message || "Failed to save company");
+      console.error("Company save error:", e);
+      let msg = "Failed to save company profile. Please check your input and try again.";
+      if (e?.message) {
+        if (
+          e.message.includes("row-level security") ||
+          e.message.includes("RLS") ||
+          e.code === "42501"
+        ) {
+          msg = "Permission error: Please ensure you are signed in with an employer account.";
+        } else if (
+          e.message.includes("duplicate key") ||
+          e.message.includes("unique") ||
+          e.code === "23505"
+        ) {
+          msg =
+            "A company with this name or identifier already exists. Please choose a different name.";
+        } else if (e.message.includes("work_model") || e.message.includes("check constraint")) {
+          msg = "Invalid work model selected. Please choose Hybrid, Remote, or On-site.";
+        } else if (
+          typeof e.message === "string" &&
+          !e.message.includes("Database") &&
+          !e.message.includes("PGRST") &&
+          !e.message.includes("syntax")
+        ) {
+          msg = e.message;
+        }
+      }
+      toast.error(msg);
     },
   });
 
@@ -376,7 +448,7 @@ function CompanyForm() {
       setDeleteJobCount(0);
 
       if (selectedCompanyId === companyToDelete) {
-        resetForm();
+        switchToCreateMode();
       }
 
       await qc.invalidateQueries({ queryKey: ["my-companies", user?.id] });
@@ -419,7 +491,9 @@ function CompanyForm() {
               Employer Dashboard
             </Link>
             <span>/</span>
-            <span className="text-foreground font-medium">Company Profile</span>
+            <span className="text-foreground font-medium">
+              {isEditMode ? `Edit: ${selectedCompany?.name}` : "Create Company Profile"}
+            </span>
           </div>
 
           <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-5">
@@ -428,77 +502,104 @@ function CompanyForm() {
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
                   <Building2 className="h-5 w-5" />
                 </div>
-                <span className="text-sm font-medium text-primary">Company Setup & Management</span>
+                <span className="text-sm font-medium text-primary">
+                  {isEditMode ? "Company Management" : "New Company Setup"}
+                </span>
               </div>
 
               <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-foreground">
-                {selectedCompany ? "Edit Company Profile" : "Create Company Profile"}
+                {isEditMode ? `Edit ${selectedCompany?.name}` : "Create New Company"}
               </h1>
 
               <p className="mt-1.5 max-w-2xl text-muted-foreground text-sm">
-                Manage your public employer brand, company details, workplace perks, and contact
-                information.
+                {isEditMode
+                  ? "Update your company information, culture, workplace perks, and candidate contact details."
+                  : "Fill in the details below to create a new company profile on Jagire."}
               </p>
             </div>
 
-            {selectedCompany && (
-              <div className="flex items-center gap-2.5 flex-wrap">
-                <Button asChild variant="outline" size="sm" className="h-9 gap-1.5 shadow-sm">
-                  <Link to="/employer/intelligence" search={{ companyId: selectedCompany.id }}>
-                    <TrendingUp className="h-3.5 w-3.5 text-primary" />
-                    <span>360° Intelligence</span>
-                  </Link>
+            <div className="flex items-center gap-2.5 flex-wrap">
+              {isEditMode && selectedCompany && (
+                <>
+                  <Button asChild variant="outline" size="sm" className="h-9 gap-1.5 shadow-sm">
+                    <Link to="/employer/intelligence" search={{ companyId: selectedCompany.id }}>
+                      <TrendingUp className="h-3.5 w-3.5 text-primary" />
+                      <span>360° Intelligence</span>
+                    </Link>
+                  </Button>
+                  <Button asChild variant="outline" size="sm" className="h-9 gap-1.5 shadow-sm">
+                    <Link to="/companies/$slug" params={{ slug: selectedCompany.slug }}>
+                      <span>View Public Profile</span>
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </Link>
+                  </Button>
+                </>
+              )}
+
+              {isEditMode && (
+                <Button
+                  onClick={switchToCreateMode}
+                  variant="secondary"
+                  size="sm"
+                  className="h-9 gap-1.5 shadow-sm"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  <span>+ Create Another Company</span>
                 </Button>
-                <Button asChild variant="outline" size="sm" className="h-9 gap-1.5 shadow-sm">
-                  <Link to="/companies/$slug" params={{ slug: selectedCompany.slug }}>
-                    <span>View Public Profile</span>
-                    <ExternalLink className="h-3.5 w-3.5" />
-                  </Link>
-                </Button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
       </div>
 
       {/* Main Container */}
       <main className="container mx-auto max-w-5xl px-4 py-8">
-        {/* Company selector & verification banner */}
-        {companies && companies.length > 0 && (
+        {/* Company selector card */}
+        {companies.length > 0 && (
           <Card className="mb-6 border-border/60 shadow-sm glass">
             <CardContent className="p-4 flex flex-col sm:flex-row gap-4 sm:items-center justify-between">
-              <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
-                <Label className="text-sm font-medium shrink-0">Select Company:</Label>
+              <div className="flex flex-col sm:flex-row gap-3 sm:items-center flex-1">
+                <Label className="text-sm font-medium shrink-0">Managing Company:</Label>
 
                 <Select
-                  value={selectedCompanyId || ""}
+                  value={selectedCompanyId || "new"}
                   onValueChange={(value) => {
                     if (value === "new") {
-                      resetForm();
+                      switchToCreateMode();
                     } else {
                       setSelectedCompanyId(value);
                     }
                   }}
                 >
-                  <SelectTrigger className="w-full sm:w-[280px]">
+                  <SelectTrigger className="w-full sm:w-[320px]">
                     <SelectValue placeholder="Select a company" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="new">
+                      <span className="flex items-center gap-2 font-semibold text-primary">
+                        <Plus className="h-4 w-4" /> + Create new company
+                      </span>
+                    </SelectItem>
                     {companies.map((company) => (
                       <SelectItem key={company.id} value={company.id}>
                         {company.name}
                       </SelectItem>
                     ))}
-                    <SelectItem value="new">
-                      <span className="flex items-center gap-2">
-                        <Plus className="h-4 w-4" /> Create new company
-                      </span>
-                    </SelectItem>
                   </SelectContent>
                 </Select>
+
+                {isEditMode ? (
+                  <Badge variant="outline" className="text-xs bg-muted/40">
+                    Editing Mode
+                  </Badge>
+                ) : (
+                  <Badge className="text-xs bg-primary/10 text-primary border-primary/20">
+                    New Company Mode
+                  </Badge>
+                )}
               </div>
 
-              {selectedCompany && (
+              {isEditMode && selectedCompany && (
                 <div className="flex items-center gap-3">
                   {isVerified ? (
                     <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center gap-1 text-xs">
@@ -655,13 +756,13 @@ function CompanyForm() {
                     </Label>
                     <select
                       id="work_model"
-                      value={form.work_model}
+                      value={normalizeWorkModel(form.work_model)}
                       onChange={(e) => updateField("work_model", e.target.value)}
                       className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                     >
-                      <option value="Hybrid">Hybrid</option>
-                      <option value="Remote">Remote</option>
-                      <option value="On-site">On-site</option>
+                      <option value="hybrid">Hybrid</option>
+                      <option value="remote">Remote</option>
+                      <option value="on-site">On-site</option>
                     </select>
                   </div>
 
@@ -929,29 +1030,33 @@ function CompanyForm() {
                     <Save className="h-5 w-5" />
                   </div>
                   <div>
-                    <h4 className="font-semibold text-sm">Save Company Profile</h4>
+                    <h4 className="font-semibold text-sm">
+                      {isEditMode ? "Save Changes" : "Create Company Profile"}
+                    </h4>
                     <p className="text-xs text-muted-foreground">
-                      Changes will immediately reflect on your public company page.
+                      {isEditMode
+                        ? `Updating profile for ${selectedCompany?.name}`
+                        : "Creates a new company record associated with your account"}
                     </p>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2.5">
-                  {selectedCompany && (
-                    <Button variant="outline" onClick={resetForm} className="h-10">
+                  {isEditMode && (
+                    <Button variant="outline" onClick={switchToCreateMode} className="h-10">
                       <Plus className="mr-1.5 h-4 w-4" />
-                      New Company
+                      Create New Company
                     </Button>
                   )}
                   <Button
                     onClick={() => upsert.mutate()}
-                    disabled={!form.name.trim() || upsert.isPending}
+                    disabled={!form.name?.trim() || upsert.isPending}
                     className="h-10 gradient-brand text-primary-foreground font-semibold px-6 shadow-sm"
                   >
                     {upsert.isPending
                       ? "Saving…"
-                      : selectedCompany
-                        ? "Update Profile"
+                      : isEditMode
+                        ? "Update Company"
                         : "Create Company"}
                   </Button>
                 </div>
@@ -988,7 +1093,7 @@ function CompanyForm() {
                   </div>
                   <div className="min-w-0">
                     <h4 className="font-bold text-base text-foreground truncate">
-                      {form.name || "Company Name"}
+                      {form.name || (isEditMode ? selectedCompany?.name : "New Company Name")}
                     </h4>
                     <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
                       {form.tagline || "Your company tagline will appear here"}
@@ -1023,7 +1128,7 @@ function CompanyForm() {
                   )}
                 </div>
 
-                {selectedCompany?.slug && (
+                {isEditMode && selectedCompany?.slug && (
                   <Button asChild variant="outline" size="sm" className="w-full text-xs h-8 mt-2">
                     <Link to="/companies/$slug" params={{ slug: selectedCompany.slug }}>
                       <span>View Live Public Page</span>

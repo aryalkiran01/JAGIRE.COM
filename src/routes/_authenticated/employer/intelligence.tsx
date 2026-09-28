@@ -139,7 +139,9 @@ function EmployerCompanyIntelligencePage() {
     setIsSyncing(true);
     try {
       await syncCI({ data: { companyId: company.id } });
-      await qc.invalidateQueries({ queryKey: ["employer-company-intelligence", selectedCompanyId] });
+      await qc.invalidateQueries({
+        queryKey: ["employer-company-intelligence", selectedCompanyId],
+      });
       toast.success("360° Company intelligence synchronized successfully!");
     } catch (err: any) {
       toast.error(err.message || "Failed to sync company intelligence");

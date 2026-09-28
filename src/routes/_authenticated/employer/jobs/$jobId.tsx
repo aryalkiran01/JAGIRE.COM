@@ -363,10 +363,30 @@ function JobDetail() {
           <div className="flex flex-wrap gap-1.5">
             {[
               { id: "all", label: "All", count: applications?.length ?? 0 },
-              { id: "applied", label: "Applied", count: applications?.filter((a) => a.status === "applied" || a.status === "viewed").length ?? 0 },
-              { id: "shortlisted", label: "Shortlisted", count: applications?.filter((a) => a.status === "shortlisted").length ?? 0 },
-              { id: "selected", label: "Offer / Hired", count: applications?.filter((a) => a.status === "selected" || a.status === "offer").length ?? 0 },
-              { id: "rejected", label: "Rejected", count: applications?.filter((a) => a.status === "rejected").length ?? 0 },
+              {
+                id: "applied",
+                label: "Applied",
+                count:
+                  applications?.filter((a) => a.status === "applied" || a.status === "viewed")
+                    .length ?? 0,
+              },
+              {
+                id: "shortlisted",
+                label: "Shortlisted",
+                count: applications?.filter((a) => a.status === "shortlisted").length ?? 0,
+              },
+              {
+                id: "selected",
+                label: "Offer / Hired",
+                count:
+                  applications?.filter((a) => a.status === "selected" || a.status === "offer")
+                    .length ?? 0,
+              },
+              {
+                id: "rejected",
+                label: "Rejected",
+                count: applications?.filter((a) => a.status === "rejected").length ?? 0,
+              },
             ].map((st) => (
               <Button
                 key={st.id}
@@ -391,171 +411,175 @@ function JobDetail() {
           {applications
             ?.filter((app) => {
               if (stageFilter === "all") return true;
-              if (stageFilter === "applied") return app.status === "applied" || app.status === "viewed";
-              if (stageFilter === "selected") return app.status === "selected" || app.status === "offer";
+              if (stageFilter === "applied")
+                return app.status === "applied" || app.status === "viewed";
+              if (stageFilter === "selected")
+                return app.status === "selected" || app.status === "offer";
               return app.status === stageFilter;
             })
             .map((app) => (
-            <Card key={app.id} className="hover:shadow-md transition-shadow">
-              <CardContent className="p-4 space-y-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-start gap-3 flex-1 min-w-0">
-                    <Avatar className="h-12 w-12 shrink-0">
-                      <AvatarImage src={app.profile?.avatar_url ?? undefined} />
-                      <AvatarFallback className="gradient-brand text-primary-foreground text-sm">
-                        {getInitials(app.profile?.full_name)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-semibold">{app.profile?.full_name ?? "Unknown"}</span>
-                        <Badge
-                          className={`${STATUS_BADGE[app.status] ?? "bg-gray-100 text-gray-700"}`}
-                        >
-                          {app.status}
-                        </Badge>
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-0.5">
-                        {app.profile?.email ||
-                          app.resume?.parsed_data?.contact?.email ||
-                          app.resume?.parsed_data?.email ||
-                          "No email"} · Applied{" "}
-                        {new Date(app.created_at).toLocaleDateString()}
-                      </div>
-                      {app.profile?.headline && (
-                        <div className="text-sm text-muted-foreground mt-1">
-                          {app.profile.headline}
+              <Card key={app.id} className="hover:shadow-md transition-shadow">
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3 flex-1 min-w-0">
+                      <Avatar className="h-12 w-12 shrink-0">
+                        <AvatarImage src={app.profile?.avatar_url ?? undefined} />
+                        <AvatarFallback className="gradient-brand text-primary-foreground text-sm">
+                          {getInitials(app.profile?.full_name)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-semibold">
+                            {app.profile?.full_name ?? "Unknown"}
+                          </span>
+                          <Badge
+                            className={`${STATUS_BADGE[app.status] ?? "bg-gray-100 text-gray-700"}`}
+                          >
+                            {app.status}
+                          </Badge>
                         </div>
-                      )}
+                        <div className="text-xs text-muted-foreground mt-0.5">
+                          {app.profile?.email ||
+                            app.resume?.parsed_data?.contact?.email ||
+                            app.resume?.parsed_data?.email ||
+                            "No email"}{" "}
+                          · Applied {new Date(app.created_at).toLocaleDateString()}
+                        </div>
+                        {app.profile?.headline && (
+                          <div className="text-sm text-muted-foreground mt-1">
+                            {app.profile.headline}
+                          </div>
+                        )}
 
-                      {/* Resume Info */}
-                      {app.resume && (
-                        <div className="flex items-center gap-2 mt-2 text-xs">
-                          <FileText className="h-3.5 w-3.5 text-blue-500" />
-                          <span className="font-medium">{app.resume.file_name || "Resume"}</span>
-                          {app.resume.overall_score != null && (
-                            <Badge variant="outline" className="text-green-600">
-                              Score: {app.resume.overall_score}
-                            </Badge>
-                          )}
-                        </div>
-                      )}
+                        {/* Resume Info */}
+                        {app.resume && (
+                          <div className="flex items-center gap-2 mt-2 text-xs">
+                            <FileText className="h-3.5 w-3.5 text-blue-500" />
+                            <span className="font-medium">{app.resume.file_name || "Resume"}</span>
+                            {app.resume.overall_score != null && (
+                              <Badge variant="outline" className="text-green-600">
+                                Score: {app.resume.overall_score}
+                              </Badge>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Action Buttons */}
-                <div className="pt-3 border-t space-y-2">
-                  {/* Primary actions */}
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="gap-1.5"
-                      onClick={() => {
-                        setViewingApplicant(app);
-                        setActiveTab("profile");
-                      }}
-                    >
-                      <Eye className="h-3.5 w-3.5" /> Profile
-                    </Button>
-
-                    {app.resume && (
-                      <>
-                        <Button
-                          size="sm"
-                          className="gap-1.5 gradient-brand text-primary-foreground"
-                          onClick={() => openResume(app)}
-                          disabled={loadingResume}
-                        >
-                          {loadingResume ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          ) : (
-                            <FileText className="h-3.5 w-3.5" />
-                          )}
-                          View Resume
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="gap-1.5"
-                          onClick={() => downloadResume(app)}
-                        >
-                          <Download className="h-3.5 w-3.5" /> Download
-                        </Button>
-                      </>
-                    )}
-
-                    {app.cover_letter && (
+                  {/* Action Buttons */}
+                  <div className="pt-3 border-t space-y-2">
+                    {/* Primary actions */}
+                    <div className="flex flex-wrap gap-2">
                       <Button
                         size="sm"
                         variant="outline"
                         className="gap-1.5"
                         onClick={() => {
                           setViewingApplicant(app);
-                          setActiveTab("cover");
+                          setActiveTab("profile");
                         }}
                       >
-                        <Mail className="h-3.5 w-3.5" /> Cover Letter
+                        <Eye className="h-3.5 w-3.5" /> Profile
                       </Button>
+
+                      {app.resume && (
+                        <>
+                          <Button
+                            size="sm"
+                            className="gap-1.5 gradient-brand text-primary-foreground"
+                            onClick={() => openResume(app)}
+                            disabled={loadingResume}
+                          >
+                            {loadingResume ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <FileText className="h-3.5 w-3.5" />
+                            )}
+                            View Resume
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="gap-1.5"
+                            onClick={() => downloadResume(app)}
+                          >
+                            <Download className="h-3.5 w-3.5" /> Download
+                          </Button>
+                        </>
+                      )}
+
+                      {app.cover_letter && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-1.5"
+                          onClick={() => {
+                            setViewingApplicant(app);
+                            setActiveTab("cover");
+                          }}
+                        >
+                          <Mail className="h-3.5 w-3.5" /> Cover Letter
+                        </Button>
+                      )}
+                    </div>
+
+                    {/* Secondary actions */}
+                    {app.status !== "rejected" && app.status !== "selected" && (
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={submitting}
+                          onClick={() => doAction(app, "shortlisted", "Applicant shortlisted")}
+                        >
+                          <Star className="h-3.5 w-3.5 mr-1" /> Shortlist
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={submitting}
+                          onClick={() => doAction(app, "selected", "Applicant approved")}
+                        >
+                          <Check className="h-3.5 w-3.5 mr-1" /> Approve
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={submitting}
+                          onClick={() => doAction(app, "offer", "Offer sent")}
+                        >
+                          <FileText className="h-3.5 w-3.5 mr-1" /> Offer
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-destructive border-destructive/30 hover:bg-destructive/10"
+                          disabled={submitting}
+                          onClick={() => {
+                            setRejectTarget(app);
+                            setRejectRemark("");
+                          }}
+                        >
+                          <X className="h-3.5 w-3.5 mr-1" /> Reject
+                        </Button>
+                        <ScheduleInterviewDialog
+                          applicationId={app.id}
+                          candidateName={app.profile?.full_name ?? undefined}
+                          candidateEmail={
+                            app.profile?.email ||
+                            app.resume?.parsed_data?.contact?.email ||
+                            app.resume?.parsed_data?.email ||
+                            ""
+                          }
+                        />
+                      </div>
                     )}
                   </div>
-
-                  {/* Secondary actions */}
-                  {app.status !== "rejected" && app.status !== "selected" && (
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={submitting}
-                        onClick={() => doAction(app, "shortlisted", "Applicant shortlisted")}
-                      >
-                        <Star className="h-3.5 w-3.5 mr-1" /> Shortlist
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={submitting}
-                        onClick={() => doAction(app, "selected", "Applicant approved")}
-                      >
-                        <Check className="h-3.5 w-3.5 mr-1" /> Approve
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={submitting}
-                        onClick={() => doAction(app, "offer", "Offer sent")}
-                      >
-                        <FileText className="h-3.5 w-3.5 mr-1" /> Offer
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="text-destructive border-destructive/30 hover:bg-destructive/10"
-                        disabled={submitting}
-                        onClick={() => {
-                          setRejectTarget(app);
-                          setRejectRemark("");
-                        }}
-                      >
-                        <X className="h-3.5 w-3.5 mr-1" /> Reject
-                      </Button>
-                      <ScheduleInterviewDialog
-                        applicationId={app.id}
-                        candidateName={app.profile?.full_name ?? undefined}
-                        candidateEmail={
-                          app.profile?.email ||
-                          app.resume?.parsed_data?.contact?.email ||
-                          app.resume?.parsed_data?.email ||
-                          ""
-                        }
-                      />
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            ))}
         </div>
       </div>
 

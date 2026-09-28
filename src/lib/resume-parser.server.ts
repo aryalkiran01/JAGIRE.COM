@@ -194,10 +194,14 @@ async function extractTextFromPDF(pdfBuffer: Uint8Array): Promise<ExtractedResum
   } catch (unpdfErr: unknown) {
     const errMsg = unpdfErr instanceof Error ? unpdfErr.message : String(unpdfErr);
     if (/password/i.test(errMsg)) {
-      throw new Error("This PDF is password protected. Please remove the password and re-upload your resume.");
+      throw new Error(
+        "This PDF is password protected. Please remove the password and re-upload your resume.",
+      );
     }
     if (/corrupt|invalid pdf|format error/i.test(errMsg)) {
-      throw new Error("This PDF appears to be corrupted or invalid. Please re-save as a new PDF and re-upload.");
+      throw new Error(
+        "This PDF appears to be corrupted or invalid. Please re-save as a new PDF and re-upload.",
+      );
     }
     console.warn("[PDF Parse] unpdf extractText warning:", unpdfErr);
   }
@@ -219,7 +223,9 @@ async function extractTextFromPDF(pdfBuffer: Uint8Array): Promise<ExtractedResum
     } catch (parseErr: unknown) {
       const errMsg = parseErr instanceof Error ? parseErr.message : String(parseErr);
       if (/password/i.test(errMsg)) {
-        throw new Error("This PDF is password protected. Please remove the password and re-upload your resume.");
+        throw new Error(
+          "This PDF is password protected. Please remove the password and re-upload your resume.",
+        );
       }
       console.warn("[PDF Parse] pdf-parse warning:", parseErr);
     }

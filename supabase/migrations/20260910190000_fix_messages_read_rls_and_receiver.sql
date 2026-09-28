@@ -1,4 +1,5 @@
--- Fix RLS policies and backfill receiver_id on messages so unread/seen states can be updated reliably
+-- 0. Ensure updated_at exists on messages to satisfy trigger requirements
+ALTER TABLE public.messages ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();
 
 -- 1. Backfill any missing receiver_id in messages from the chats participants
 UPDATE public.messages m

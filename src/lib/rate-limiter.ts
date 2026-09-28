@@ -71,7 +71,8 @@ export function checkRateLimit(key: string, options: RateLimitOptions): RateLimi
       allowed: false,
       remaining: 0,
       resetMs,
-      error: options.message || `Rate limit exceeded. Please wait ${Math.ceil(resetMs / 1000)} seconds.`,
+      error:
+        options.message || `Rate limit exceeded. Please wait ${Math.ceil(resetMs / 1000)} seconds.`,
     };
   }
 
@@ -98,9 +99,29 @@ export function enforceRateLimit(key: string, options: RateLimitOptions): void {
  * Standard rate limiting presets across Jagire.com
  */
 export const RATE_LIMIT_PRESETS = {
-  AUTH: { maxRequests: 10, windowMs: 60_000, message: "Too many authentication requests. Please wait a moment." },
-  AI: { maxRequests: 20, windowMs: 60_000, message: "AI rate limit reached. Please wait a minute before sending another request." },
-  OCR: { maxRequests: 5, windowMs: 60_000, message: "Document parsing limit reached. Please wait before uploading more resumes." },
-  PAYMENT: { maxRequests: 10, windowMs: 60_000, message: "Payment verification limit reached. Verification is in progress." },
-  FEED: { maxRequests: 30, windowMs: 60_000, message: "You are posting or commenting too quickly. Please slow down." },
+  AUTH: {
+    maxRequests: 10,
+    windowMs: 60_000,
+    message: "Too many authentication requests. Please wait a moment.",
+  },
+  AI: {
+    maxRequests: 20,
+    windowMs: 60_000,
+    message: "AI rate limit reached. Please wait a minute before sending another request.",
+  },
+  OCR: {
+    maxRequests: 5,
+    windowMs: 60_000,
+    message: "Document parsing limit reached. Please wait before uploading more resumes.",
+  },
+  PAYMENT: {
+    maxRequests: 10,
+    windowMs: 60_000,
+    message: "Payment verification limit reached. Verification is in progress.",
+  },
+  FEED: {
+    maxRequests: 30,
+    windowMs: 60_000,
+    message: "You are posting or commenting too quickly. Please slow down.",
+  },
 } as const;

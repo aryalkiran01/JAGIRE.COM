@@ -183,14 +183,20 @@ function PublicProfilePage() {
             {/* Action Buttons */}
             <div className="flex items-center gap-2 shrink-0 flex-wrap">
               {isOwnProfile ? (
-                <Button asChild className="gradient-brand text-primary-foreground shadow-sm h-9 text-xs sm:text-sm">
+                <Button
+                  asChild
+                  className="gradient-brand text-primary-foreground shadow-sm h-9 text-xs sm:text-sm"
+                >
                   <Link to="/profile">
                     <Pencil className="h-3.5 w-3.5 mr-1.5" />
                     Edit Profile
                   </Link>
                 </Button>
               ) : (
-                <Button asChild className="gradient-brand text-primary-foreground shadow-sm h-9 text-xs sm:text-sm">
+                <Button
+                  asChild
+                  className="gradient-brand text-primary-foreground shadow-sm h-9 text-xs sm:text-sm"
+                >
                   <Link to="/messages" search={{ with: userId }}>
                     <MessageSquare className="h-3.5 w-3.5 mr-1.5" />
                     Message

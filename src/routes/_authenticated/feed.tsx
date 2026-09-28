@@ -324,7 +324,7 @@ function FeedPage() {
       return;
     }
     const isSaved = savedIds?.has(postId);
-    
+
     // Optimistic cache update for feed-saves
     qc.setQueryData<Set<string>>(["feed-saves", user.id], (old) => {
       const next = new Set(old ?? []);
@@ -374,14 +374,12 @@ function FeedPage() {
   async function addReply(postId: string, parentId: string) {
     const text = (replyDraft[parentId] ?? "").trim();
     if (!text || !user) return;
-    const { error } = await supabase
-      .from("post_comments")
-      .insert({
-        post_id: postId,
-        parent_id: parentId,
-        author_id: user.id,
-        content: text,
-      });
+    const { error } = await supabase.from("post_comments").insert({
+      post_id: postId,
+      parent_id: parentId,
+      author_id: user.id,
+      content: text,
+    });
     if (error) {
       toast.error(error.message);
       return;
@@ -439,7 +437,10 @@ function FeedPage() {
       } else {
         const { error } = await supabase
           .from("comment_likes")
-          .upsert({ comment_id: commentId, user_id: user.id }, { onConflict: "comment_id,user_id" });
+          .upsert(
+            { comment_id: commentId, user_id: user.id },
+            { onConflict: "comment_id,user_id" },
+          );
         if (error) throw error;
       }
     } catch (err) {
@@ -683,9 +684,7 @@ function FeedPage() {
             const isShortTextOnly =
               !p.image_url && postRawText.length > 0 && postRawText.length <= 140;
             const displayText =
-              isLongText && !isTextExpanded
-                ? postRawText.slice(0, 280).trim() + "…"
-                : postRawText;
+              isLongText && !isTextExpanded ? postRawText.slice(0, 280).trim() + "…" : postRawText;
 
             const postComments = p.comments ?? [];
             const rootComments = postComments.filter((c) => !c.parent_id);
@@ -698,11 +697,8 @@ function FeedPage() {
               }
             }
 
-            const isCommentsExpanded =
-              expandedComments.has(p.id) || rootComments.length <= 2;
-            const visibleRootComments = isCommentsExpanded
-              ? rootComments
-              : rootComments.slice(-2);
+            const isCommentsExpanded = expandedComments.has(p.id) || rootComments.length <= 2;
+            const visibleRootComments = isCommentsExpanded ? rootComments : rootComments.slice(-2);
 
             return (
               <Card
@@ -924,8 +920,8 @@ function FeedPage() {
                             </>
                           ) : (
                             <>
-                              <ChevronDown className="h-3.5 w-3.5" /> View all ({postComments.length}
-                              )
+                              <ChevronDown className="h-3.5 w-3.5" /> View all (
+                              {postComments.length})
                             </>
                           )}
                         </button>
@@ -1101,7 +1097,10 @@ function FeedPage() {
                                     const replyText = r.content ?? r.body ?? "";
 
                                     return (
-                                      <div key={r.id} className="flex items-start gap-2 group/reply">
+                                      <div
+                                        key={r.id}
+                                        className="flex items-start gap-2 group/reply"
+                                      >
                                         <Link
                                           to="/profile/$userId"
                                           params={{ userId: r.author_id }}
@@ -1282,9 +1281,7 @@ function FeedPage() {
                       <Input
                         placeholder="Write a comment…"
                         value={commentDraft[p.id] ?? ""}
-                        onChange={(e) =>
-                          setCommentDraft((d) => ({ ...d, [p.id]: e.target.value }))
-                        }
+                        onChange={(e) => setCommentDraft((d) => ({ ...d, [p.id]: e.target.value }))}
                         onKeyDown={(e) => e.key === "Enter" && addComment(p.id)}
                         className="h-8 text-xs sm:text-sm bg-muted/20 border-border/40 flex-1"
                       />

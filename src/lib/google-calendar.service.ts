@@ -86,7 +86,9 @@ export const saveGoogleCalendarConnection = createServerFn({ method: "POST" })
     const tokens = JSON.parse(response);
 
     if (!tokens.refresh_token) {
-      console.warn("[GoogleCalendar] No refresh_token returned by Google OAuth. Access prompt may be needed.");
+      console.warn(
+        "[GoogleCalendar] No refresh_token returned by Google OAuth. Access prompt may be needed.",
+      );
     }
 
     await saveConnectionKeyForUser(context.userId, "google_calendar", tokens.refresh_token);
@@ -317,7 +319,11 @@ async function sendInterviewEmail(
     });
     if (!res.ok) {
       const errText = await res.text();
-      console.warn("[sendInterviewEmail] Note: Edge function returned status:", res.status, errText);
+      console.warn(
+        "[sendInterviewEmail] Note: Edge function returned status:",
+        res.status,
+        errText,
+      );
       return { emailSent: false, emailRestricted: false, message: "Email delivery failed" };
     }
     const result = await res.json().catch(() => ({}));
@@ -387,7 +393,11 @@ export const scheduleInterview = createServerFn({ method: "POST" })
           title: z.string().min(1, "Title is required").max(200),
           startISO: z.string(),
           durationMinutes: z.number().int().min(15).max(480),
-          meetingLink: z.string().url("Invalid meeting link URL").optional().or(z.literal("").optional()),
+          meetingLink: z
+            .string()
+            .url("Invalid meeting link URL")
+            .optional()
+            .or(z.literal("").optional()),
           location: z.string().optional(),
           notes: z.string().optional(),
           useGoogleCalendar: z.boolean().optional(),

@@ -246,7 +246,9 @@ function AiFeaturePage() {
 
       const { data: companies, error } = await supabase
         .from("companies")
-        .select("id, name, industry, headquarters, location, description, website, size, founded_year")
+        .select(
+          "id, name, industry, headquarters, location, description, website, size, founded_year",
+        )
         .eq("owner_id", user.id)
         .order("created_at", { ascending: false });
 
@@ -278,7 +280,9 @@ function AiFeaturePage() {
       // Get specific company
       const { data: company, error: companyError } = await supabase
         .from("companies")
-        .select("id, name, industry, headquarters, location, description, website, size, founded_year")
+        .select(
+          "id, name, industry, headquarters, location, description, website, size, founded_year",
+        )
         .eq("id", activeCompanyId)
         .eq("owner_id", user.id)
         .maybeSingle();
@@ -335,7 +339,10 @@ function AiFeaturePage() {
 
     return defaultList.map((q) => {
       return q
-        .replace(/our active positions|our open roles|our open positions/gi, `the ${activeJobTitle} role`)
+        .replace(
+          /our active positions|our open roles|our open positions/gi,
+          `the ${activeJobTitle} role`,
+        )
         .replace(/for a candidate interview/gi, `for ${activeJobTitle} candidates`);
     });
   }, [featureSlug, companyProfile]);

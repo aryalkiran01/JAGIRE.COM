@@ -26,7 +26,8 @@ export const Route = createFileRoute("/hiring-tips")({
       { title: "Hiring Tips & Recruiter Guide — Jagire" },
       {
         name: "description",
-        content: "Expert recruitment strategies, job description best practices, salary benchmarking, and AI screening workflows for employers in Nepal.",
+        content:
+          "Expert recruitment strategies, job description best practices, salary benchmarking, and AI screening workflows for employers in Nepal.",
       },
     ],
   }),
@@ -215,7 +216,10 @@ function HiringTipsPage() {
                   </div>
                   <ul className="space-y-2.5">
                     {active.dos.map((item, idx) => (
-                      <li key={idx} className="text-xs md:text-sm text-foreground/90 flex items-start gap-2">
+                      <li
+                        key={idx}
+                        className="text-xs md:text-sm text-foreground/90 flex items-start gap-2"
+                      >
                         <span className="text-emerald-500 font-bold">•</span>
                         <span>{item}</span>
                       </li>
@@ -229,7 +233,10 @@ function HiringTipsPage() {
                   </div>
                   <ul className="space-y-2.5">
                     {active.donts.map((item, idx) => (
-                      <li key={idx} className="text-xs md:text-sm text-foreground/90 flex items-start gap-2">
+                      <li
+                        key={idx}
+                        className="text-xs md:text-sm text-foreground/90 flex items-start gap-2"
+                      >
                         <span className="text-rose-500 font-bold">•</span>
                         <span>{item}</span>
                       </li>
@@ -294,8 +301,8 @@ function HiringTipsPage() {
               Put these hiring best practices into action
             </h2>
             <p className="text-primary-foreground/90 text-sm md:text-base mb-6">
-              Post your next role on Jagire, leverage AI candidate screening, and build a stellar team
-              effortlessly.
+              Post your next role on Jagire, leverage AI candidate screening, and build a stellar
+              team effortlessly.
             </p>
             <div className="flex justify-center gap-3 flex-wrap">
               <Button size="lg" variant="secondary" asChild>

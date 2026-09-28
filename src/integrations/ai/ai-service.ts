@@ -267,7 +267,8 @@ function normalizeAndSanitizeTaskOutput(task: AITask | undefined, raw: unknown):
     if (result.target_talent_profiles !== undefined) {
       const rawProfiles = Array.isArray(result.target_talent_profiles)
         ? result.target_talent_profiles
-        : typeof result.target_talent_profiles === "object" && result.target_talent_profiles !== null
+        : typeof result.target_talent_profiles === "object" &&
+            result.target_talent_profiles !== null
           ? [result.target_talent_profiles]
           : [];
 
@@ -280,16 +281,28 @@ function normalizeAndSanitizeTaskOutput(task: AITask | undefined, raw: unknown):
           } else if (Array.isArray(p.skills)) {
             skills = p.skills.map(String).filter(Boolean);
           } else if (typeof p.required_skills === "string") {
-            skills = p.required_skills.split(/[,•\-\n]/).map((s: string) => s.trim()).filter(Boolean);
+            skills = p.required_skills
+              .split(/[,•\-\n]/)
+              .map((s: string) => s.trim())
+              .filter(Boolean);
           } else if (typeof p.skills === "string") {
-            skills = p.skills.split(/[,•\-\n]/).map((s: string) => s.trim()).filter(Boolean);
+            skills = p.skills
+              .split(/[,•\-\n]/)
+              .map((s: string) => s.trim())
+              .filter(Boolean);
           }
 
           return {
             role_title: String(p.role_title || p.title || p.role || p.name || "Talent Role"),
             seniority: String(p.seniority || p.level || p.experience_level || "Mid-Level"),
             required_skills: skills.length > 0 ? skills : ["Relevant Experience"],
-            why: String(p.why || p.reason || p.description || p.rationale || "Key strategic role for company growth."),
+            why: String(
+              p.why ||
+                p.reason ||
+                p.description ||
+                p.rationale ||
+                "Key strategic role for company growth.",
+            ),
           };
         });
 
@@ -316,8 +329,14 @@ function normalizeAndSanitizeTaskOutput(task: AITask | undefined, raw: unknown):
             max_salary: String(b.max_salary || b.max || "Rs. 100,000"),
             market_trend: String(b.market_trend || b.trend || "Stable market demand"),
           }));
-      } else if (typeof result.compensation_benchmarks_npr === "object" && result.compensation_benchmarks_npr !== null) {
-        if ("role" in result.compensation_benchmarks_npr || "min_salary" in result.compensation_benchmarks_npr) {
+      } else if (
+        typeof result.compensation_benchmarks_npr === "object" &&
+        result.compensation_benchmarks_npr !== null
+      ) {
+        if (
+          "role" in result.compensation_benchmarks_npr ||
+          "min_salary" in result.compensation_benchmarks_npr
+        ) {
           const b = result.compensation_benchmarks_npr;
           result.compensation_benchmarks_npr = [
             {
@@ -328,26 +347,34 @@ function normalizeAndSanitizeTaskOutput(task: AITask | undefined, raw: unknown):
             },
           ];
         } else {
-          result.compensation_benchmarks_npr = Object.entries(result.compensation_benchmarks_npr).map(
-            ([role, val]: [string, any]) => {
-              if (val && typeof val === "object") {
-                return {
-                  role: String(val.role || role),
-                  min_salary: String(val.min_salary || val.min || "Rs. 50,000"),
-                  max_salary: String(val.max_salary || val.max || "Rs. 100,000"),
-                  market_trend: String(val.market_trend || val.trend || "Active market"),
-                };
-              }
-              const strVal = String(val || "");
-              const parts = strVal.split(/[-–—to]/i).map((s) => s.trim());
+          result.compensation_benchmarks_npr = Object.entries(
+            result.compensation_benchmarks_npr,
+          ).map(([role, val]: [string, any]) => {
+            if (val && typeof val === "object") {
               return {
-                role,
-                min_salary: parts[0] ? (parts[0].startsWith("Rs") ? parts[0] : `Rs. ${parts[0]}`) : "Rs. 50,000",
-                max_salary: parts[1] ? (parts[1].startsWith("Rs") ? parts[1] : `Rs. ${parts[1]}`) : "Rs. 100,000",
-                market_trend: "Active demand",
+                role: String(val.role || role),
+                min_salary: String(val.min_salary || val.min || "Rs. 50,000"),
+                max_salary: String(val.max_salary || val.max || "Rs. 100,000"),
+                market_trend: String(val.market_trend || val.trend || "Active market"),
               };
-            },
-          );
+            }
+            const strVal = String(val || "");
+            const parts = strVal.split(/[-–—to]/i).map((s) => s.trim());
+            return {
+              role,
+              min_salary: parts[0]
+                ? parts[0].startsWith("Rs")
+                  ? parts[0]
+                  : `Rs. ${parts[0]}`
+                : "Rs. 50,000",
+              max_salary: parts[1]
+                ? parts[1].startsWith("Rs")
+                  ? parts[1]
+                  : `Rs. ${parts[1]}`
+                : "Rs. 100,000",
+              market_trend: "Active demand",
+            };
+          });
         }
       } else {
         result.compensation_benchmarks_npr = [];
@@ -369,7 +396,8 @@ function normalizeAndSanitizeTaskOutput(task: AITask | undefined, raw: unknown):
     if (result.candidate_screening_criteria !== undefined) {
       const rawCriteria = Array.isArray(result.candidate_screening_criteria)
         ? result.candidate_screening_criteria
-        : typeof result.candidate_screening_criteria === "object" && result.candidate_screening_criteria !== null
+        : typeof result.candidate_screening_criteria === "object" &&
+            result.candidate_screening_criteria !== null
           ? [result.candidate_screening_criteria]
           : [];
 
@@ -377,8 +405,16 @@ function normalizeAndSanitizeTaskOutput(task: AITask | undefined, raw: unknown):
         .filter((c: any) => c && typeof c === "object")
         .map((c: any) => ({
           category: String(c.category || c.name || "Core Competency"),
-          must_have: String(c.must_have || c.mustHave || c.required || "Proven track record in primary domain"),
-          good_to_have: String(c.good_to_have || c.goodToHave || c.preferred || c.optional || "Strong problem solving skills"),
+          must_have: String(
+            c.must_have || c.mustHave || c.required || "Proven track record in primary domain",
+          ),
+          good_to_have: String(
+            c.good_to_have ||
+              c.goodToHave ||
+              c.preferred ||
+              c.optional ||
+              "Strong problem solving skills",
+          ),
         }));
 
       if (result.candidate_screening_criteria.length === 0) {
@@ -404,7 +440,7 @@ function normalizeAndSanitizeTaskOutput(task: AITask | undefined, raw: unknown):
       if (typeof result[field] === "string") {
         result[field] = result[field]
           .split(/[\r\n•;]+/)
-          .map((s: string) => s.replace(/^\d+[\.\)]\s*/, "").trim())
+          .map((s: string) => s.replace(/^\d+[.)]\s*/, "").trim())
           .filter(Boolean);
       } else if (!Array.isArray(result[field])) {
         result[field] = result[field] != null ? [String(result[field])] : [];
@@ -422,22 +458,34 @@ function normalizeAndSanitizeTaskOutput(task: AITask | undefined, raw: unknown):
       ];
     }
     if (!result.interview_focus_areas || result.interview_focus_areas.length === 0) {
-      result.interview_focus_areas = ["Hands-on technical assessment", "Culture and team alignment"];
+      result.interview_focus_areas = [
+        "Hands-on technical assessment",
+        "Culture and team alignment",
+      ];
     }
-    if (!result.employer_branding_suggestions || result.employer_branding_suggestions.length === 0) {
+    if (
+      !result.employer_branding_suggestions ||
+      result.employer_branding_suggestions.length === 0
+    ) {
       result.employer_branding_suggestions = [
         "Highlight collaborative culture and career growth opportunities",
       ];
     }
 
     // 5. hiring_velocity_assessment
-    if (result.hiring_velocity_assessment && typeof result.hiring_velocity_assessment === "object") {
+    if (
+      result.hiring_velocity_assessment &&
+      typeof result.hiring_velocity_assessment === "object"
+    ) {
       result.hiring_velocity_assessment =
         result.hiring_velocity_assessment.summary ||
         result.hiring_velocity_assessment.assessment ||
         result.hiring_velocity_assessment.text ||
         JSON.stringify(result.hiring_velocity_assessment);
-    } else if (typeof result.hiring_velocity_assessment !== "string" || !result.hiring_velocity_assessment.trim()) {
+    } else if (
+      typeof result.hiring_velocity_assessment !== "string" ||
+      !result.hiring_velocity_assessment.trim()
+    ) {
       result.hiring_velocity_assessment =
         "Active hiring pipeline with strong potential to accelerate screening and shortlisting turnaround.";
     }

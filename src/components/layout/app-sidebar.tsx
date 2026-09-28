@@ -185,7 +185,12 @@ export function AppSidebar() {
   return (
     <>
       {/* ── Mobile/Tablet Drawer (< lg) ────────────────────────── */}
-      <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Navigation Menu">
+      <div
+        className="fixed inset-0 z-50 lg:hidden"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Navigation Menu"
+      >
         {/* Soft overlay backdrop */}
         <div
           className="fixed inset-0 bg-black/40 transition-opacity animate-fade-in"
@@ -194,9 +199,7 @@ export function AppSidebar() {
         />
 
         {/* Slide-out Drawer Panel */}
-        <aside
-          className="fixed inset-y-0 left-0 z-50 w-[260px] max-w-[85vw] bg-card border-r border-border shadow-2xl flex flex-col pt-3 overflow-y-auto animate-fade-in-right"
-        >
+        <aside className="fixed inset-y-0 left-0 z-50 w-[260px] max-w-[85vw] bg-card border-r border-border shadow-2xl flex flex-col pt-3 overflow-y-auto animate-fade-in-right">
           <div className="flex items-center justify-between px-4 pb-3 border-b border-border/50">
             <Link to="/" onClick={close} className="flex items-center gap-2">
               <span className="text-xl font-bold gradient-text tracking-tight">JAGIRE</span>
@@ -276,7 +279,9 @@ export function AppSidebar() {
         aria-label="Sidebar Navigation"
       >
         <div className="flex items-center justify-between px-4 py-3 border-b border-border/40">
-          <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Navigation</span>
+          <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+            Navigation
+          </span>
           <Button
             variant="ghost"
             size="icon"
@@ -301,11 +306,7 @@ export function AppSidebar() {
                   AI Features
                 </div>
                 {EMPLOYER_AI_GROUPS.map((group, idx) => (
-                  <AiGroupCollapsible
-                    key={group.id}
-                    group={group}
-                    defaultOpen={idx === 0}
-                  />
+                  <AiGroupCollapsible key={group.id} group={group} defaultOpen={idx === 0} />
                 ))}
               </>
             ) : (
@@ -315,11 +316,7 @@ export function AppSidebar() {
                   AI Tools
                 </div>
                 {JOBSEEKER_AI_GROUPS.map((group, idx) => (
-                  <AiGroupCollapsible
-                    key={group.id}
-                    group={group}
-                    defaultOpen={idx === 0}
-                  />
+                  <AiGroupCollapsible key={group.id} group={group} defaultOpen={idx === 0} />
                 ))}
               </>
             )
@@ -328,10 +325,7 @@ export function AppSidebar() {
               <Button variant="outline" className="w-full" asChild>
                 <Link to="/auth">Sign In</Link>
               </Button>
-              <Button
-                className="w-full gradient-brand text-primary-foreground"
-                asChild
-              >
+              <Button className="w-full gradient-brand text-primary-foreground" asChild>
                 <Link to="/auth" search={{ mode: "signup" }}>
                   Get Started
                 </Link>

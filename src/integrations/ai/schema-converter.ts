@@ -69,7 +69,9 @@ function unwrapAndConvert(schema: z.ZodTypeAny): GeminiSchema {
   }
 
   if (schema instanceof z.ZodNativeEnum) {
-    const enumValues = Object.values(schema._def.values).filter((v) => typeof v === "string") as string[];
+    const enumValues = Object.values(schema._def.values).filter(
+      (v) => typeof v === "string",
+    ) as string[];
     return {
       type: "STRING",
       enum: enumValues.length > 0 ? enumValues : undefined,
@@ -143,7 +145,11 @@ function unwrapAndConvert(schema: z.ZodTypeAny): GeminiSchema {
   }
 
   // Record / Any / Unknown fallback
-  if (schema instanceof z.ZodRecord || schema instanceof z.ZodAny || schema instanceof z.ZodUnknown) {
+  if (
+    schema instanceof z.ZodRecord ||
+    schema instanceof z.ZodAny ||
+    schema instanceof z.ZodUnknown
+  ) {
     return { type: "OBJECT" };
   }
 

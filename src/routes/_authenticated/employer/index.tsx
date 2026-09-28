@@ -120,16 +120,16 @@ function EmployerDashboard() {
   const totalViews = jobs?.reduce((sum, j) => sum + (j.views_count ?? 0), 0) ?? 0;
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-bold">{company?.name}</h1>
-          <p className="text-muted-foreground">Employer dashboard</p>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{company?.name}</h1>
+          <p className="text-sm text-muted-foreground">Employer dashboard</p>
         </div>
-        <div className="flex gap-2 items-center">
+        <div className="flex flex-wrap gap-2 items-center">
           {/* Company Switcher */}
           {companies.length > 1 && (
             <Select value={selectedCompanyId || ""} onValueChange={setSelectedCompanyId}>
-              <SelectTrigger className="w-[200px]">
+              <SelectTrigger className="w-full sm:w-[200px]">
                 <Building2 className="h-4 w-4 mr-2" />
                 <SelectValue placeholder="Switch company" />
               </SelectTrigger>
@@ -143,20 +143,29 @@ function EmployerDashboard() {
             </Select>
           )}
 
-          <Button variant="outline" asChild>
-            <Link to="/employer/company">
+          {company?.id && (
+            <Button variant="outline" asChild className="w-full sm:w-auto">
+              <Link to="/employer/company" search={{ companyId: company.id }}>
+                <Building2 className="mr-2 h-4 w-4" />
+                Company Settings
+              </Link>
+            </Button>
+          )}
+
+          <Button variant="outline" asChild className="w-full sm:w-auto">
+            <Link to="/employer/company" search={{ mode: "create" }}>
               <Plus className="mr-2 h-4 w-4" />
               New Company
             </Link>
           </Button>
 
-          <Button variant="outline" asChild>
+          <Button variant="outline" asChild className="w-full sm:w-auto">
             <Link to="/employer/interviews">
               <Video className="mr-2 h-4 w-4" />
               Interviews
             </Link>
           </Button>
-          <Button asChild className="gradient-brand text-primary-foreground">
+          <Button asChild className="w-full sm:w-auto gradient-brand text-primary-foreground">
             <Link to="/employer/jobs/new" search={{ companyId: company?.id }}>
               <Plus className="mr-2 h-4 w-4" />
               Post a job

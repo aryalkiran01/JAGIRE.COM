@@ -98,9 +98,9 @@ describe("zodToGeminiSchema", () => {
     expect(converted.required).toContain("target_talent_profiles");
     expect(converted.required).toContain("compensation_benchmarks_npr");
     expect(converted.properties?.target_talent_profiles.type).toBe("ARRAY");
-    expect(
-      converted.properties?.target_talent_profiles.items?.properties?.role_title.type,
-    ).toBe("STRING");
+    expect(converted.properties?.target_talent_profiles.items?.properties?.role_title.type).toBe(
+      "STRING",
+    );
     expect(
       converted.properties?.target_talent_profiles.items?.properties?.required_skills.type,
     ).toBe("ARRAY");

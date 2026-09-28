@@ -327,33 +327,36 @@ function ResumeBuilder() {
 
       {/* ---------- main area ---------- */}
       <div className="space-y-6">
-        <div className="flex items-center gap-3">
-          <h1 className="text-3xl font-bold flex-1">Resume Builder</h1>
-          <select
-            value={template}
-            onChange={(e) => setTemplate(e.target.value as any)}
-            className="border rounded-md h-9 px-2 text-sm bg-background"
-          >
-            <option value="modern">Modern</option>
-            <option value="classic">Classic</option>
-            <option value="minimal">Minimal</option>
-          </select>
-          <Button variant="outline" onClick={exportPdf} disabled={isExporting}>
-            <Download className="h-4 w-4 mr-1" />
-            {isExporting ? "Exporting..." : "PDF"}
-          </Button>
-          <Button onClick={save} className="gradient-brand text-primary-foreground">
-            Save
-          </Button>
-          <Button
-            variant="outline"
-            onClick={scanResume}
-            disabled={!currentId}
-            className="border-amber-500 text-amber-600 hover:bg-amber-50"
-          >
-            <Sparkles className="h-4 w-4 mr-1" />
-            AI Scan
-          </Button>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 flex-wrap">
+          <h1 className="text-2xl sm:text-3xl font-bold">Resume Builder</h1>
+          <div className="flex items-center gap-2 flex-wrap">
+            <select
+              value={template}
+              onChange={(e) => setTemplate(e.target.value as any)}
+              className="border rounded-md h-9 px-2 text-sm bg-background"
+            >
+              <option value="modern">Modern</option>
+              <option value="classic">Classic</option>
+              <option value="minimal">Minimal</option>
+            </select>
+            <Button variant="outline" onClick={exportPdf} disabled={isExporting} size="sm">
+              <Download className="h-4 w-4 mr-1" />
+              {isExporting ? "Exporting..." : "PDF"}
+            </Button>
+            <Button onClick={save} size="sm" className="gradient-brand text-primary-foreground">
+              Save
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={scanResume}
+              disabled={!currentId}
+              className="border-amber-500 text-amber-600 hover:bg-amber-50"
+            >
+              <Sparkles className="h-4 w-4 mr-1" />
+              AI Scan
+            </Button>
+          </div>
         </div>
 
         {/* ---------- basic info ---------- */}

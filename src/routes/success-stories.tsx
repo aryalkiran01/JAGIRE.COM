@@ -28,7 +28,8 @@ export const Route = createFileRoute("/success-stories")({
       { title: "Success Stories — Jagire" },
       {
         name: "description",
-        content: "Discover how professionals and hiring teams across Nepal use Jagire to accelerate their careers and hiring.",
+        content:
+          "Discover how professionals and hiring teams across Nepal use Jagire to accelerate their careers and hiring.",
       },
     ],
   }),
@@ -61,7 +62,8 @@ const STORIES: Story[] = [
     companyType: "Creative Tech Agency",
     author: "Prasanna S.",
     avatarInitial: "P",
-    image: "https://images.pexels.com/photos/196644/pexels-photo-196644.jpeg?auto=compress&cs=tinysrgb&w=800",
+    image:
+      "https://images.pexels.com/photos/196644/pexels-photo-196644.jpeg?auto=compress&cs=tinysrgb&w=800",
     stats: [
       { label: "Search Time", value: "8 Days" },
       { label: "ATS Score", value: "94%" },
@@ -82,7 +84,8 @@ const STORIES: Story[] = [
     companyType: "Fintech Startup",
     author: "Bibek R.",
     avatarInitial: "B",
-    image: "https://images.pexels.com/photos/574071/pexels-photo-574071.jpeg?auto=compress&cs=tinysrgb&w=800",
+    image:
+      "https://images.pexels.com/photos/574071/pexels-photo-574071.jpeg?auto=compress&cs=tinysrgb&w=800",
     stats: [
       { label: "Matching Accuracy", value: "96%" },
       { label: "Mock Interviews", value: "4 Completed" },
@@ -103,7 +106,8 @@ const STORIES: Story[] = [
     companyType: "SaaS Enterprise",
     author: "Sunita M.",
     avatarInitial: "S",
-    image: "https://images.pexels.com/photos/3183197/pexels-photo-3183197.jpeg?auto=compress&cs=tinysrgb&w=800",
+    image:
+      "https://images.pexels.com/photos/3183197/pexels-photo-3183197.jpeg?auto=compress&cs=tinysrgb&w=800",
     stats: [
       { label: "Role Upgrade", value: "Senior Tier" },
       { label: "Applications", value: "3 Targeted" },
@@ -124,7 +128,8 @@ const STORIES: Story[] = [
     companyType: "50+ Team Scaleup",
     author: "Rajan K.",
     avatarInitial: "R",
-    image: "https://images.pexels.com/photos/3184338/pexels-photo-3184338.jpeg?auto=compress&cs=tinysrgb&w=800",
+    image:
+      "https://images.pexels.com/photos/3184338/pexels-photo-3184338.jpeg?auto=compress&cs=tinysrgb&w=800",
     stats: [
       { label: "Screening Time", value: "-60%" },
       { label: "Candidate Quality", value: "Top 5% Fit" },
@@ -144,9 +149,7 @@ function SuccessStoriesPage() {
   const [activeCategory, setActiveCategory] = useState("All");
 
   const filteredStories =
-    activeCategory === "All"
-      ? STORIES
-      : STORIES.filter((s) => s.category === activeCategory);
+    activeCategory === "All" ? STORIES : STORIES.filter((s) => s.category === activeCategory);
 
   const featured = STORIES[0];
 

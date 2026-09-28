@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { useProfile } from "@/hooks/use-profile";
 import { useSidebar } from "@/hooks/use-sidebar";
 import { useTheme } from "@/hooks/use-theme";
 import { Button } from "@/components/ui/button";
@@ -79,6 +80,7 @@ const NAV_LINKS = [
 
 export function SiteHeader() {
   const { user, role, signOut } = useAuth();
+  const { displayName, avatarUrl } = useProfile();
   const { isOpen, toggle: toggleSidebar } = useSidebar();
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -139,16 +141,19 @@ export function SiteHeader() {
 
   const isActive = (to: string) => currentPath === to || (to !== "/" && currentPath.startsWith(to));
 
+  const fallbackInitial = ((displayName || user?.email)?.[0] ?? "U").toUpperCase();
+
   return (
     <header
-      className={`sticky top-0 z-50 w-full transition-all duration-300 ${scrolled
+      className={`sticky top-0 z-50 w-full transition-all duration-300 ${
+        scrolled
           ? "glass shadow-card-soft border-b border-border/60"
           : "bg-background/80 backdrop-blur-md border-b border-border/30"
-        }`}
+      }`}
     >
-      <div className="w-full px-4 sm:px-6 lg:px-8 flex h-16 items-center justify-between">
+      <div className="w-full px-3 sm:px-6 lg:px-8 flex h-16 items-center justify-between gap-2 sm:gap-4">
         {/* Left side: Menu trigger (☰) + Logo */}
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
           <Button
             variant="ghost"
             size="icon"
@@ -164,7 +169,7 @@ export function SiteHeader() {
           <span className="hidden sm:block h-5 w-px bg-border/60" aria-hidden />
 
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2 shrink-0 group ml-1 sm:ml-2">
+          <Link to="/" className="flex items-center gap-2 shrink-0 group ml-0.5 sm:ml-1">
             <span className="text-xl font-bold gradient-text tracking-tight">JAGIRE</span>
           </Link>
         </div>
@@ -210,26 +215,28 @@ export function SiteHeader() {
         </nav>
 
         {/* Right side */}
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
           <Button
             variant="ghost"
             size="icon"
             onClick={toggle}
             aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-            className="h-9 w-9"
+            className="h-8 w-8 sm:h-9 sm:w-9 shrink-0"
           >
             {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </Button>
 
           {user ? (
             <>
-              <SubscriptionBadge />
+              <div className="hidden sm:inline-flex">
+                <SubscriptionBadge />
+              </div>
               <Button
                 variant="ghost"
                 size="icon"
                 asChild
                 aria-label="View messages"
-                className="h-9 w-9"
+                className="h-8 w-8 sm:h-9 sm:w-9 shrink-0"
               >
                 <Link to="/messages">
                   <MessageSquare className="h-4 w-4" />
@@ -241,7 +248,7 @@ export function SiteHeader() {
                 size="icon"
                 asChild
                 aria-label="View notifications"
-                className="relative h-9 w-9"
+                className="relative h-8 w-8 sm:h-9 sm:w-9 shrink-0"
               >
                 <Link to="/notifications">
                   <Bell className="h-4 w-4" />
@@ -258,12 +265,12 @@ export function SiteHeader() {
                   <Button
                     variant="ghost"
                     aria-label="User profile and settings"
-                    className="relative h-9 w-9 rounded-full p-0 ml-1"
+                    className="relative h-8 w-8 sm:h-9 sm:w-9 rounded-full p-0 ml-0.5 shrink-0"
                   >
-                    <Avatar className="h-9 w-9">
-                      <AvatarImage src={user.user_metadata?.avatar_url} />
-                      <AvatarFallback className="gradient-brand text-primary-foreground text-sm font-semibold">
-                        {(user.email?.[0] ?? "U").toUpperCase()}
+                    <Avatar className="h-8 w-8 sm:h-9 sm:w-9">
+                      <AvatarImage src={avatarUrl ?? undefined} key={avatarUrl ?? "no-avatar"} />
+                      <AvatarFallback className="gradient-brand text-primary-foreground text-xs sm:text-sm font-semibold">
+                        {fallbackInitial}
                       </AvatarFallback>
                     </Avatar>
                   </Button>
@@ -271,9 +278,7 @@ export function SiteHeader() {
                 <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuLabel>
                     <div className="flex flex-col">
-                      <span className="text-sm font-medium truncate max-w-50">
-                        {user.user_metadata?.full_name ?? user.email}
-                      </span>
+                      <span className="text-sm font-medium truncate max-w-48">{displayName}</span>
                       <span className="text-xs text-muted-foreground capitalize">
                         {role?.replace("_", " ")}
                       </span>
@@ -303,13 +308,19 @@ export function SiteHeader() {
               </DropdownMenu>
             </>
           ) : (
-            <div className="hidden sm:flex items-center gap-2">
-              <Button variant="ghost" asChild>
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                asChild
+                className="h-8 sm:h-9 px-2.5 sm:px-3 text-xs sm:text-sm"
+              >
                 <Link to="/auth">Sign in</Link>
               </Button>
               <Button
+                size="sm"
                 asChild
-                className="gradient-brand text-primary-foreground hover:opacity-90 shadow-sm"
+                className="h-8 sm:h-9 px-3 sm:px-4 text-xs sm:text-sm gradient-brand text-primary-foreground hover:opacity-90 shadow-sm"
               >
                 <Link to="/auth" search={{ mode: "signup" }}>
                   Get started
@@ -317,18 +328,6 @@ export function SiteHeader() {
               </Button>
             </div>
           )}
-
-          {/* Mobile menu trigger */}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleSidebar}
-            aria-label="Open navigation menu"
-            aria-expanded={isOpen}
-            className="lg:hidden h-9 w-9 text-muted-foreground hover:text-foreground"
-          >
-            <Menu className="h-5 w-5" />
-          </Button>
         </div>
       </div>
     </header>
@@ -347,8 +346,9 @@ function NavLink({
   return (
     <Link
       to={to}
-      className={`relative rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:text-foreground hover:bg-muted/50 ${active ? "text-foreground" : "text-muted-foreground"
-        }`}
+      className={`relative rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:text-foreground hover:bg-muted/50 ${
+        active ? "text-foreground" : "text-muted-foreground"
+      }`}
     >
       {children}
       {active && (

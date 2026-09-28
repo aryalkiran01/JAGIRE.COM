@@ -43,7 +43,7 @@ function AboutPage() {
   return (
     <>
       {/* Hero */}
-          <section className="relative overflow-hidden py-24 md:py-32">
+      <section className="relative overflow-hidden py-24 md:py-32">
         <div className="absolute inset-0 gradient-hero opacity-10 pointer-events-none" />
         <div className="absolute -top-20 -left-20 h-96 w-96 rounded-full gradient-brand opacity-20 blur-3xl animate-float pointer-events-none" />
         <div

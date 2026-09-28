@@ -46,37 +46,57 @@ function ProfilePage() {
 
   const save = useMutation({
     mutationFn: async () => {
-      const { error } = await (supabase.from("profiles") as any)
-        .update({
-          full_name: form.full_name,
-          headline: form.headline,
-          bio: form.bio,
-          about: form.about,
-          phone: form.phone,
-          location: form.location,
-          website: form.website,
-          linkedin_url: form.linkedin_url,
-          github_url: form.github_url,
-          experience_years: Number(form.experience_years) || 0,
-          current_position: form.current_position,
-          expected_salary: form.expected_salary ? Number(form.expected_salary) : null,
-          preferred_location: form.preferred_location,
-          skills:
-            typeof form.skills === "string"
-              ? form.skills
-                  .split(",")
-                  .map((s: string) => s.trim())
-                  .filter(Boolean)
-              : (form.skills ?? []),
-        })
-        .eq("id", user!.id);
+      const skillsArray =
+        typeof form.skills === "string"
+          ? form.skills
+              .split(",")
+              .map((s: string) => s.trim())
+              .filter(Boolean)
+          : (form.skills ?? []);
+
+      const payload = {
+        full_name: form.full_name?.trim() || null,
+        headline: form.headline?.trim() || null,
+        bio: form.bio?.trim() || null,
+        about: form.about?.trim() || null,
+        phone: form.phone?.trim() || null,
+        location: form.location?.trim() || null,
+        website: form.website?.trim() || null,
+        linkedin_url: form.linkedin_url?.trim() || null,
+        github_url: form.github_url?.trim() || null,
+        experience_years: Number(form.experience_years) || 0,
+        current_position: form.current_position?.trim() || null,
+        expected_salary: form.expected_salary ? Number(form.expected_salary) : null,
+        preferred_location: form.preferred_location?.trim() || null,
+        skills: skillsArray,
+      };
+
+      const { error } = await (supabase.from("profiles") as any).update(payload).eq("id", user!.id);
       if (error) throw error;
+
+      // Sync Supabase auth user_metadata so any fallback session data is updated
+      if (form.full_name) {
+        try {
+          await supabase.auth.updateUser({
+            data: { full_name: form.full_name.trim(), name: form.full_name.trim() },
+          });
+        } catch (authErr) {
+          console.warn("Could not sync auth user metadata:", authErr);
+        }
+      }
+
+      return payload;
     },
-    onSuccess: () => {
+    onSuccess: (updatedFields) => {
       toast.success("Profile updated");
+      // Instant cache update for zero-latency navbar reflection
+      qc.setQueryData(["profile", user?.id], (old: any) => ({
+        ...(old || {}),
+        ...updatedFields,
+      }));
       qc.invalidateQueries({ queryKey: ["profile"] });
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: any) => toast.error(e.message || "Failed to update profile"),
   });
 
   async function uploadImage(file: File, kind: "avatar" | "banner") {
@@ -97,10 +117,26 @@ function ProfilePage() {
         .update({ [col]: url })
         .eq("id", user.id);
       if (error) throw error;
+
+      if (kind === "avatar") {
+        try {
+          await supabase.auth.updateUser({
+            data: { avatar_url: url, picture: url },
+          });
+        } catch (authErr) {
+          console.warn("Could not sync auth avatar:", authErr);
+        }
+      }
+
       toast.success(`${kind === "avatar" ? "Photo" : "Banner"} updated`);
+      // Instant cache update for 0ms navbar reflection
+      qc.setQueryData(["profile", user.id], (old: any) => ({
+        ...(old || {}),
+        [col]: url,
+      }));
       qc.invalidateQueries({ queryKey: ["profile"] });
     } catch (e: any) {
-      toast.error(e.message);
+      toast.error(e.message || `Failed to update ${kind}`);
     } finally {
       setUploading(null);
     }

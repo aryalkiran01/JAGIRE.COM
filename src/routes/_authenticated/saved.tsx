@@ -47,7 +47,9 @@ function SavedContentPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("saved_jobs")
-        .select("id, created_at, job:jobs(*, company:companies(id, name, logo_url, slug, location))")
+        .select(
+          "id, created_at, job:jobs(*, company:companies(id, name, logo_url, slug, location))",
+        )
         .eq("user_id", user!.id)
         .order("created_at", { ascending: false });
 

@@ -63,7 +63,8 @@ function PrivacyPolicyPage() {
             </p>
 
             <div className="pt-2 text-xs font-medium text-muted-foreground">
-              Last Updated: <span className="text-foreground">{lastUpdated}</span> · Effective Immediately
+              Last Updated: <span className="text-foreground">{lastUpdated}</span> · Effective
+              Immediately
             </div>
           </div>
         </section>
@@ -79,7 +80,8 @@ function PrivacyPolicyPage() {
                   </div>
                   <h3 className="font-bold text-sm">Encrypted Storage</h3>
                   <p className="text-xs text-muted-foreground leading-relaxed">
-                    OAuth tokens, credentials, and files are encrypted with AES-GCM and strict Row Level Security (RLS).
+                    OAuth tokens, credentials, and files are encrypted with AES-GCM and strict Row
+                    Level Security (RLS).
                   </p>
                 </CardContent>
               </Card>
@@ -91,7 +93,8 @@ function PrivacyPolicyPage() {
                   </div>
                   <h3 className="font-bold text-sm">Responsible AI</h3>
                   <p className="text-xs text-muted-foreground leading-relaxed">
-                    Your resumes and career context are never sold or used to train public foundation models.
+                    Your resumes and career context are never sold or used to train public
+                    foundation models.
                   </p>
                 </CardContent>
               </Card>
@@ -103,7 +106,8 @@ function PrivacyPolicyPage() {
                   </div>
                   <h3 className="font-bold text-sm">Applicant Control</h3>
                   <p className="text-xs text-muted-foreground leading-relaxed">
-                    You decide which employers view your applications, resumes, and contact credentials.
+                    You decide which employers view your applications, resumes, and contact
+                    credentials.
                   </p>
                 </CardContent>
               </Card>
@@ -115,7 +119,8 @@ function PrivacyPolicyPage() {
                   </div>
                   <h3 className="font-bold text-sm">Zero Financial Storage</h3>
                   <p className="text-xs text-muted-foreground leading-relaxed">
-                    Payments are handled securely via eSewa. We never store bank passwords or credit card numbers.
+                    Payments are handled securely via eSewa. We never store bank passwords or credit
+                    card numbers.
                   </p>
                 </CardContent>
               </Card>
@@ -135,14 +140,15 @@ function PrivacyPolicyPage() {
             </div>
             <div className="prose prose-neutral dark:prose-invert max-w-none text-muted-foreground text-sm sm:text-base leading-relaxed space-y-3">
               <p>
-                Welcome to <strong>Jagire</strong> ("Jagire.com", "we", "our", or "us"). We provide an
-                intelligent employment marketplace and AI-assisted career development platform designed
-                for job seekers, recruiters, and companies across Nepal and beyond.
+                Welcome to <strong>Jagire</strong> ("Jagire.com", "we", "our", or "us"). We provide
+                an intelligent employment marketplace and AI-assisted career development platform
+                designed for job seekers, recruiters, and companies across Nepal and beyond.
               </p>
               <p>
-                This Privacy Policy explains how we collect, store, utilize, and protect your personal
-                information when you access our web application, tools, and services. By creating an account
-                or using Jagire, you agree to the collection and use of information in accordance with this policy.
+                This Privacy Policy explains how we collect, store, utilize, and protect your
+                personal information when you access our web application, tools, and services. By
+                creating an account or using Jagire, you agree to the collection and use of
+                information in accordance with this policy.
               </p>
             </div>
           </section>
@@ -156,7 +162,10 @@ function PrivacyPolicyPage() {
               <h2 className="text-2xl font-bold tracking-tight">Information We Collect</h2>
             </div>
             <div className="space-y-4 text-sm sm:text-base text-muted-foreground leading-relaxed">
-              <p>We collect information that you directly provide to us, as well as data generated during platform usage:</p>
+              <p>
+                We collect information that you directly provide to us, as well as data generated
+                during platform usage:
+              </p>
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <Card className="glass border-border/50">
@@ -166,7 +175,8 @@ function PrivacyPolicyPage() {
                       Account & Identity
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Full name, email address, password hash, role selection (job seeker or employer), avatar image, and verification metadata.
+                      Full name, email address, password hash, role selection (job seeker or
+                      employer), avatar image, and verification metadata.
                     </p>
                   </CardContent>
                 </Card>
@@ -178,7 +188,8 @@ function PrivacyPolicyPage() {
                       Career & Resume Content
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Work experience, education, skills, portfolio links (GitHub, LinkedIn), uploaded PDF/DOCX files, cover letters, and parsed ATS data.
+                      Work experience, education, skills, portfolio links (GitHub, LinkedIn),
+                      uploaded PDF/DOCX files, cover letters, and parsed ATS data.
                     </p>
                   </CardContent>
                 </Card>
@@ -190,7 +201,8 @@ function PrivacyPolicyPage() {
                       Employer & Job Postings
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Company name, registration documents, job descriptions, salary ranges, candidate pipeline notes, and recruiter reviews.
+                      Company name, registration documents, job descriptions, salary ranges,
+                      candidate pipeline notes, and recruiter reviews.
                     </p>
                   </CardContent>
                 </Card>
@@ -202,7 +214,8 @@ function PrivacyPolicyPage() {
                       Integrations & OAuth
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Encrypted tokens for Google Calendar interview scheduling, created only upon your explicit authorization and revocable at will.
+                      Encrypted tokens for Google Calendar interview scheduling, created only upon
+                      your explicit authorization and revocable at will.
                     </p>
                   </CardContent>
                 </Card>
@@ -222,19 +235,31 @@ function PrivacyPolicyPage() {
               <ul className="space-y-2.5">
                 <li className="flex items-start gap-2.5">
                   <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-1" />
-                  <span><strong>Connecting Applicants & Employers:</strong> Routing applications, sharing resumes with hiring teams, and updating candidate statuses.</span>
+                  <span>
+                    <strong>Connecting Applicants & Employers:</strong> Routing applications,
+                    sharing resumes with hiring teams, and updating candidate statuses.
+                  </span>
                 </li>
                 <li className="flex items-start gap-2.5">
                   <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-1" />
-                  <span><strong>AI Career Tools & Optimization:</strong> Generating ATS scorecards, personalized career roadmaps, interview coaching, and skill gap recommendations.</span>
+                  <span>
+                    <strong>AI Career Tools & Optimization:</strong> Generating ATS scorecards,
+                    personalized career roadmaps, interview coaching, and skill gap recommendations.
+                  </span>
                 </li>
                 <li className="flex items-start gap-2.5">
                   <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-1" />
-                  <span><strong>Payment Verification & Subscriptions:</strong> Authorizing eSewa payment callbacks and unlocking premium features securely.</span>
+                  <span>
+                    <strong>Payment Verification & Subscriptions:</strong> Authorizing eSewa payment
+                    callbacks and unlocking premium features securely.
+                  </span>
                 </li>
                 <li className="flex items-start gap-2.5">
                   <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-1" />
-                  <span><strong>Platform Safety & Abuse Prevention:</strong> Rate limiting, bot mitigation, spam detection in community feeds, and RLS enforcement.</span>
+                  <span>
+                    <strong>Platform Safety & Abuse Prevention:</strong> Rate limiting, bot
+                    mitigation, spam detection in community feeds, and RLS enforcement.
+                  </span>
                 </li>
               </ul>
             </div>
@@ -255,11 +280,17 @@ function PrivacyPolicyPage() {
                   Enterprise AI Privacy Standard
                 </div>
                 <p className="text-muted-foreground">
-                  Jagire utilizes Google Gemini and high-reliability cloud inference APIs to power resume parsing, ATS scoring, and interview practice.
+                  Jagire utilizes Google Gemini and high-reliability cloud inference APIs to power
+                  resume parsing, ATS scoring, and interview practice.
                 </p>
                 <ul className="list-disc list-inside space-y-1 text-xs sm:text-sm text-muted-foreground">
-                  <li>Your documents and prompt contexts are sent over encrypted TLS connections.</li>
-                  <li>Inference requests are stateless; providers do not retain or use your personal resume text to train generic public models.</li>
+                  <li>
+                    Your documents and prompt contexts are sent over encrypted TLS connections.
+                  </li>
+                  <li>
+                    Inference requests are stateless; providers do not retain or use your personal
+                    resume text to train generic public models.
+                  </li>
                   <li>All AI outputs are validated against strict data schemas before display.</li>
                 </ul>
               </CardContent>
@@ -276,20 +307,32 @@ function PrivacyPolicyPage() {
             </div>
             <div className="space-y-3 text-sm sm:text-base text-muted-foreground leading-relaxed">
               <p>
-                We do not sell, rent, or trade your personal information. We only share data in the following circumstances:
+                We do not sell, rent, or trade your personal information. We only share data in the
+                following circumstances:
               </p>
               <ul className="space-y-2">
                 <li className="flex items-start gap-2">
                   <span className="h-1.5 w-1.5 rounded-full bg-primary shrink-0 mt-2" />
-                  <span><strong>Hiring Companies:</strong> When you submit a job application, the hiring team of that specific employer receives your profile, resume, and contact details.</span>
+                  <span>
+                    <strong>Hiring Companies:</strong> When you submit a job application, the hiring
+                    team of that specific employer receives your profile, resume, and contact
+                    details.
+                  </span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="h-1.5 w-1.5 rounded-full bg-primary shrink-0 mt-2" />
-                  <span><strong>Infrastructure & Payment Processors:</strong> We partner with trusted providers including Supabase (data storage & auth) and eSewa (payment processing).</span>
+                  <span>
+                    <strong>Infrastructure & Payment Processors:</strong> We partner with trusted
+                    providers including Supabase (data storage & auth) and eSewa (payment
+                    processing).
+                  </span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="h-1.5 w-1.5 rounded-full bg-primary shrink-0 mt-2" />
-                  <span><strong>Legal Compliance:</strong> If required by Nepali law or valid subpoena, we may disclose necessary records in compliance with applicable regulations.</span>
+                  <span>
+                    <strong>Legal Compliance:</strong> If required by Nepali law or valid subpoena,
+                    we may disclose necessary records in compliance with applicable regulations.
+                  </span>
                 </li>
               </ul>
             </div>
@@ -308,19 +351,33 @@ function PrivacyPolicyPage() {
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="p-4 rounded-lg bg-muted/40 border border-border/40 space-y-1">
                   <h4 className="font-semibold text-sm text-foreground">Access & Edit</h4>
-                  <p className="text-xs text-muted-foreground">Modify your profile, experience, skills, and resume attachments directly from your profile settings at any time.</p>
+                  <p className="text-xs text-muted-foreground">
+                    Modify your profile, experience, skills, and resume attachments directly from
+                    your profile settings at any time.
+                  </p>
                 </div>
                 <div className="p-4 rounded-lg bg-muted/40 border border-border/40 space-y-1">
                   <h4 className="font-semibold text-sm text-foreground">Revoke Integrations</h4>
-                  <p className="text-xs text-muted-foreground">Disconnect third-party accounts (e.g. Google Calendar) with a single click in your account settings.</p>
+                  <p className="text-xs text-muted-foreground">
+                    Disconnect third-party accounts (e.g. Google Calendar) with a single click in
+                    your account settings.
+                  </p>
                 </div>
                 <div className="p-4 rounded-lg bg-muted/40 border border-border/40 space-y-1">
                   <h4 className="font-semibold text-sm text-foreground">Data Deletion</h4>
-                  <p className="text-xs text-muted-foreground">Request permanent account deletion and complete erasure of your resumes, activities, and application history.</p>
+                  <p className="text-xs text-muted-foreground">
+                    Request permanent account deletion and complete erasure of your resumes,
+                    activities, and application history.
+                  </p>
                 </div>
                 <div className="p-4 rounded-lg bg-muted/40 border border-border/40 space-y-1">
-                  <h4 className="font-semibold text-sm text-foreground">Communication Preferences</h4>
-                  <p className="text-xs text-muted-foreground">Manage your notification settings for job updates, interview requests, and application statuses.</p>
+                  <h4 className="font-semibold text-sm text-foreground">
+                    Communication Preferences
+                  </h4>
+                  <p className="text-xs text-muted-foreground">
+                    Manage your notification settings for job updates, interview requests, and
+                    application statuses.
+                  </p>
                 </div>
               </div>
             </div>
@@ -335,7 +392,8 @@ function PrivacyPolicyPage() {
               <h2 className="text-2xl font-bold tracking-tight">Contact & Privacy Inquiries</h2>
             </div>
             <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
-              If you have any questions, concerns, or requests regarding this Privacy Policy or your personal data, our Data Protection Team is here to help:
+              If you have any questions, concerns, or requests regarding this Privacy Policy or your
+              personal data, our Data Protection Team is here to help:
             </p>
 
             <Card className="glass border-border/60">
@@ -346,7 +404,11 @@ function PrivacyPolicyPage() {
                     Jagire Privacy Team
                   </div>
                   <p className="text-xs sm:text-sm text-muted-foreground">
-                    Email: <a href="mailto:privacy@jagire.com" className="text-primary hover:underline">privacy@jagire.com</a> · Kathmandu, Nepal
+                    Email:{" "}
+                    <a href="mailto:privacy@jagire.com" className="text-primary hover:underline">
+                      privacy@jagire.com
+                    </a>{" "}
+                    · Kathmandu, Nepal
                   </p>
                 </div>
                 <Button asChild className="gradient-brand text-primary-foreground">
