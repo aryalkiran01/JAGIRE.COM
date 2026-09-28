@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -562,41 +562,98 @@ function Messages() {
                       : undefined;
 
                     return (
-                      <button
+                      <div
                         key={chat.id}
+                        role="button"
+                        tabIndex={0}
                         onClick={() => {
                           setActiveChat(chat.id);
                           markChatAsSeen(chat.id);
                           navigate({ search: { chat: chat.id } });
                           lastMessageCountRef.current = 0;
                         }}
-                        className={`group flex w-full items-center gap-3 rounded-xl p-3 text-left transition-all ${
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            setActiveChat(chat.id);
+                            markChatAsSeen(chat.id);
+                            navigate({ search: { chat: chat.id } });
+                            lastMessageCountRef.current = 0;
+                          }
+                        }}
+                        className={`group flex w-full items-center gap-3 rounded-xl p-3 text-left transition-all cursor-pointer ${
                           isActive
                             ? "bg-primary text-primary-foreground shadow-md"
                             : "hover:bg-muted"
                         }`}
                       >
-                        <div className="relative shrink-0">
-                          <Avatar className="h-11 w-11">
-                            <AvatarImage src={chat.other?.avatar_url ?? undefined} alt={name} />
-                            <AvatarFallback
-                              className={
-                                isActive
-                                  ? "bg-primary-foreground/20 text-primary-foreground"
-                                  : "gradient-brand text-primary-foreground"
-                              }
-                            >
-                              {getInitials(chat.other?.full_name ?? chat.other?.email)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span
-                            className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 ${isActive ? "border-primary bg-green-400" : "border-background bg-green-500"}`}
-                          />
-                        </div>
+                        {chat.other?.id ? (
+                          <Link
+                            to="/profile/$userId"
+                            params={{ userId: chat.other.id }}
+                            onClick={(e) => e.stopPropagation()}
+                            onKeyDown={(e) => e.stopPropagation()}
+                            title={`View ${name}'s profile`}
+                            aria-label={`View ${name}'s profile`}
+                            className="relative shrink-0 rounded-full hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-opacity cursor-pointer"
+                          >
+                            <Avatar className="h-11 w-11">
+                              <AvatarImage src={chat.other?.avatar_url ?? undefined} alt={name} />
+                              <AvatarFallback
+                                className={
+                                  isActive
+                                    ? "bg-primary-foreground/20 text-primary-foreground"
+                                    : "gradient-brand text-primary-foreground"
+                                }
+                              >
+                                {getInitials(chat.other?.full_name ?? chat.other?.email)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span
+                              className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 ${isActive ? "border-primary bg-green-400" : "border-background bg-green-500"}`}
+                            />
+                          </Link>
+                        ) : (
+                          <div className="relative shrink-0">
+                            <Avatar className="h-11 w-11">
+                              <AvatarImage src={chat.other?.avatar_url ?? undefined} alt={name} />
+                              <AvatarFallback
+                                className={
+                                  isActive
+                                    ? "bg-primary-foreground/20 text-primary-foreground"
+                                    : "gradient-brand text-primary-foreground"
+                                }
+                              >
+                                {getInitials(chat.other?.full_name ?? chat.other?.email)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span
+                              className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 ${isActive ? "border-primary bg-green-400" : "border-background bg-green-500"}`}
+                            />
+                          </div>
+                        )}
 
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center justify-between gap-2">
-                            <p className="truncate font-semibold text-sm">{name}</p>
+                            {chat.other?.id ? (
+                              <Link
+                                to="/profile/$userId"
+                                params={{ userId: chat.other.id }}
+                                onClick={(e) => e.stopPropagation()}
+                                onKeyDown={(e) => e.stopPropagation()}
+                                title={`View ${name}'s profile`}
+                                aria-label={`View ${name}'s profile`}
+                                className={`truncate font-semibold text-sm hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded cursor-pointer ${
+                                  isActive
+                                    ? "text-primary-foreground hover:text-primary-foreground"
+                                    : "text-foreground hover:text-primary"
+                                }`}
+                              >
+                                {name}
+                              </Link>
+                            ) : (
+                              <p className="truncate font-semibold text-sm">{name}</p>
+                            )}
                             {lastMessage && (
                               <span
                                 className={`shrink-0 text-[10px] ${isActive ? "text-primary-foreground/70" : "text-muted-foreground"}`}
@@ -617,7 +674,7 @@ function Messages() {
                             </p>
                           </div>
                         </div>
-                      </button>
+                      </div>
                     );
                   })
                 ) : searchQuery ? (
@@ -672,20 +729,52 @@ function Messages() {
                       <ArrowLeft className="h-5 w-5" />
                     </Button>
 
-                    <Avatar className="h-10 w-10 shrink-0">
-                      <AvatarImage
-                        src={active?.other?.avatar_url ?? undefined}
-                        alt={active?.other?.full_name ?? "User"}
-                      />
-                      <AvatarFallback className="gradient-brand text-sm font-semibold text-primary-foreground">
-                        {getInitials(active?.other?.full_name ?? active?.other?.email)}
-                      </AvatarFallback>
-                    </Avatar>
+                    {active?.other?.id ? (
+                      <Link
+                        to="/profile/$userId"
+                        params={{ userId: active.other.id }}
+                        title={`View ${active.other.full_name ?? active.other.email ?? "user"}'s profile`}
+                        aria-label={`View ${active.other.full_name ?? active.other.email ?? "user"}'s profile`}
+                        className="shrink-0 hover:opacity-90 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-full cursor-pointer"
+                      >
+                        <Avatar className="h-10 w-10">
+                          <AvatarImage
+                            src={active.other.avatar_url ?? undefined}
+                            alt={active.other.full_name ?? "User"}
+                          />
+                          <AvatarFallback className="gradient-brand text-sm font-semibold text-primary-foreground">
+                            {getInitials(active.other.full_name ?? active.other.email)}
+                          </AvatarFallback>
+                        </Avatar>
+                      </Link>
+                    ) : (
+                      <Avatar className="h-10 w-10 shrink-0">
+                        <AvatarImage
+                          src={active?.other?.avatar_url ?? undefined}
+                          alt={active?.other?.full_name ?? "User"}
+                        />
+                        <AvatarFallback className="gradient-brand text-sm font-semibold text-primary-foreground">
+                          {getInitials(active?.other?.full_name ?? active?.other?.email)}
+                        </AvatarFallback>
+                      </Avatar>
+                    )}
 
                     <div className="min-w-0">
-                      <p className="truncate font-semibold">
-                        {active?.other?.full_name ?? active?.other?.email ?? "Conversation"}
-                      </p>
+                      {active?.other?.id ? (
+                        <Link
+                          to="/profile/$userId"
+                          params={{ userId: active.other.id }}
+                          title={`View ${active.other.full_name ?? active.other.email ?? "user"}'s profile`}
+                          aria-label={`View ${active.other.full_name ?? active.other.email ?? "user"}'s profile`}
+                          className="inline-block truncate font-semibold text-foreground hover:underline hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded cursor-pointer max-w-full"
+                        >
+                          {active.other.full_name ?? active.other.email ?? "Conversation"}
+                        </Link>
+                      ) : (
+                        <p className="truncate font-semibold">
+                          {active?.other?.full_name ?? active?.other?.email ?? "Conversation"}
+                        </p>
+                      )}
                       <p className="flex items-center gap-1 text-xs text-muted-foreground">
                         <span className="h-2 w-2 rounded-full bg-green-500 shrink-0" />
                         <span className="truncate">
@@ -702,9 +791,21 @@ function Messages() {
                     <Button variant="ghost" size="icon" className="hidden sm:flex">
                       <Video className="h-5 w-5" />
                     </Button>
-                    <Button variant="ghost" size="icon">
-                      <Info className="h-5 w-5" />
-                    </Button>
+                    {active?.other?.id ? (
+                      <Button variant="ghost" size="icon" asChild title="View Profile">
+                        <Link
+                          to="/profile/$userId"
+                          params={{ userId: active.other.id }}
+                          aria-label="View user profile"
+                        >
+                          <Info className="h-5 w-5" />
+                        </Link>
+                      </Button>
+                    ) : (
+                      <Button variant="ghost" size="icon">
+                        <Info className="h-5 w-5" />
+                      </Button>
+                    )}
                   </div>
                 </div>
 

@@ -127,7 +127,11 @@ function FeedPage() {
       const commentMap = new Map<string, CommentRow[]>();
       for (const c of comments ?? []) {
         const arr = commentMap.get(c.post_id) ?? [];
-        const rawLikesCount = (c as any).likes?.[0]?.count ?? c.likes_count ?? 0;
+        const rawLikesCount =
+          (c as Record<string, unknown> & { likes?: Array<{ count?: number }> }).likes?.[0]
+            ?.count ??
+          (c as { likes_count?: number }).likes_count ??
+          0;
         arr.push({
           ...(c as unknown as CommentRow),
           likes_count: rawLikesCount,
@@ -348,8 +352,9 @@ function FeedPage() {
         if (error) throw error;
       }
       toast.success(isSaved ? "Removed from saved" : "Saved to your bookmarks");
-    } catch (err: any) {
-      toast.error(err.message || "Failed to update saved post");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to update saved post";
+      toast.error(msg);
       qc.invalidateQueries({ queryKey: ["feed-saves", user.id] });
     } finally {
       qc.invalidateQueries({ queryKey: ["feed-saves", user.id] });

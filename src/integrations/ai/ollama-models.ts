@@ -1,3 +1,4 @@
+// LOCAL DEVELOPMENT ONLY — Ollama model mapping for offline local development
 import type { AITask } from "./types";
 
 export const OLLAMA_TIMEOUT_MS = 120_000;

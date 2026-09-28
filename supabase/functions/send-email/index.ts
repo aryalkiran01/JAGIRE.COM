@@ -65,7 +65,9 @@ Deno.serve(async (req: Request) => {
             isServiceRole = true;
           }
         }
-      } catch {}
+      } catch {
+        /* Ignore malformed token decode failure */
+      }
     }
 
     let isTrustedServer = false;

@@ -333,7 +333,15 @@ function AboutPage() {
   );
 }
 
-function StatBox({ icon: Icon, value, label }: { icon: any; value: string; label: string }) {
+function StatBox({
+  icon: Icon,
+  value,
+  label,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  value: string;
+  label: string;
+}) {
   return (
     <Card className="glass text-center hover:shadow-card-soft transition-all">
       <CardContent className="p-6">
@@ -345,7 +353,15 @@ function StatBox({ icon: Icon, value, label }: { icon: any; value: string; label
   );
 }
 
-function PlatformCard({ icon: Icon, title, desc }: { icon: any; title: string; desc: string }) {
+function PlatformCard({
+  icon: Icon,
+  title,
+  desc,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  desc: string;
+}) {
   return (
     <Card className="glass hover:shadow-glow hover:-translate-y-1 transition-all group">
       <CardContent className="p-6">
@@ -359,7 +375,15 @@ function PlatformCard({ icon: Icon, title, desc }: { icon: any; title: string; d
   );
 }
 
-function ValueCard({ icon: Icon, title, desc }: { icon: any; title: string; desc: string }) {
+function ValueCard({
+  icon: Icon,
+  title,
+  desc,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  desc: string;
+}) {
   return (
     <Card className="glass hover:shadow-card-soft transition-all text-center">
       <CardContent className="p-8">

@@ -1048,7 +1048,8 @@ export const runEmployerAiFeature = (
 8. Provide realistic, practical recommendations
 9. Format response as valid JSON per the schema
 10. If there's no data for a requested analysis, return empty arrays and explain why
-11. NEVER fabricate candidate names, applications, or metrics`,
+11. NEVER fabricate candidate names, applications, or metrics
+12. INTENT AWARENESS: If the user request is a casual greeting (e.g. "hi", "hello"), introduce this tool's capabilities in the summary field and provide guidance on how to run this feature effectively rather than creating fake matches or mock candidates.`,
   );
 
   const prompt = promptParts.join("\n\n");

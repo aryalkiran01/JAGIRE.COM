@@ -1,3 +1,4 @@
+// LOCAL DEVELOPMENT ONLY — Ollama Provider for offline local AI execution
 import { Ollama } from "ollama";
 import type { ChatRequest } from "ollama";
 import { AIProvider, AIRequest, AIEmbeddingRequest, AIEmbeddingResponse, AITask } from "./types";
@@ -5,6 +6,7 @@ import { classifyError, safeJsonParse } from "./errors";
 import { resolveOllamaModel, OLLAMA_TIMEOUT_MS } from "./ollama-models";
 
 function host(): string {
+  // LOCAL DEVELOPMENT ONLY
   return process.env.OLLAMA_HOST ?? "http://localhost:11434";
 }
 

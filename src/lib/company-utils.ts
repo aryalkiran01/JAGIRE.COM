@@ -3,7 +3,7 @@ export type WorkModel = "hybrid" | "remote" | "on-site";
 /**
  * Normalizes any work model string to the canonical database check constraint values:
  * 'hybrid' | 'remote' | 'on-site'
- * 
+ *
  * PostgreSQL Constraint:
  * CONSTRAINT companies_work_model_check CHECK (work_model = ANY (ARRAY['remote'::text, 'hybrid'::text, 'on-site'::text]))
  */

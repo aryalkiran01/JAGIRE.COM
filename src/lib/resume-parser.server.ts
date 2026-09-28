@@ -105,50 +105,63 @@ export function detectFileType(
  * Perform OCR on an image buffer using Gemini Vision (if configured) with Tesseract.js fallback.
  */
 async function performImageOCR(imageBuffer: Uint8Array, mimeType: string): Promise<string> {
-  // Strategy 1: If GEMINI_API_KEY is available, use Gemini Vision for high accuracy
+  // Strategy 1: If GEMINI_API_KEY is available, use Gemini Vision with high accuracy and model failover
   const geminiKey = process.env.GEMINI_API_KEY;
   if (geminiKey) {
-    try {
-      const base64Data = Buffer.from(imageBuffer).toString("base64");
-      const model = process.env.GEMINI_MODEL || "gemini-1.5-flash";
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`;
+    const candidateModels = [
+      process.env.GEMINI_MODEL || "gemini-3.6-flash",
+      "gemini-3.1-flash-lite-preview",
+      "gemini-3.8-flash",
+      "gemini-3.7-flash",
+    ].filter((m, i, arr) => arr.indexOf(m) === i);
 
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [
-            {
-              role: "user",
-              parts: [
-                {
-                  text: "You are an expert OCR and resume parser. Transcribe and extract all text, headings, sections, dates, job titles, bullet points, and skills from this resume image accurately. Preserve layout structure. Return plain text only.",
-                },
-                {
-                  inlineData: {
-                    mimeType: mimeType || "image/png",
-                    data: base64Data,
+    const base64Data = Buffer.from(imageBuffer).toString("base64");
+
+    for (const model of candidateModels) {
+      try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`;
+
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [
+              {
+                role: "user",
+                parts: [
+                  {
+                    text: "You are an expert OCR and resume parser. Transcribe and extract all text, headings, sections, dates, job titles, bullet points, and skills from this resume image accurately. Preserve layout structure. Return plain text only.",
                   },
-                },
-              ],
+                  {
+                    inlineData: {
+                      mimeType: mimeType || "image/png",
+                      data: base64Data,
+                    },
+                  },
+                ],
+              },
+            ],
+            generationConfig: {
+              temperature: 0.1,
             },
-          ],
-          generationConfig: {
-            temperature: 0.1,
-          },
-        }),
-      });
+          }),
+        });
 
-      if (res.ok) {
-        const json = await res.json();
-        const extracted = json?.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (extracted && extracted.trim().length >= 30) {
-          console.log("[OCR] Extracted text via Gemini Vision:", extracted.length, "characters");
-          return extracted.trim();
+        if (res.ok) {
+          const json = await res.json();
+          const extracted = json?.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (extracted && extracted.trim().length >= 30) {
+            console.log(
+              "[OCR] Extracted text via Gemini Vision (" + model + "):",
+              extracted.length,
+              "characters",
+            );
+            return extracted.trim();
+          }
         }
+      } catch (geminiError) {
+        console.warn(`[OCR] Gemini Vision OCR failed on ${model}:`, geminiError);
       }
-    } catch (geminiError) {
-      console.warn("[OCR] Gemini Vision OCR failed, falling back to Tesseract.js:", geminiError);
     }
   }
 
@@ -283,48 +296,57 @@ async function extractTextFromPDF(pdfBuffer: Uint8Array): Promise<ExtractedResum
   // Fallback: If no images could be extracted, try Gemini directly with application/pdf
   const geminiKey = process.env.GEMINI_API_KEY;
   if (geminiKey) {
-    try {
-      console.log("[PDF OCR] Attempting full PDF OCR via Gemini multimodal...");
-      const base64Data = Buffer.from(pdfBuffer).toString("base64");
-      const model = process.env.GEMINI_MODEL || "gemini-1.5-flash";
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`;
+    const candidateModels = [
+      process.env.GEMINI_MODEL || "gemini-3.6-flash",
+      "gemini-3.1-flash-lite-preview",
+      "gemini-3.8-flash",
+      "gemini-3.7-flash",
+    ].filter((m, i, arr) => arr.indexOf(m) === i);
 
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [
-            {
-              role: "user",
-              parts: [
-                {
-                  text: "You are an expert OCR and resume parser. Transcribe and extract all readable text, contact details, experience, skills, and education from this scanned PDF resume. Return clear text.",
-                },
-                {
-                  inlineData: {
-                    mimeType: "application/pdf",
-                    data: base64Data,
+    const base64Data = Buffer.from(pdfBuffer).toString("base64");
+
+    for (const model of candidateModels) {
+      try {
+        console.log(`[PDF OCR] Attempting full PDF OCR via Gemini (${model})...`);
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`;
+
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [
+              {
+                role: "user",
+                parts: [
+                  {
+                    text: "You are an expert OCR and resume parser. Transcribe and extract all readable text, contact details, experience, skills, and education from this scanned PDF resume. Return clear text.",
                   },
-                },
-              ],
-            },
-          ],
-        }),
-      });
+                  {
+                    inlineData: {
+                      mimeType: "application/pdf",
+                      data: base64Data,
+                    },
+                  },
+                ],
+              },
+            ],
+          }),
+        });
 
-      if (res.ok) {
-        const json = await res.json();
-        const extracted = json?.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (extracted && extracted.trim().length >= 30) {
-          return {
-            text: extracted.trim(),
-            source: "pdf_ocr",
-            mimeType: "application/pdf",
-          };
+        if (res.ok) {
+          const json = await res.json();
+          const extracted = json?.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (extracted && extracted.trim().length >= 30) {
+            return {
+              text: extracted.trim(),
+              source: "pdf_ocr",
+              mimeType: "application/pdf",
+            };
+          }
         }
+      } catch (e) {
+        console.warn(`[PDF OCR] Multimodal PDF Gemini extraction error on ${model}:`, e);
       }
-    } catch (e) {
-      console.warn("[PDF OCR] Multimodal PDF Gemini extraction error:", e);
     }
   }
 

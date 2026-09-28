@@ -32,14 +32,24 @@ function log(
 }
 
 function getConfiguredProviderOrder(): AIProvider[] {
-  const list: AIProvider[] = [];
-  // Primary AI Provider: Google Gemini
-  if (process.env.GEMINI_API_KEY) {
-    list.push(new GeminiProvider());
+  const isProduction =
+    process.env.NODE_ENV === "production" ||
+    process.env.VERCEL === "1" ||
+    Boolean(process.env.NETLIFY);
+
+  const configuredProvider = (process.env.AI_PROVIDER || "gemini").toLowerCase().trim();
+
+  // In production, Google Gemini is strictly the sole permitted provider
+  if (isProduction || configuredProvider === "gemini") {
+    return [new GeminiProvider()];
   }
-  // Automatic fallback: Ollama (always available as fallback)
-  list.push(new OllamaProvider());
-  return list;
+
+  // Local development ONLY: if developer explicitly sets AI_PROVIDER=ollama
+  if (configuredProvider === "ollama") {
+    return [new OllamaProvider()];
+  }
+
+  return [new GeminiProvider()];
 }
 
 async function retryWithBackoff<T>(
@@ -87,7 +97,8 @@ interface CacheEntry {
 const responseCache = new Map<string, CacheEntry>();
 
 function cacheKey(req: AIRequest): string {
-  return `${req.task ?? "general"}:${req.model ?? "default"}:${req.prompt}`;
+  const provider = (process.env.AI_PROVIDER || "gemini").toLowerCase();
+  return `${provider}:${req.task ?? "general"}:${req.model ?? "default"}:${req.prompt}`;
 }
 
 function getCached(key: string): unknown | undefined {
@@ -495,10 +506,14 @@ function normalizeAndSanitizeTaskOutput(task: AITask | undefined, raw: unknown):
 }
 
 class AIServiceImpl {
-  private providers: AIProvider[];
+  private explicitProviders?: AIProvider[];
 
   constructor(providers?: AIProvider[]) {
-    this.providers = providers ?? getConfiguredProviderOrder();
+    this.explicitProviders = providers;
+  }
+
+  private get providers(): AIProvider[] {
+    return this.explicitProviders ?? getConfiguredProviderOrder();
   }
 
   getProviders(): string[] {
@@ -590,7 +605,7 @@ class AIServiceImpl {
             `${providerLabel} successfully produced validated output for ${req.task ?? "task"}`,
             {
               provider: provider.name,
-              provider_type: isFallback ? "ollama_fallback" : "gemini",
+              provider_type: isFallback ? `${provider.name}_fallback` : provider.name,
               task: req.task,
               attempt,
             },
@@ -685,7 +700,7 @@ class AIServiceImpl {
         const result = await retryWithBackoff(provider, fn, `${label}:${providerLabel}`);
         log("info", `${providerLabel} successfully handled request`, {
           provider: provider.name,
-          provider_type: isFallback ? "ollama_fallback" : "gemini",
+          provider_type: isFallback ? `${provider.name}_fallback` : provider.name,
           label,
         });
         return result;

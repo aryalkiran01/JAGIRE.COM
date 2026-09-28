@@ -188,8 +188,8 @@ export const getEmployerJobApplications = createServerFn({ method: "POST" })
     if (appsError) throw appsError;
 
     const enrichedApps = await Promise.all(
-      (appsData ?? []).map(async (app: any) => {
-        let profileData: any = null;
+      (appsData ?? []).map(async (app: Record<string, unknown>) => {
+        let profileData: Record<string, unknown> | null = null;
         let candidateEmail = "";
 
         if (app.applicant_id) {
@@ -198,9 +198,9 @@ export const getEmployerJobApplications = createServerFn({ method: "POST" })
             .select(
               "id, full_name, email, avatar_url, headline, location, phone, skills, experience, education",
             )
-            .eq("id", app.applicant_id)
+            .eq("id", app.applicant_id as string)
             .maybeSingle();
-          profileData = prof;
+          profileData = prof as Record<string, unknown> | null;
 
           if (prof?.email) {
             candidateEmail = prof.email;
@@ -208,7 +208,7 @@ export const getEmployerJobApplications = createServerFn({ method: "POST" })
             // Fetch from auth.users
             try {
               const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(
-                app.applicant_id,
+                app.applicant_id as string,
               );
               if (authUser?.user?.email) {
                 candidateEmail = authUser.user.email;
@@ -216,7 +216,7 @@ export const getEmployerJobApplications = createServerFn({ method: "POST" })
                 await supabaseAdmin
                   .from("profiles")
                   .update({ email: candidateEmail })
-                  .eq("id", app.applicant_id);
+                  .eq("id", app.applicant_id as string);
                 if (profileData) {
                   profileData.email = candidateEmail;
                 }
@@ -227,24 +227,28 @@ export const getEmployerJobApplications = createServerFn({ method: "POST" })
           }
         }
 
-        let resumeData: any = null;
+        let resumeData: Record<string, unknown> | null = null;
         if (app.resume_id) {
           const { data: resume } = await supabaseAdmin
             .from("resumes")
             .select(
               "id, file_name, file_url, file_path, file_type, mime_type, ats_score, overall_score, parsed_data",
             )
-            .eq("id", app.resume_id)
+            .eq("id", app.resume_id as string)
             .maybeSingle();
-          resumeData = resume;
+          resumeData = resume as Record<string, unknown> | null;
 
           if (!candidateEmail && resume?.parsed_data) {
-            const parsed = resume.parsed_data as any;
+            const parsed = resume.parsed_data as Record<string, unknown>;
+            const contact = parsed?.contact as Record<string, unknown> | undefined;
+            const personalInfo = parsed?.personal_info as Record<string, unknown> | undefined;
+            const basicInfo = parsed?.basic_info as Record<string, unknown> | undefined;
+
             candidateEmail =
-              parsed?.email ||
-              parsed?.contact?.email ||
-              parsed?.personal_info?.email ||
-              parsed?.basic_info?.email ||
+              (typeof parsed?.email === "string" ? parsed.email : null) ||
+              (typeof contact?.email === "string" ? contact.email : null) ||
+              (typeof personalInfo?.email === "string" ? personalInfo.email : null) ||
+              (typeof basicInfo?.email === "string" ? basicInfo.email : null) ||
               "";
           }
         }
@@ -261,5 +265,6 @@ export const getEmployerJobApplications = createServerFn({ method: "POST" })
       }),
     );
 
-    return enrichedApps;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return enrichedApps as any;
   });

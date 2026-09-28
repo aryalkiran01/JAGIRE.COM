@@ -107,7 +107,7 @@ export function ScheduleInterviewDialog({
       toast.success("Google Calendar connected successfully.");
       qc.invalidateQueries({ queryKey: ["gcal-status"] });
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const disconnect = useMutation({
@@ -118,7 +118,7 @@ export function ScheduleInterviewDialog({
       toast.success("Google Calendar disconnected.");
       qc.invalidateQueries({ queryKey: ["gcal-status"] });
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const now = new Date();
@@ -202,14 +202,19 @@ export function ScheduleInterviewDialog({
       qc.invalidateQueries({ queryKey: ["my-interviews"] });
       qc.invalidateQueries({ queryKey: ["job-apps"] });
     },
-    onError: (e: any) => {
+    onError: (e: Error) => {
       let msg = e.message ?? "";
       try {
         const parsed = JSON.parse(msg);
         if (Array.isArray(parsed) && parsed[0]?.message) {
-          msg = parsed.map((err: any) => err.message).join(", ");
+          msg = parsed
+            .map((err: { message?: string }) => err.message)
+            .filter(Boolean)
+            .join(", ");
         }
-      } catch {}
+      } catch {
+        /* Ignore JSON parse failure for non-JSON error messages */
+      }
       if (msg.includes("GOOGLE_CALENDAR_RECONNECT_REQUIRED")) {
         toast.error(
           "Your Google Calendar connection has expired. Please reconnect Google Calendar.",

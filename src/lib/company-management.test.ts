@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { normalizeWorkModel, slugify, type WorkModel } from "@/lib/company-utils";
 
-
 function parseArrayField(val: string | string[] | null | undefined): string[] {
   if (Array.isArray(val)) return val.map((s) => s.trim()).filter(Boolean);
   if (typeof val === "string") {

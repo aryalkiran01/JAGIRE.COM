@@ -1177,7 +1177,8 @@ ${data.message}`,
 3. Consider the Nepali job market
 4. Use NPR (Rs.) for all salary figures
 5. Provide realistic, practical advice
-6. Format response as valid JSON per the schema`,
+6. Format response as valid JSON per the schema
+7. INTENT AWARENESS: If the user request is a casual greeting (e.g. "hi", "hello"), introduce this tool's capabilities in the main response fields and guide the user on how to use it effectively with their specific career target.`,
     ].join("\n\n");
 
     try {
