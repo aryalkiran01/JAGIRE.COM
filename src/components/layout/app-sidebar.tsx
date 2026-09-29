@@ -23,7 +23,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { EMPLOYER_AI_GROUPS } from "@/lib/employer-ai-features";
 import { JOBSEEKER_AI_GROUPS } from "@/lib/jobseeker-ai-features";
 
@@ -169,10 +169,16 @@ export function AppSidebar() {
         : SEEKER_NAV;
 
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const prevPathnameRef = useRef(pathname);
 
   // Auto-close sidebar on route changes (especially for mobile drawer)
   useEffect(() => {
-    close();
+    if (prevPathnameRef.current !== pathname) {
+      prevPathnameRef.current = pathname;
+      if (typeof window !== "undefined" && window.innerWidth < 1024) {
+        close();
+      }
+    }
   }, [pathname, close]);
 
   // Handle ESC key to close sidebar
@@ -206,7 +212,7 @@ export function AppSidebar() {
         />
 
         {/* Slide-out Drawer Panel */}
-        <aside className="fixed inset-y-0 left-0 z-50 w-[260px] max-w-[85vw] bg-card border-r border-border shadow-2xl flex flex-col pt-3 overflow-y-auto animate-fade-in-right">
+        <aside className="fixed inset-y-0 left-0 z-50 w-[260px] max-w-[85vw] bg-card border-r border-border shadow-2xl flex flex-col pt-3 overflow-y-auto animate-slide-in-left">
           <div className="flex items-center justify-between px-4 pb-3 border-b border-border/50">
             <Link to="/" onClick={close} className="flex items-center gap-2">
               <span className="text-xl font-bold gradient-text tracking-tight">JAGIRE</span>
