@@ -2,18 +2,17 @@ import { AIProvider, AIRequest, AIEmbeddingRequest, AIEmbeddingResponse } from "
 import { classifyError, safeJsonParse } from "./errors";
 import { AI_CONFIG } from "./config";
 
-export const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash";
+const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models";
+
+export const DEFAULT_GEMINI_MODEL = "gemini-3.1-flash-lite-preview";
 export const DEFAULT_GEMINI_EMBEDDING_MODEL = "gemini-embedding-001";
 
 const FALLBACK_CANDIDATE_MODELS = [
-  "gemini-2.5-flash",
-  "gemini-2.0-flash",
-  "gemini-1.5-flash",
   "gemini-3.1-flash-lite-preview",
   "gemini-3.1-flash-lite",
 ];
 
-const FALLBACK_EMBEDDING_MODELS = ["gemini-embedding-001", "gemini-embedding-2-preview"];
+const FALLBACK_EMBEDDING_MODELS = ["gemini-embedding-001"];
 
 function apiKey(): string {
   const key = process.env.GEMINI_API_KEY;
@@ -44,6 +43,7 @@ export class GeminiProvider implements AIProvider {
     let lastError: unknown;
 
     for (const model of models) {
+      console.log(`[Gemini] Calling generateText with model: "${model}" (task: ${req.task ?? "general"})`);
       const url = `${GEMINI_URL}/${model}:generateContent?key=${key}`;
       const body: Record<string, unknown> = {
         contents: [{ role: "user", parts: [{ text: req.prompt }] }],
@@ -109,6 +109,7 @@ export class GeminiProvider implements AIProvider {
     let lastError: unknown;
 
     for (const model of models) {
+      console.log(`[Gemini] Calling generateJson with model: "${model}" (task: ${req.task ?? "general"})`);
       const url = `${GEMINI_URL}/${model}:generateContent?key=${key}`;
       const isGemma = model.startsWith("gemma-");
       const maxTokens =
@@ -194,6 +195,7 @@ export class GeminiProvider implements AIProvider {
     let lastError: unknown;
 
     for (const model of models) {
+      console.log(`[Gemini] Calling generateEmbedding with model: "${model}"`);
       const url = `${GEMINI_URL}/${model}:embedContent?key=${key}`;
       const body = {
         model: `models/${model}`,

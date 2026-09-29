@@ -860,7 +860,7 @@ export const scanResumeFromStorage = createServerFn({ method: "POST" })
           suggestions: scan.suggestions ?? [],
           career_roadmap: scoringUpdate.career_roadmap,
           ai_provider: "gemini",
-          ai_model: process.env.GEMINI_MODEL || "gemini-3.1-flash-lite",
+          ai_model: process.env.GEMINI_MODEL || "gemini-3.1-flash-lite-preview",
           duration_ms: durationMs,
         })
         .select("id")

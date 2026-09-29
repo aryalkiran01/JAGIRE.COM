@@ -123,7 +123,7 @@ export const getUserResumeScans = createServerFn({ method: "GET" })
             parsed_data: res.parsed_data ?? {},
             career_roadmap: res.career_roadmap ?? {},
             suggestions: (res.suggestions as any) ?? [],
-            ai_model: "gemini-3.1-flash-lite",
+            ai_model: process.env.GEMINI_MODEL || "gemini-3.1-flash-lite-preview",
             ai_provider: "gemini",
             duration_ms: 0,
             failure_reason: null,

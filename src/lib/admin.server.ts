@@ -241,7 +241,7 @@ export const adminDeleteBlogComment = createServerFn({ method: "POST" })
 const grantSubscriptionSchema = z.object({
   targetUserId: z.string().uuid("Invalid target user ID"),
   planType: z.enum(["free", "premium", "starter", "professional", "enterprise"]),
-  status: z.enum(["active", "trialing", "cancelled", "expired"]).default("active"),
+  status: z.enum(["active", "trialing", "cancelled", "expired", "inactive"]).default("active"),
   startedAt: z.string().optional(),
   expiresAt: z.string().nullable().optional(),
 });
@@ -266,25 +266,36 @@ export const adminGrantSubscription = createServerFn({ method: "POST" })
 
     const now = new Date().toISOString();
     const startedAt = data.startedAt || now;
-    const paymentStatus = data.status === "active" ? "paid" : "unpaid";
     const transactionId = `admin_grant_${Date.now()}`;
     const esewaRefId = "ADMIN_MANUAL_GRANT";
+
+    // Map status according to database constraint ('active' | 'inactive' | 'expired' | 'cancelled')
+    const validDbStatus = data.status === "trialing" ? "active" : data.status;
 
     // Check if target user has an existing subscription record
     const { data: existingSub, error: findError } = await supabaseAdmin
       .from("subscriptions")
-      .select("id")
+      .select("id, payment_status")
       .eq("user_id", data.targetUserId)
       .maybeSingle();
 
     if (findError) throw new Error(findError.message);
+
+    // Database check constraint allows only ('pending', 'paid', 'failed', 'refunded').
+    // When cancelling or modifying status, preserve the existing payment_status (e.g. 'paid' stays 'paid').
+    // Never write 'cancelled' or 'unpaid' into payment_status.
+    const VALID_PAYMENT_STATUSES = ["pending", "paid", "failed", "refunded"] as const;
+    const paymentStatus =
+      existingSub?.payment_status && VALID_PAYMENT_STATUSES.includes(existingSub.payment_status as any)
+        ? existingSub.payment_status
+        : "paid";
 
     if (existingSub) {
       const { error: updateError } = await supabaseAdmin
         .from("subscriptions")
         .update({
           plan_type: data.planType,
-          status: data.status,
+          status: validDbStatus,
           payment_status: paymentStatus,
           started_at: startedAt,
           expires_at: data.expiresAt ?? null,
@@ -299,7 +310,7 @@ export const adminGrantSubscription = createServerFn({ method: "POST" })
       const { error: insertError } = await supabaseAdmin.from("subscriptions").insert({
         user_id: data.targetUserId,
         plan_type: data.planType,
-        status: data.status,
+        status: validDbStatus,
         payment_status: paymentStatus,
         started_at: startedAt,
         expires_at: data.expiresAt ?? null,
@@ -312,18 +323,40 @@ export const adminGrantSubscription = createServerFn({ method: "POST" })
       if (insertError) throw new Error(insertError.message);
     }
 
+    // Keep user's profile subscription state in sync
+    await supabaseAdmin
+      .from("profiles")
+      .update({
+        subscription_status: validDbStatus,
+        subscription_plan: validDbStatus === "cancelled" || validDbStatus === "expired" ? "free" : data.planType,
+        subscription_expires_at: data.expiresAt ?? null,
+        updated_at: now,
+      })
+      .eq("id", data.targetUserId);
+
     // Send notification to the user
+    const isCancelled = validDbStatus === "cancelled";
+    const notificationTitle = isCancelled
+      ? "Subscription Cancelled"
+      : "Subscription Updated by Administrator";
+    const notificationBody = isCancelled
+      ? "Your subscription has been cancelled."
+      : `Your subscription has been updated to the ${data.planType.toUpperCase()} plan.`;
+
     await notifyUser(
       supabaseAdmin,
       data.targetUserId,
-      "Subscription Updated by Administrator",
-      `Your subscription has been updated to the ${data.planType.toUpperCase()} plan.`,
+      notificationTitle,
+      notificationBody,
       "system",
       "/pricing",
-      { action: "admin_grant_subscription", plan: data.planType },
+      { action: isCancelled ? "admin_cancel_subscription" : "admin_grant_subscription", plan: data.planType, status: validDbStatus },
     );
 
-    return { success: true, message: "Subscription granted successfully" };
+    return {
+      success: true,
+      message: isCancelled ? "Subscription cancelled successfully" : "Subscription granted successfully",
+    };
   });
 
 /**

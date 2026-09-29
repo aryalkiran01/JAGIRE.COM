@@ -107,10 +107,8 @@ async function performImageOCR(imageBuffer: Uint8Array, mimeType: string): Promi
   const geminiKey = process.env.GEMINI_API_KEY;
   if (geminiKey) {
     const candidateModels = [
-      process.env.GEMINI_MODEL || "gemini-2.5-flash",
-      "gemini-2.0-flash",
-      "gemini-1.5-flash",
-      "gemini-3.1-flash-lite-preview",
+      process.env.GEMINI_MODEL || "gemini-3.1-flash-lite-preview",
+      "gemini-3.1-flash-lite",
     ].filter((m, i, arr) => arr.indexOf(m) === i);
 
     const base64Data = Buffer.from(imageBuffer).toString("base64");
@@ -229,10 +227,8 @@ async function extractTextFromPDF(pdfBuffer: Uint8Array): Promise<ExtractedResum
   const geminiKey = process.env.GEMINI_API_KEY;
   if (geminiKey) {
     const candidateModels = [
-      process.env.GEMINI_MODEL || "gemini-2.5-flash",
-      "gemini-2.0-flash",
-      "gemini-1.5-flash",
-      "gemini-3.1-flash-lite-preview",
+      process.env.GEMINI_MODEL || "gemini-3.1-flash-lite-preview",
+      "gemini-3.1-flash-lite",
     ].filter((m, i, arr) => arr.indexOf(m) === i);
 
     const base64Data = Buffer.from(pdfBuffer).toString("base64");
