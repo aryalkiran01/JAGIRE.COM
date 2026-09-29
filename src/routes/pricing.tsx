@@ -135,10 +135,10 @@ function PricingPage() {
         <div className="absolute inset-0 -z-10 gradient-hero opacity-[0.07]" />
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-primary/10 rounded-full blur-[120px] -z-10" />
         <div className="container mx-auto px-4 text-center max-w-4xl">
-          <Badge variant="outline" className="mb-4 gap-1.5 px-3 py-1 text-xs font-medium glass">
-            <Sparkles className="h-3.5 w-3.5 text-primary" />
-            AI-Powered Recruitment & HR Operating System
-          </Badge>
+          <div className="inline-flex items-center gap-2 mb-4 px-4 py-1.5 rounded-full border border-primary/30 bg-primary/10 text-primary text-xs font-semibold shadow-sm animate-fade-in">
+            <Sparkles className="h-4 w-4" />
+            <span>🎁 3-Day Free AI Trial Available for Both Job Seekers & Employers</span>
+          </div>
           <h1 className="text-4xl md:text-5xl font-bold mb-4 tracking-tight">
             {isEmployer ? (
               <>
@@ -152,8 +152,8 @@ function PricingPage() {
           </h1>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
             {isEmployer
-              ? "Get the complete AI recruitment and HR platform for your company."
-              : "Job seekers get AI career tools to accelerate your job search."}
+              ? "Get 3 days of full AI recruitment & HR access for free. Upgrade anytime to continue growing your team."
+              : "Try 3 days of free AI resume analysis, optimization, and career tools before choosing a plan."}
           </p>
         </div>
       </section>
@@ -793,8 +793,16 @@ function StatsSection() {
 
 const SEEKER_FAQ = [
   {
+    q: "How does the 3-Day Free AI Trial work?",
+    a: "Every eligible Job Seeker gets 3 full calendar days (72 hours) of unlimited AI features (Resume Analysis, Optimizer, Cover Letter Generator, Career Coach, Job Matcher) starting from your first AI action. No payment required upfront.",
+  },
+  {
+    q: "What happens when my 3-Day AI Trial ends?",
+    a: "Once your 72-hour trial expires, you can upgrade to a Premium plan to continue enjoying unlimited AI tools and career benefits.",
+  },
+  {
     q: "What are AI Credits?",
-    a: "Free plan includes 5 AI credits/month for resume scanning and career tools. Premium includes unlimited AI access.",
+    a: "Free plan includes basic credits for resume scanning and career tools. Premium includes unlimited AI access.",
   },
   {
     q: "Can I cancel anytime?",
@@ -807,6 +815,10 @@ const SEEKER_FAQ = [
 ];
 
 const EMPLOYER_FAQ = [
+  {
+    q: "How does the Employer 3-Day Free AI Trial work?",
+    a: "Employers get 3 full calendar days (72 hours) of free AI access to generate job descriptions, screen resumes, rank applicants, and use the AI Office Assistant from the moment you first use an AI feature.",
+  },
   {
     q: "What does 'Active Job Posts' mean?",
     a: "It's the number of job listings you can have published simultaneously. Professional and Enterprise plans offer unlimited posts.",
@@ -854,6 +866,74 @@ function CurrentSubscriptionCard({
 
   const isEmployer = userRole === "employer";
 
+  // Active AI Trial State
+  if (sub.isTrialActive) {
+    const trialHours = sub.trialHoursRemaining ?? 72;
+    const trialDays = sub.trialDaysRemaining ?? 3;
+    const expires = sub.trialExpiresAt ? new Date(sub.trialExpiresAt).toLocaleString() : "in 3 days";
+
+    return (
+      <Card className="border-primary/40 bg-primary/5 dark:bg-primary/10 shadow-glow mb-10 animate-fade-in">
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-full gradient-brand flex items-center justify-center">
+                <Sparkles className="h-5 w-5 text-primary-foreground" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-lg">🎁 3-Day Free AI Trial</span>
+                  <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 font-semibold">
+                    Active
+                  </Badge>
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  Your AI trial is active.{" "}
+                  <span className="font-medium text-foreground">
+                    Expires in: {trialDays > 1 ? `${trialDays} days` : `${trialHours} hours`} ({expires})
+                  </span>
+                </div>
+              </div>
+            </div>
+            <Button asChild className="gradient-brand text-primary-foreground">
+              <Link to="/checkout/$plan" params={{ plan: isEmployer ? "starter" : "premium" }}>
+                {isEmployer ? "Upgrade to Starter" : "Upgrade to Premium"}
+              </Link>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Expired AI Trial State
+  if (sub.isTrialExpired && !sub.isPremium) {
+    return (
+      <Card className="border-amber-400/50 bg-amber-50/70 dark:border-amber-700/50 dark:bg-amber-950/40 mb-10 animate-fade-in">
+        <CardContent className="p-6 flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-full bg-amber-200 dark:bg-amber-900 flex items-center justify-center">
+              <Clock className="h-5 w-5 text-amber-700 dark:text-amber-300" />
+            </div>
+            <div>
+              <div className="font-semibold text-base text-amber-900 dark:text-amber-200">
+                Your 3-day AI trial has ended
+              </div>
+              <div className="text-sm text-muted-foreground">
+                Upgrade your plan to continue using Jagire's AI-powered features.
+              </div>
+            </div>
+          </div>
+          <Button asChild className="gradient-brand text-primary-foreground">
+            <Link to="/checkout/$plan" params={{ plan: isEmployer ? "starter" : "premium" }}>
+              {isEmployer ? "Upgrade to Starter" : "Upgrade to Premium"}
+            </Link>
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
   if (!sub.isPremium) {
     return (
       <Card className="border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950 mb-10 animate-fade-in">
@@ -872,8 +952,8 @@ function CurrentSubscriptionCard({
               </div>
               <div className="text-sm text-muted-foreground">
                 {isEmployer
-                  ? "Upgrade to unlock AI recruitment tools, candidate management, and more."
-                  : "Upgrade to unlock AI-powered career tools, priority matching, and more."}
+                  ? "Get 3 days of free AI trial when you use any AI feature, or upgrade to unlock all enterprise tools."
+                  : "Get 3 days of free AI trial on your first AI action, or upgrade for unlimited permanent access."}
               </div>
             </div>
           </div>

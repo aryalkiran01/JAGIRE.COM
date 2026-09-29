@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Crown, Sparkles, Zap, Building2, ChevronRight } from "lucide-react";
+import { Crown, Sparkles, Zap, Building2, ChevronRight, Gift, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -15,22 +15,107 @@ export function SubscriptionBadge() {
 
   if (isLoading) return null;
 
-  if (!sub?.isPremium) {
+  // 1. Active 3-Day Free AI Trial Presentation
+  if (sub?.isTrialActive) {
+    const hours = sub.trialHoursRemaining ?? 72;
+    const days = sub.trialDaysRemaining ?? 3;
+    const hoursPart = hours % 24;
+    const timeDisplay = days > 1 ? `${days}d left` : `${hours}h left`;
+    const expiryDate = sub.trialExpiresAt ? new Date(sub.trialExpiresAt).toLocaleString() : null;
+
+    return (
+      <TooltipProvider delayDuration={200}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Link
+              to="/pricing"
+              className="group inline-flex items-center gap-1.5 rounded-full border border-indigo-400 bg-gradient-to-r from-indigo-50/90 via-teal-50/90 to-amber-50/90 dark:border-indigo-700 dark:from-indigo-950/80 dark:via-teal-950/80 dark:to-amber-950/80 px-3 py-1 text-xs font-semibold text-indigo-700 dark:text-indigo-300 shadow-sm transition-all duration-300 hover:scale-105"
+            >
+              <Gift className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400 animate-bounce" />
+              <span className="font-bold">3-Day Free Trial</span>
+              <Badge
+                variant="secondary"
+                className="ml-0.5 h-5 px-1.5 text-[10px] leading-none font-bold bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200"
+              >
+                {timeDisplay}
+              </Badge>
+              <ChevronRight className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-all duration-300 group-hover:translate-x-0.5" />
+            </Link>
+          </TooltipTrigger>
+          <TooltipContent
+            side="bottom"
+            className="max-w-xs bg-gradient-to-b from-white to-gray-50 dark:from-gray-900 dark:to-gray-950 border border-gray-200 dark:border-gray-800 shadow-xl p-4"
+          >
+            <div className="space-y-2 text-xs">
+              <div className="flex items-center gap-2 font-semibold text-base">
+                <Gift className="h-4 w-4 text-indigo-500" />
+                <span className="bg-gradient-to-r from-indigo-600 to-teal-600 bg-clip-text text-transparent font-bold">
+                  3-Day Free AI Trial Active
+                </span>
+              </div>
+
+              <p className="text-muted-foreground">
+                Enjoy full, unrestricted access to Jagire's AI tools for 72 hours.
+              </p>
+
+              {expiryDate && (
+                <div className="flex items-center gap-1.5 text-muted-foreground pt-1">
+                  <Clock className="h-3.5 w-3.5 text-indigo-500" />
+                  <span>Expires: {expiryDate}</span>
+                </div>
+              )}
+
+              <div className="mt-3 pt-2 border-t border-gray-200 dark:border-gray-700">
+                <Link
+                  to="/pricing"
+                  className="flex items-center justify-center gap-1 text-primary hover:text-primary/80 font-medium transition-colors"
+                >
+                  Upgrade to keep AI after trial
+                  <ChevronRight className="h-3 w-3" />
+                </Link>
+              </div>
+            </div>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  }
+
+  // 2. Expired Trial (not upgraded to paid yet)
+  if (sub?.isTrialExpired && !sub?.isPremium) {
     return (
       <Button
         asChild
         size="sm"
-        className="h-8 gap-1.5 text-xs bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-lg shadow-amber-500/25 hover:shadow-amber-500/40 transition-all duration-300 group"
+        className="h-8 gap-1.5 text-xs bg-gradient-to-r from-red-500 to-amber-500 hover:from-red-600 hover:to-amber-600 text-white shadow-lg shadow-red-500/20 transition-all duration-300 group"
       >
         <Link to="/pricing">
           <Sparkles className="h-3.5 w-3.5 animate-pulse" />
-          Upgrade
+          Trial Ended — Upgrade
           <ChevronRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
         </Link>
       </Button>
     );
   }
 
+  // 3. User with No Paid Plan and Trial not yet used
+  if (!sub?.isPremium) {
+    return (
+      <Button
+        asChild
+        size="sm"
+        className="h-8 gap-1.5 text-xs bg-gradient-to-r from-indigo-500 to-teal-500 hover:from-indigo-600 hover:to-teal-600 text-white shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 transition-all duration-300 group"
+      >
+        <Link to="/pricing">
+          <Gift className="h-3.5 w-3.5" />
+          🎁 3-Day Free Trial
+          <ChevronRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
+        </Link>
+      </Button>
+    );
+  }
+
+  // 4. Active Paid Subscription
   const planLabel = PLAN_NAMES[sub.plan_type ?? ""] ?? "Premium";
   const expiry = sub.expires_at ? new Date(sub.expires_at).toLocaleDateString() : null;
   const days = sub.daysRemaining;

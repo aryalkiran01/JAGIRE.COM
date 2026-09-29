@@ -94,7 +94,7 @@ export function SiteHeader() {
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+  }, [currentPath]);
 
   const { data: unread } = useQuery({
     queryKey: ["notif-unread", user?.id],

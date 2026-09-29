@@ -18,6 +18,16 @@ export interface SubscriptionStatus {
   isActive?: boolean;
   isExpired?: boolean;
   isTrialing?: boolean;
+  // 3-Day Free AI Trial state
+  isTrialActive?: boolean;
+  isTrialExpired?: boolean;
+  trialStartedAt?: string | null;
+  trialExpiresAt?: string | null;
+  trialDaysRemaining?: number | null;
+  trialHoursRemaining?: number | null;
+  trialUsed?: boolean;
+  trialStatus?: "none" | "active" | "expired";
+  accessType?: "admin" | "paid" | "trial" | "none";
 }
 
 export function useSubscription() {
@@ -36,7 +46,10 @@ export function useSubscription() {
           isActive: false,
           isExpired: false,
           isTrialing: false,
+          isTrialActive: false,
+          isTrialExpired: false,
           daysRemaining: null,
+          accessType: "none",
         };
       }
 
@@ -54,6 +67,9 @@ export function useSubscription() {
           isActive: true,
           isExpired: false,
           isTrialing: false,
+          isTrialActive: false,
+          isTrialExpired: false,
+          accessType: "admin",
         };
       }
 
@@ -112,6 +128,9 @@ export function useSubscription() {
             isActive: true,
             isExpired: false,
             isTrialing: false,
+            isTrialActive: false,
+            isTrialExpired: false,
+            accessType: "paid",
           };
         }
       }
@@ -165,17 +184,23 @@ export function useSubscription() {
             isActive: true,
             isExpired: false,
             isTrialing: false,
+            isTrialActive: false,
+            isTrialExpired: false,
+            accessType: "paid",
           };
         }
       }
 
-      // 4. Fallback check on profiles table (which edge function updates synchronously)
+      // 4. Query profiles table for active paid plan AND 3-Day Free AI Trial state
       const { data: profileData } = await supabase
         .from("profiles")
-        .select("subscription_status, subscription_plan, subscription_expires_at")
+        .select(
+          "subscription_status, subscription_plan, subscription_expires_at, ai_trial_started_at, ai_trial_expires_at, ai_trial_status, ai_trial_used",
+        )
         .eq("id", user.id)
         .maybeSingle();
 
+      // 4A. Profile active paid subscription
       if (profileData?.subscription_status === "active" && profileData.subscription_plan) {
         const profileExpiry = profileData.subscription_expires_at
           ? new Date(profileData.subscription_expires_at).getTime()
@@ -204,17 +229,90 @@ export function useSubscription() {
             isActive: true,
             isExpired: false,
             isTrialing: false,
+            isTrialActive: false,
+            isTrialExpired: false,
+            accessType: "paid",
           };
         }
       }
 
-      // 5. Default: No active paid subscription found
+      // 4B. 3-Day Free AI Trial Verification from Profile
+      const trialUsed = Boolean(profileData?.ai_trial_used);
+      const trialExpiresAt = profileData?.ai_trial_expires_at
+        ? new Date(profileData.ai_trial_expires_at).getTime()
+        : null;
+
+      if (trialUsed && trialExpiresAt) {
+        const msRemaining = trialExpiresAt - now;
+        const isTrialActive = msRemaining > 0;
+        const trialDaysRemaining = Math.max(0, Math.ceil(msRemaining / (1000 * 60 * 60 * 24)));
+        const trialHoursRemaining = Math.max(0, Math.ceil(msRemaining / (1000 * 60 * 60)));
+
+        if (isTrialActive) {
+          const defaultRolePlan = role === "employer" ? "starter" : "premium";
+          return {
+            isPremium: true,
+            isActive: true,
+            plan_type: defaultRolePlan,
+            plan_name: "3-Day Free AI Trial",
+            status: "active",
+            payment_status: "paid",
+            started_at: profileData?.ai_trial_started_at ?? null,
+            expires_at: profileData?.ai_trial_expires_at ?? null,
+            daysRemaining: trialDaysRemaining,
+            isExpired: false,
+            isTrialing: true,
+            isTrialActive: true,
+            isTrialExpired: false,
+            trialStartedAt: profileData?.ai_trial_started_at ?? null,
+            trialExpiresAt: profileData?.ai_trial_expires_at ?? null,
+            trialDaysRemaining,
+            trialHoursRemaining,
+            trialUsed: true,
+            trialStatus: "active",
+            accessType: "trial",
+          };
+        }
+
+        // Trial has expired
+        return {
+          isPremium: false,
+          isActive: false,
+          plan_type: "free",
+          plan_name: "Free (Trial Ended)",
+          status: "expired",
+          payment_status: "pending",
+          started_at: profileData?.ai_trial_started_at ?? null,
+          expires_at: profileData?.ai_trial_expires_at ?? null,
+          daysRemaining: 0,
+          isExpired: true,
+          isTrialing: false,
+          isTrialActive: false,
+          isTrialExpired: true,
+          trialStartedAt: profileData?.ai_trial_started_at ?? null,
+          trialExpiresAt: profileData?.ai_trial_expires_at ?? null,
+          trialDaysRemaining: 0,
+          trialHoursRemaining: 0,
+          trialUsed: true,
+          trialStatus: "expired",
+          accessType: "none",
+        };
+      }
+
+      // 5. Default: No active subscription and trial not yet used
       return {
         isPremium: false,
         isActive: false,
         isExpired: false,
         isTrialing: false,
+        isTrialActive: false,
+        isTrialExpired: false,
+        trialUsed: false,
+        trialStatus: "none",
+        trialDaysRemaining: 3,
+        trialHoursRemaining: 72,
         daysRemaining: null,
+        accessType: "none",
       };
     },
   });
@@ -239,94 +337,3 @@ export function isEmployerPlan(planType?: string): boolean {
 export function isSeekerPlan(planType?: string): boolean {
   return planType === "free" || planType === "premium";
 }
-
-// Helper function to get plan type from amount
-export function getPlanTypeFromAmount(amount: number): string | null {
-  if (amount === 499) return "premium";
-  if (amount === 1999) return "starter";
-  if (amount === 4999) return "professional";
-  return null;
-}
-
-// Helper function to get plan details
-export function getPlanDetails(planType?: string) {
-  if (!planType) return null;
-
-  return {
-    type: planType,
-    name: PLAN_NAMES[planType] || planType,
-    isEmployer: isEmployerPlan(planType),
-    isSeeker: isSeekerPlan(planType),
-  };
-}
-
-// Helper function to check if user has access to specific features
-export function hasFeatureAccess(
-  sub: SubscriptionStatus | undefined,
-  requiredPlans: string[],
-): boolean {
-  if (!sub?.isPremium || !sub.plan_type) return false;
-  return requiredPlans.includes(sub.plan_type);
-}
-
-export const SEEKER_BENEFITS: Record<string, string[]> = {
-  free: [
-    "Apply to Jobs",
-    "Basic Resume Builder",
-    "Save Jobs",
-    "Track Applications",
-    "Job Alerts",
-    "5 AI Credits/month",
-  ],
-  premium: [
-    "Unlimited Job Applications",
-    "Unlimited AI Resume Builder",
-    "AI Resume Optimization",
-    "AI Cover Letter Generator",
-    "AI Interview Practice",
-    "ATS Resume Score",
-    "AI Career Coach",
-    "AI Career Roadmap",
-    "Skills Gap Analysis",
-    "Salary Insights",
-    "Resume Templates",
-    "Portfolio Builder",
-    "Application Analytics",
-    "Priority Support",
-  ],
-};
-
-export const EMPLOYER_BENEFITS: Record<string, string[]> = {
-  starter: [
-    "5 Active Job Posts",
-    "Candidate Dashboard",
-    "Resume Search",
-    "Company Profile",
-    "Email Notifications",
-    "Basic Hiring Analytics",
-  ],
-  professional: [
-    "Unlimited Job Posts",
-    "Unlimited Candidates",
-    "Team Collaboration",
-    "Google Calendar Integration",
-    "Interview Scheduling",
-    "Candidate Pipeline",
-    "Hiring Dashboard",
-    "Resume Database",
-    "Company Branding",
-    "Advanced Search",
-  ],
-  enterprise: [
-    "Unlimited Recruiters",
-    "Unlimited Jobs",
-    "Unlimited Candidates",
-    "SSO",
-    "API Access",
-    "White Label",
-    "Dedicated Success Manager",
-    "Enterprise Security",
-    "SLA",
-    "Custom Integrations",
-  ],
-};

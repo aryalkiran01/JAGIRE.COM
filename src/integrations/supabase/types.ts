@@ -2784,6 +2784,10 @@ export type Database = {
           referral_code: string | null;
           remote_preference: string | null;
           skills: Json | null;
+          ai_trial_expires_at: string | null;
+          ai_trial_started_at: string | null;
+          ai_trial_status: string | null;
+          ai_trial_used: boolean | null;
           subscription_expires_at: string | null;
           subscription_plan: string | null;
           subscription_status: string | null;
@@ -2845,6 +2849,10 @@ export type Database = {
           referral_code?: string | null;
           remote_preference?: string | null;
           skills?: Json | null;
+          ai_trial_expires_at?: string | null;
+          ai_trial_started_at?: string | null;
+          ai_trial_status?: string | null;
+          ai_trial_used?: boolean | null;
           subscription_expires_at?: string | null;
           subscription_plan?: string | null;
           subscription_status?: string | null;
@@ -2906,6 +2914,10 @@ export type Database = {
           referral_code?: string | null;
           remote_preference?: string | null;
           skills?: Json | null;
+          ai_trial_expires_at?: string | null;
+          ai_trial_started_at?: string | null;
+          ai_trial_status?: string | null;
+          ai_trial_used?: boolean | null;
           subscription_expires_at?: string | null;
           subscription_plan?: string | null;
           subscription_status?: string | null;

@@ -168,6 +168,13 @@ export function AppSidebar() {
         ? EMPLOYER_NAV
         : SEEKER_NAV;
 
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+
+  // Auto-close sidebar on route changes (especially for mobile drawer)
+  useEffect(() => {
+    close();
+  }, [pathname, close]);
+
   // Handle ESC key to close sidebar
   useEffect(() => {
     if (!isOpen) return;
