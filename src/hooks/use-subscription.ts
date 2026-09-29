@@ -1,6 +1,8 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { activateAITrial } from "@/lib/premium.server";
+import { toast } from "sonner";
 
 export interface SubscriptionStatus {
   isPremium: boolean;
@@ -28,6 +30,35 @@ export interface SubscriptionStatus {
   trialUsed?: boolean;
   trialStatus?: "none" | "active" | "expired";
   accessType?: "admin" | "paid" | "trial" | "none";
+}
+
+export function useStartAITrial() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async () => {
+      if (!user?.id) {
+        throw new Error("Please log in to start your 3-Day Free AI Trial.");
+      }
+      const response = await activateAITrial();
+      return response;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["subscription"] });
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
+      if (data?.success || data?.activated) {
+        toast.success(
+          data.message || "🎉 3-Day Free AI Trial activated! Enjoy full AI access for the next 72 hours.",
+        );
+      } else {
+        toast.info(data?.message || "AI trial status updated.");
+      }
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || "Failed to activate 3-day free trial. Please try again.");
+    },
+  });
 }
 
 export function useSubscription() {

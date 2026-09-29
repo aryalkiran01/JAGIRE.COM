@@ -325,13 +325,59 @@ export async function getAITrialStatusForUser(userId: string): Promise<AIAccessR
 /**
  * Pure server function: activate the 3-day AI trial on user demand.
  */
-export async function activateAITrialForUser(userId: string): Promise<{ activated: boolean; result: AIAccessResult }> {
+export async function activateAITrialForUser(userId: string): Promise<{
+  success: boolean;
+  activated: boolean;
+  accessType: "admin" | "paid" | "trial" | "none";
+  trialStartedAt: string | null;
+  trialExpiresAt: string | null;
+  trialDaysRemaining: number;
+  trialHoursRemaining: number;
+  message: string;
+  result: AIAccessResult;
+}> {
   const check = await canUseAI(userId, { autoActivateTrial: false });
-  if (check.trialUsed) {
-    return { activated: false, result: check };
+  if (check.trialUsed && check.trialStatus === "expired") {
+    return {
+      success: false,
+      activated: false,
+      accessType: "none",
+      trialStartedAt: check.expiresAt,
+      trialExpiresAt: check.expiresAt,
+      trialDaysRemaining: 0,
+      trialHoursRemaining: 0,
+      message: "You have already used your 3-Day Free AI Trial on this account. Upgrade your plan to continue using AI.",
+      result: check,
+    };
+  }
+  if (check.trialUsed && check.trialStatus === "active") {
+    return {
+      success: true,
+      activated: false,
+      accessType: "trial",
+      trialStartedAt: null,
+      trialExpiresAt: check.expiresAt,
+      trialDaysRemaining: check.trialDaysRemaining ?? 0,
+      trialHoursRemaining: check.trialHoursRemaining ?? 0,
+      message: "Your 3-Day Free AI Trial is already active.",
+      result: check,
+    };
   }
   const result = await canUseAI(userId, { autoActivateTrial: true });
-  return { activated: result.allowed && result.accessType === "trial", result };
+  const isActivated = result.allowed && result.accessType === "trial";
+  return {
+    success: isActivated,
+    activated: isActivated,
+    accessType: result.accessType,
+    trialStartedAt: new Date().toISOString(),
+    trialExpiresAt: result.expiresAt,
+    trialDaysRemaining: result.trialDaysRemaining ?? 3,
+    trialHoursRemaining: result.trialHoursRemaining ?? 72,
+    message: isActivated
+      ? "Your 3-Day Free AI Trial is now active! Enjoy unlimited AI tools for the next 72 hours."
+      : "Could not activate trial.",
+    result,
+  };
 }
 
 /**

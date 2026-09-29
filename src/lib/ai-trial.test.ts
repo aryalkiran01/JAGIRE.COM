@@ -20,7 +20,7 @@ vi.mock("@/integrations/supabase/client.server", () => {
   };
 });
 
-describe("3-Day Free AI Trial System", () => {
+describe("3-Day Free AI Trial Direct Activation & Entitlement System", () => {
   const mockNow = new Date("2026-09-30T12:00:00.000Z");
 
   beforeEach(() => {
@@ -40,11 +40,11 @@ describe("3-Day Free AI Trial System", () => {
   });
 
   /* ─────────────────────────────────────────────────────────────
-     2. JOB SEEKER TRIAL LIFECYCLE
+     2. DIRECT BUTTON ACTIVATION (NO ESEWA / NO PAYMENT)
      ───────────────────────────────────────────────────────────── */
-  describe("Job Seeker Trial", () => {
-    it("activates 3-day trial on first AI usage for a new Job Seeker", async () => {
-      const userId = "seeker_user_1";
+  describe("Direct Trial Activation Flow (Zero Payment / No eSewa)", () => {
+    it("activates trial directly when user clicks 'Start 3-Day Free Trial' button without payment", async () => {
+      const userId = "direct_activation_seeker";
       const profile = {
         id: userId,
         user_role: "job_seeker",
@@ -59,6 +59,8 @@ describe("3-Day Free AI Trial System", () => {
       const updateMock = vi.fn().mockReturnValue({
         eq: vi.fn().mockResolvedValue({ error: null }),
       });
+
+      const subscriptionInsertMock = vi.fn();
 
       (supabaseAdmin.from as any).mockImplementation((table: string) => {
         if (table === "user_roles") {
@@ -95,22 +97,28 @@ describe("3-Day Free AI Trial System", () => {
                 }),
               }),
             }),
+            insert: subscriptionInsertMock,
           };
         }
         return { select: vi.fn() };
       });
 
-      const entitlement = await canUseAI(userId, { autoStartTrial: true });
+      // User clicks "Start 3-Day Free Trial"
+      const activation = await activateAITrialForUser(userId);
 
-      expect(entitlement.allowed).toBe(true);
-      expect(entitlement.accessType).toBe("trial");
-      expect(entitlement.role).toBe("job_seeker");
-      expect(entitlement.trialActive).toBe(true);
+      expect(activation.success).toBe(true);
+      expect(activation.activated).toBe(true);
+      expect(activation.accessType).toBe("trial");
+      expect(activation.trialDaysRemaining).toBe(3);
+      expect(activation.trialHoursRemaining).toBe(72);
 
       const expectedExpiresAt = new Date(mockNow.getTime() + TRIAL_DURATION_MS).toISOString();
-      expect(entitlement.expiresAt).toBe(expectedExpiresAt);
+      expect(activation.trialExpiresAt).toBe(expectedExpiresAt);
 
-      // Verify DB update payload
+      // Verify NO subscription payment row was inserted (0 payment / 0 eSewa requirement)
+      expect(subscriptionInsertMock).not.toHaveBeenCalled();
+
+      // Verify DB profile update
       expect(updateMock).toHaveBeenCalledWith(
         expect.objectContaining({
           ai_trial_status: "active",
@@ -121,7 +129,80 @@ describe("3-Day Free AI Trial System", () => {
       );
     });
 
-    it("allows Job Seeker with active trial to access AI features", async () => {
+    it("activates trial directly for an Employer clicking 'Start 3-Day Free Trial'", async () => {
+      const userId = "direct_activation_employer";
+      const profile = {
+        id: userId,
+        user_role: "employer",
+        subscription_plan: "free",
+        subscription_status: "inactive",
+        ai_trial_used: false,
+        ai_trial_status: "not_started",
+        ai_trial_started_at: null,
+        ai_trial_expires_at: null,
+      };
+
+      const updateMock = vi.fn().mockReturnValue({
+        eq: vi.fn().mockResolvedValue({ error: null }),
+      });
+
+      (supabaseAdmin.from as any).mockImplementation((table: string) => {
+        if (table === "user_roles") {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({ data: { role: "employer" }, error: null }),
+              }),
+            }),
+          };
+        }
+        if (table === "profiles") {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({ data: profile, error: null }),
+              }),
+            }),
+            update: updateMock,
+          };
+        }
+        if (table === "subscriptions") {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                eq: vi.fn().mockReturnValue({
+                  eq: vi.fn().mockReturnValue({
+                    order: vi.fn().mockReturnValue({
+                      limit: vi.fn().mockReturnValue({
+                        maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+                      }),
+                    }),
+                  }),
+                }),
+              }),
+            }),
+          };
+        }
+        return { select: vi.fn() };
+      });
+
+      const activation = await activateAITrialForUser(userId);
+
+      expect(activation.success).toBe(true);
+      expect(activation.activated).toBe(true);
+      expect(activation.accessType).toBe("trial");
+      expect(activation.result.role).toBe("employer");
+
+      // Employer AI features become instantly available
+      await expect(requireEmployerPlan(userId, "starter")).resolves.not.toThrow();
+    });
+  });
+
+  /* ─────────────────────────────────────────────────────────────
+     3. JOB SEEKER TRIAL LIFECYCLE & ACCESS CONTROL
+     ───────────────────────────────────────────────────────────── */
+  describe("Job Seeker Trial Lifecycle", () => {
+    it("allows Job Seeker with active trial to access all AI features", async () => {
       const userId = "seeker_user_active_trial";
       const startedAt = new Date(mockNow.getTime() - 24 * 60 * 60 * 1000).toISOString(); // 24 hours ago
       const expiresAt = new Date(mockNow.getTime() + 48 * 60 * 60 * 1000).toISOString(); // 48 hours remaining
@@ -339,78 +420,9 @@ describe("3-Day Free AI Trial System", () => {
   });
 
   /* ─────────────────────────────────────────────────────────────
-     3. EMPLOYER TRIAL LIFECYCLE
+     4. EMPLOYER TRIAL LIFECYCLE & ACCESS CONTROL
      ───────────────────────────────────────────────────────────── */
-  describe("Employer Trial", () => {
-    it("activates 3-day trial on first AI usage for an Employer", async () => {
-      const userId = "employer_user_1";
-      const profile = {
-        id: userId,
-        user_role: "employer",
-        subscription_plan: "free",
-        subscription_status: "inactive",
-        ai_trial_used: false,
-        ai_trial_status: "not_started",
-        ai_trial_started_at: null,
-        ai_trial_expires_at: null,
-      };
-
-      const updateMock = vi.fn().mockReturnValue({
-        eq: vi.fn().mockResolvedValue({ error: null }),
-      });
-
-      (supabaseAdmin.from as any).mockImplementation((table: string) => {
-        if (table === "user_roles") {
-          return {
-            select: vi.fn().mockReturnValue({
-              eq: vi.fn().mockReturnValue({
-                maybeSingle: vi.fn().mockResolvedValue({ data: { role: "employer" }, error: null }),
-              }),
-            }),
-          };
-        }
-        if (table === "profiles") {
-          return {
-            select: vi.fn().mockReturnValue({
-              eq: vi.fn().mockReturnValue({
-                maybeSingle: vi.fn().mockResolvedValue({ data: profile, error: null }),
-              }),
-            }),
-            update: updateMock,
-          };
-        }
-        if (table === "subscriptions") {
-          return {
-            select: vi.fn().mockReturnValue({
-              eq: vi.fn().mockReturnValue({
-                eq: vi.fn().mockReturnValue({
-                  eq: vi.fn().mockReturnValue({
-                    order: vi.fn().mockReturnValue({
-                      limit: vi.fn().mockReturnValue({
-                        maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
-                      }),
-                    }),
-                  }),
-                }),
-              }),
-            }),
-          };
-        }
-        return { select: vi.fn() };
-      });
-
-      const entitlement = await canUseAI(userId, { autoStartTrial: true });
-
-      expect(entitlement.allowed).toBe(true);
-      expect(entitlement.accessType).toBe("trial");
-      expect(entitlement.role).toBe("employer");
-      expect(entitlement.trialActive).toBe(true);
-
-      // Employer should pass requireEmployerPlan
-      await expect(requireEmployerPlan(userId, "starter")).resolves.not.toThrow();
-      await expect(requirePlan(userId, ["starter", "professional", "enterprise"])).resolves.not.toThrow();
-    });
-
+  describe("Employer Trial Lifecycle", () => {
     it("rejects Employer AI feature usage when trial expires without paid plan", async () => {
       const userId = "employer_user_expired";
       const profile = {
@@ -543,7 +555,7 @@ describe("3-Day Free AI Trial System", () => {
   });
 
   /* ─────────────────────────────────────────────────────────────
-     4. SECURITY & ABUSE PREVENTION
+     5. SECURITY & ABUSE PREVENTION
      ───────────────────────────────────────────────────────────── */
   describe("Security & Abuse Prevention", () => {
     it("rejects unauthenticated requests immediately", async () => {
@@ -610,9 +622,10 @@ describe("3-Day Free AI Trial System", () => {
         return { select: vi.fn() };
       });
 
-      // Attempt to activate trial again
+      // Attempt to activate trial again via direct button action
       const trialResult = await activateAITrialForUser(userId);
       expect(trialResult.activated).toBe(false);
+      expect(trialResult.success).toBe(false);
       expect(updateMock).not.toHaveBeenCalled();
 
       // Access check should still deny AI
