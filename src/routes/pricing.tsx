@@ -136,10 +136,10 @@ function PricingPage() {
         <div className="absolute inset-0 -z-10 gradient-hero opacity-[0.07]" />
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-primary/10 rounded-full blur-[120px] -z-10" />
         <div className="container mx-auto px-4 text-center max-w-4xl">
-          <div className="inline-flex items-center gap-2 mb-4 px-4 py-1.5 rounded-full border border-primary/30 bg-primary/10 text-primary text-xs font-semibold shadow-sm animate-fade-in">
-            <Sparkles className="h-4 w-4" />
-            <span>🎁 3-Day Free AI Trial Available for Both Job Seekers & Employers</span>
-          </div>
+          <Badge variant="outline" className="mb-4 gap-1.5 px-3 py-1 text-xs font-medium glass">
+            <Sparkles className="h-3.5 w-3.5 text-primary" />
+            AI-Powered Recruitment & HR Operating System
+          </Badge>
           <h1 className="text-4xl md:text-5xl font-bold mb-4 tracking-tight">
             {isEmployer ? (
               <>
@@ -153,8 +153,8 @@ function PricingPage() {
           </h1>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
             {isEmployer
-              ? "Get 3 days of full AI recruitment & HR access for free. Upgrade anytime to continue growing your team."
-              : "Try 3 days of free AI resume analysis, optimization, and career tools before choosing a plan."}
+              ? "Get the complete AI recruitment and HR operating system for your company."
+              : "AI career tools to accelerate your job search and optimize your resume."}
           </p>
         </div>
       </section>
@@ -1037,82 +1037,10 @@ function CurrentSubscriptionCard({
     );
   }
 
-  // Eligible for Free Trial (Not used yet)
-  if (!sub.isPremium && !sub.trialUsed) {
-    return (
-      <Card className="border-indigo-400/40 bg-gradient-to-r from-indigo-50/80 via-teal-50/80 to-purple-50/80 dark:border-indigo-700/50 dark:from-indigo-950/40 dark:via-teal-950/40 dark:to-purple-950/40 mb-10 shadow-glow animate-fade-in">
-        <CardContent className="p-6 flex items-center justify-between gap-4 flex-wrap">
-          <div className="flex items-center gap-3">
-            <div className="h-11 w-11 rounded-xl gradient-brand flex items-center justify-center text-primary-foreground shadow-md">
-              <Gift className="h-5 w-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-lg">3-Day Free AI Trial</span>
-                <Badge className="bg-primary/10 text-primary border-primary/20 text-xs font-semibold">
-                  No Payment Required
-                </Badge>
-              </div>
-              <div className="text-sm text-muted-foreground mt-0.5">
-                {isEmployer
-                  ? "Get 72 hours of full access to AI Job Description Writer, Resume Screening, Smart Ranking & AI Office Assistant."
-                  : "Get 72 hours of full access to AI Resume Scanner, Optimizer, Cover Letter Generator & Career Coach."}
-              </div>
-            </div>
-          </div>
-          <Button
-            onClick={() => startTrial.mutate()}
-            disabled={startTrial.isPending}
-            className="gradient-brand text-primary-foreground font-semibold shadow-glow px-6 py-2.5 h-auto text-sm"
-          >
-            {startTrial.isPending ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                Activating Trial...
-              </>
-            ) : (
-              <>
-                <Sparkles className="h-4 w-4 mr-2" />
-                Start 3-Day Free Trial
-              </>
-            )}
-          </Button>
-        </CardContent>
-      </Card>
-    );
-  }
-
+  // If user has not started trial and has no paid plan, we don't render a duplicate top card
+  // because the large primary FreeTrialSection card below provides the full explanation & single CTA.
   if (!sub.isPremium) {
-    return (
-      <Card className="border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950 mb-10 animate-fade-in">
-        <CardContent className="p-6 flex items-center justify-between gap-4 flex-wrap">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-full bg-amber-200 dark:bg-amber-900 flex items-center justify-center">
-              {isEmployer ? (
-                <BuildingIcon />
-              ) : (
-                <Sparkles className="h-5 w-5 text-amber-700 dark:text-amber-300" />
-              )}
-            </div>
-            <div>
-              <div className="font-semibold">
-                {isEmployer ? "No active employer plan" : "Free plan"}
-              </div>
-              <div className="text-sm text-muted-foreground">
-                {isEmployer
-                  ? "Upgrade to unlock AI recruitment tools, candidate management, and more."
-                  : "Upgrade to unlock AI-powered career tools, priority matching, and more."}
-              </div>
-            </div>
-          </div>
-          <Button asChild className="gradient-brand text-primary-foreground">
-            <Link to="/checkout/$plan" params={{ plan: isEmployer ? "starter" : "premium" }}>
-              {isEmployer ? "Upgrade to Starter" : "Upgrade to Premium"}
-            </Link>
-          </Button>
-        </CardContent>
-      </Card>
-    );
+    return null;
   }
 
   const planLabel = PLAN_NAMES[sub.plan_type ?? ""] ?? "Premium";
