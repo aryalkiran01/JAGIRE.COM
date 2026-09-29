@@ -39,12 +39,13 @@ function getConfiguredProviderOrder(): AIProvider[] {
 
   const configuredProvider = (process.env.AI_PROVIDER || "gemini").toLowerCase().trim();
 
-  // Local development with Ollama-first: if developer sets AI_PROVIDER=ollama
-  if (configuredProvider === "ollama") {
-    return [new OllamaProvider(), new GeminiProvider()];
+  // If local development explicitly disables Ollama fallback
+  if (configuredProvider === "gemini-only" || process.env.DISABLE_OLLAMA === "true") {
+    return [new GeminiProvider()];
   }
 
-  return [new GeminiProvider()];
+  // Local development: Gemini is ALWAYS primary, Ollama is fallback
+  return [new GeminiProvider(), new OllamaProvider()];
 }
 
 async function retryWithBackoff<T>(

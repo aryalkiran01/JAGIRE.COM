@@ -81,9 +81,24 @@ export function safeJsonParse<T>(text: string): T {
     cleaned = fenceMatch[1].trim();
   }
 
+  const parseAndUnwrap = (jsonStr: string): T => {
+    const res = JSON.parse(jsonStr);
+    if (typeof res === "string") {
+      const trimmed = res.trim();
+      if ((trimmed.startsWith("{") && trimmed.endsWith("}")) || (trimmed.startsWith("[") && trimmed.endsWith("]"))) {
+        try {
+          return JSON.parse(trimmed) as T;
+        } catch {
+          /* ignore */
+        }
+      }
+    }
+    return res as T;
+  };
+
   // Attempt 1: direct parse
   try {
-    return JSON.parse(cleaned) as T;
+    return parseAndUnwrap(cleaned);
   } catch {
     /* continue to fallbacks */
   }

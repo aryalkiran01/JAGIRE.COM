@@ -255,6 +255,70 @@ describe("AIService Robust JSON Handling & Normalization", () => {
     expect(fallbackAttempts).toBe(1);
     expect(result.target_talent_profiles[0].role_title).toBe("Frontend Developer");
   });
+
+  it("Gemini success → stops immediately without calling Ollama", async () => {
+    let geminiCalled = false;
+    let ollamaCalled = false;
+
+    const geminiProvider: AIProvider = {
+      name: "gemini",
+      async generateText() {
+        return "";
+      },
+      async generateJson<T>(_req: AIRequest): Promise<T> {
+        geminiCalled = true;
+        return {
+          target_talent_profiles: [
+            {
+              role_title: "Gemini Lead",
+              seniority: "Lead",
+              required_skills: ["TypeScript"],
+              why: "Primary provider success",
+            },
+          ],
+          skill_demands: ["TypeScript"],
+          recruitment_strategy: ["Direct hire"],
+          candidate_screening_criteria: [
+            { category: "Core", must_have: "TS", good_to_have: "Node" },
+          ],
+          interview_focus_areas: ["Coding"],
+          compensation_benchmarks_npr: [
+            { role: "Gemini Lead", min_salary: "Rs. 100,000", max_salary: "Rs. 150,000", market_trend: "High" },
+          ],
+          employer_branding_suggestions: ["Tech leadership"],
+          hiring_velocity_assessment: "Fast",
+        } as unknown as T;
+      },
+    };
+
+    const ollamaProvider: AIProvider = {
+      name: "ollama",
+      async generateText() {
+        return "";
+      },
+      async generateJson<T>(_req: AIRequest): Promise<T> {
+        ollamaCalled = true;
+        throw new Error("Ollama should not be called when Gemini succeeds");
+      },
+    };
+
+    const service = new AIServiceImpl([geminiProvider, ollamaProvider]);
+    const result = await service.generateJsonValidated(
+      { prompt: "Test Gemini primary", task: "company-intelligence" },
+      companyHiringStrategySchema,
+    );
+
+    expect(geminiCalled).toBe(true);
+    expect(ollamaCalled).toBe(false);
+    expect(result.target_talent_profiles[0].role_title).toBe("Gemini Lead");
+  });
+
+  it("verifies default provider order is Gemini primary → Ollama fallback", () => {
+    const service = new AIServiceImpl();
+    const providers = service.getProviders();
+    expect(providers[0]).toBe("gemini");
+    expect(providers[1]).toBe("ollama");
+  });
 });
 
 describe("AI Assistant Prompt Leakage Prevention & Sanitization", () => {

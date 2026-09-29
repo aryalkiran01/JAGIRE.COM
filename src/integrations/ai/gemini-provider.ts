@@ -3,13 +3,11 @@ import { classifyError, safeJsonParse } from "./errors";
 import { AI_CONFIG } from "./config";
 
 const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models";
-export const DEFAULT_GEMINI_MODEL = "gemini-3.1-flash-lite";
+export const DEFAULT_GEMINI_MODEL = "gemini-2.0-flash";
 export const DEFAULT_GEMINI_EMBEDDING_MODEL = "gemini-embedding-001";
 
 const FALLBACK_CANDIDATE_MODELS = [
-  "gemini-3.1-flash-lite",
-  "gemini-3.1-flash-lite-preview",
-  "gemini-3.5-flash-lite",
+  "gemini-2.0-flash",
 ];
 
 const FALLBACK_EMBEDDING_MODELS = ["gemini-embedding-001", "gemini-embedding-2-preview"];
