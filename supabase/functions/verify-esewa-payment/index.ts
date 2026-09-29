@@ -8,21 +8,31 @@ const corsHeaders = {
 };
 
 // eSewa environment configuration
-const ESEWA_ENV = Deno.env.get("ENVIRONMENT") || Deno.env.get("NODE_ENV") || "development";
-const IS_PROD = ESEWA_ENV === "production";
+const ESEWA_ENV_RAW = (
+  Deno.env.get("ESEWA_ENVIRONMENT") ||
+  Deno.env.get("ESEWA_ENV") ||
+  "sandbox"
+)
+  .toLowerCase()
+  .trim();
+const IS_PROD_GATEWAY =
+  ESEWA_ENV_RAW === "production" || ESEWA_ENV_RAW === "prod" || ESEWA_ENV_RAW === "live";
 const PUBLIC_SANDBOX_SECRET = "8gBm/:&EnhH.1/q";
+const PUBLIC_SANDBOX_MERCHANT = "EPAYTEST";
 
 const ESEWA_STATUS_URL =
   Deno.env.get("ESEWA_STATUS_URL") ||
-  (IS_PROD
+  (IS_PROD_GATEWAY
     ? "https://epay.esewa.com.np/api/epay/status/v2"
     : "https://rc-epay.esewa.com.np/api/epay/status/v2");
-const MERCHANT_CODE = Deno.env.get("ESEWA_MERCHANT_CODE") || (IS_PROD ? "" : "EPAYTEST");
-const ESEWA_SECRET = Deno.env.get("ESEWA_SECRET_KEY") || (IS_PROD ? "" : PUBLIC_SANDBOX_SECRET);
+const MERCHANT_CODE =
+  Deno.env.get("ESEWA_MERCHANT_CODE") || (IS_PROD_GATEWAY ? "" : PUBLIC_SANDBOX_MERCHANT);
+const ESEWA_SECRET =
+  Deno.env.get("ESEWA_SECRET_KEY") || (IS_PROD_GATEWAY ? "" : PUBLIC_SANDBOX_SECRET);
 
-if (IS_PROD && (!ESEWA_SECRET || ESEWA_SECRET === PUBLIC_SANDBOX_SECRET)) {
+if (IS_PROD_GATEWAY && (!ESEWA_SECRET || ESEWA_SECRET === PUBLIC_SANDBOX_SECRET)) {
   console.error(
-    "[CRITICAL_SECURITY_ALERT] ESEWA_SECRET_KEY is not configured or using public sandbox default in production!",
+    "[CRITICAL_SECURITY_ALERT] ESEWA_SECRET_KEY is not configured or using public sandbox default in production eSewa environment!",
   );
 }
 

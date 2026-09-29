@@ -6,36 +6,63 @@ import { createServerFn } from "@tanstack/react-start";
  * The secret key and merchant code are read from server-side environment
  * variables (Deno/Nitro process env) and NEVER exposed to the client.
  * The frontend only receives the signed form fields needed to POST to eSewa.
+ *
+ * Explicit environment isolation:
+ * NODE_ENV (development vs production deployment) is decoupled from
+ * ESEWA_ENVIRONMENT (sandbox vs production gateway).
+ *
+ * Supported configurations:
+ * 1. NODE_ENV=development, ESEWA_ENVIRONMENT=sandbox
+ * 2. NODE_ENV=production, ESEWA_ENVIRONMENT=sandbox (Production Jagire with Sandbox eSewa)
+ * 3. NODE_ENV=production, ESEWA_ENVIRONMENT=production (Full Production eSewa Gateway)
  */
 
-const PUBLIC_SANDBOX_SECRET = "8gBm/:&EnhH.1/q";
+export const PUBLIC_SANDBOX_SECRET = "8gBm/:&EnhH.1/q";
+export const PUBLIC_SANDBOX_MERCHANT = "EPAYTEST";
+
+export function isEsewaProduction(): boolean {
+  const env = (
+    process.env.ESEWA_ENVIRONMENT ||
+    process.env.ESEWA_ENV ||
+    "sandbox"
+  )
+    .toLowerCase()
+    .trim();
+  return env === "production" || env === "prod" || env === "live";
+}
 
 export function getEsewaConfig() {
-  const isProd = process.env.NODE_ENV === "production";
-  const merchantCode = process.env.ESEWA_MERCHANT_CODE || (isProd ? "" : "EPAYTEST");
-  const secret = process.env.ESEWA_SECRET_KEY;
+  const isProdGateway = isEsewaProduction();
+  const merchantCode = process.env.ESEWA_MERCHANT_CODE?.trim();
+  const secret = process.env.ESEWA_SECRET_KEY?.trim();
 
-  if (isProd) {
-    if (!secret || secret.trim() === "" || secret === PUBLIC_SANDBOX_SECRET) {
+  if (isProdGateway) {
+    if (!secret || secret === PUBLIC_SANDBOX_SECRET) {
       throw new Error(
-        "CRITICAL_SECURITY_ERROR: ESEWA_SECRET_KEY is not configured or is using public sandbox secret in production.",
+        "CRITICAL_SECURITY_ERROR: ESEWA_SECRET_KEY is not configured or is using public sandbox secret in production eSewa environment.",
       );
     }
-    if (!merchantCode || merchantCode === "EPAYTEST") {
+    if (!merchantCode || merchantCode === PUBLIC_SANDBOX_MERCHANT) {
       throw new Error(
-        "CRITICAL_SECURITY_ERROR: ESEWA_MERCHANT_CODE is not configured for production.",
+        "CRITICAL_SECURITY_ERROR: ESEWA_MERCHANT_CODE is not configured for production eSewa environment.",
       );
     }
   }
 
+  const effectiveMerchantCode = merchantCode || PUBLIC_SANDBOX_MERCHANT;
   const effectiveSecret = secret || PUBLIC_SANDBOX_SECRET;
   const esewaUrl =
     process.env.ESEWA_URL ||
-    (isProd
+    (isProdGateway
       ? "https://epay.esewa.com.np/api/epay/main/v2/form"
       : "https://rc-epay.esewa.com.np/api/epay/main/v2/form");
 
-  return { merchantCode: merchantCode || "EPAYTEST", secret: effectiveSecret, esewaUrl };
+  return {
+    merchantCode: effectiveMerchantCode,
+    secret: effectiveSecret,
+    esewaUrl,
+    isProductionGateway: isProdGateway,
+  };
 }
 
 async function hmacSha256Base64(message: string, secret: string) {

@@ -350,35 +350,83 @@ describe("P0-1 & P0-2: Idempotency & User Binding Security Model", () => {
   });
 });
 
-describe("P0-Security: eSewa Production Fail-Closed Secret Enforcement", () => {
-  const originalEnv = process.env.NODE_ENV;
+describe("P0-Security: eSewa Gateway Environment Isolation & Security Enforcement", () => {
+  const originalNodeEnv = process.env.NODE_ENV;
+  const originalEsewaEnv = process.env.ESEWA_ENVIRONMENT;
   const originalSecret = process.env.ESEWA_SECRET_KEY;
   const originalMerchant = process.env.ESEWA_MERCHANT_CODE;
+  const originalUrl = process.env.ESEWA_URL;
 
-  it("fails closed in production if ESEWA_SECRET_KEY is missing or empty", async () => {
+  it("supports NODE_ENV=production with ESEWA_ENVIRONMENT=sandbox for testing", async () => {
     process.env.NODE_ENV = "production";
+    process.env.ESEWA_ENVIRONMENT = "sandbox";
+    delete process.env.ESEWA_SECRET_KEY;
+    delete process.env.ESEWA_MERCHANT_CODE;
+    delete process.env.ESEWA_URL;
+
+    const { getEsewaConfig } = await import("./esewa.server");
+    const config = getEsewaConfig();
+    expect(config.isProductionGateway).toBe(false);
+    expect(config.merchantCode).toBe("EPAYTEST");
+    expect(config.secret).toBe("8gBm/:&EnhH.1/q");
+    expect(config.esewaUrl).toContain("rc-epay.esewa.com.np");
+
+    process.env.NODE_ENV = originalNodeEnv;
+    process.env.ESEWA_ENVIRONMENT = originalEsewaEnv;
+    process.env.ESEWA_SECRET_KEY = originalSecret;
+    process.env.ESEWA_MERCHANT_CODE = originalMerchant;
+    process.env.ESEWA_URL = originalUrl;
+  });
+
+  it("fails closed when ESEWA_ENVIRONMENT=production and ESEWA_SECRET_KEY is missing", async () => {
+    process.env.NODE_ENV = "production";
+    process.env.ESEWA_ENVIRONMENT = "production";
     delete process.env.ESEWA_SECRET_KEY;
     process.env.ESEWA_MERCHANT_CODE = "REAL_MERCHANT";
 
     const { getEsewaConfig } = await import("./esewa.server");
     expect(() => getEsewaConfig()).toThrow(/CRITICAL_SECURITY_ERROR/);
 
-    process.env.NODE_ENV = originalEnv;
+    process.env.NODE_ENV = originalNodeEnv;
+    process.env.ESEWA_ENVIRONMENT = originalEsewaEnv;
     process.env.ESEWA_SECRET_KEY = originalSecret;
     process.env.ESEWA_MERCHANT_CODE = originalMerchant;
   });
 
-  it("fails closed in production if ESEWA_SECRET_KEY uses the public sandbox default", async () => {
+  it("fails closed when ESEWA_ENVIRONMENT=production and ESEWA_SECRET_KEY uses public sandbox default", async () => {
     process.env.NODE_ENV = "production";
+    process.env.ESEWA_ENVIRONMENT = "production";
     process.env.ESEWA_SECRET_KEY = "8gBm/:&EnhH.1/q";
     process.env.ESEWA_MERCHANT_CODE = "REAL_MERCHANT";
 
     const { getEsewaConfig } = await import("./esewa.server");
     expect(() => getEsewaConfig()).toThrow(/CRITICAL_SECURITY_ERROR/);
 
-    process.env.NODE_ENV = originalEnv;
+    process.env.NODE_ENV = originalNodeEnv;
+    process.env.ESEWA_ENVIRONMENT = originalEsewaEnv;
     process.env.ESEWA_SECRET_KEY = originalSecret;
     process.env.ESEWA_MERCHANT_CODE = originalMerchant;
+  });
+
+  it("succeeds when ESEWA_ENVIRONMENT=production with valid production credentials", async () => {
+    process.env.NODE_ENV = "production";
+    process.env.ESEWA_ENVIRONMENT = "production";
+    process.env.ESEWA_SECRET_KEY = "real_production_secret_key_9999";
+    process.env.ESEWA_MERCHANT_CODE = "REAL_MERCHANT_PROD";
+    delete process.env.ESEWA_URL;
+
+    const { getEsewaConfig } = await import("./esewa.server");
+    const config = getEsewaConfig();
+    expect(config.isProductionGateway).toBe(true);
+    expect(config.merchantCode).toBe("REAL_MERCHANT_PROD");
+    expect(config.secret).toBe("real_production_secret_key_9999");
+    expect(config.esewaUrl).toBe("https://epay.esewa.com.np/api/epay/main/v2/form");
+
+    process.env.NODE_ENV = originalNodeEnv;
+    process.env.ESEWA_ENVIRONMENT = originalEsewaEnv;
+    process.env.ESEWA_SECRET_KEY = originalSecret;
+    process.env.ESEWA_MERCHANT_CODE = originalMerchant;
+    process.env.ESEWA_URL = originalUrl;
   });
 });
 

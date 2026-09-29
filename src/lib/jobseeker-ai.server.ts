@@ -977,7 +977,9 @@ async function fetchUserContext(
         .from("resumes")
         .select("overall_score,ats_score,grammar_score,parsed_data,career_roadmap,suggestions")
         .eq("user_id", userId)
-        .eq("is_default", true)
+        .order("is_default", { ascending: false })
+        .order("created_at", { ascending: false })
+        .limit(1)
         .maybeSingle()
         .then(({ data }: any) => {
           context.resume = data;

@@ -1,5 +1,3 @@
-import { createWorker } from "tesseract.js";
-
 export type SupportedFileType = "pdf" | "docx" | "image" | "unknown";
 
 export interface ExtractedResume {
@@ -102,15 +100,17 @@ export function detectFileType(
 }
 
 /**
- * Perform OCR on an image buffer using Gemini Vision (if configured) with Tesseract.js fallback.
+ * Perform OCR on an image buffer using Gemini Vision with local OCR fallback.
  */
 async function performImageOCR(imageBuffer: Uint8Array, mimeType: string): Promise<string> {
   // Strategy 1: If GEMINI_API_KEY is available, use Gemini Vision with high accuracy and model failover
   const geminiKey = process.env.GEMINI_API_KEY;
   if (geminiKey) {
     const candidateModels = [
-      process.env.GEMINI_MODEL || "gemini-3.1-flash-lite-preview",
-      "gemma-4-26b-a4b-it",
+      process.env.GEMINI_MODEL || "gemini-2.5-flash",
+      "gemini-2.0-flash",
+      "gemini-1.5-flash",
+      "gemini-3.1-flash-lite-preview",
     ].filter((m, i, arr) => arr.indexOf(m) === i);
 
     const base64Data = Buffer.from(imageBuffer).toString("base64");
@@ -163,39 +163,42 @@ async function performImageOCR(imageBuffer: Uint8Array, mimeType: string): Promi
     }
   }
 
-  // Strategy 2: Local Tesseract.js OCR
-  console.log("[OCR] Running local Tesseract.js OCR engine...");
-  const worker = await createWorker("eng");
+  // Strategy 2: Dynamic Tesseract.js OCR fallback wrapped safely for ESM environments
   try {
-    const ret = await worker.recognize(Buffer.from(imageBuffer));
-    const text = ret.data.text ?? "";
-    console.log("[OCR] Tesseract extracted:", text.length, "characters");
-    return text.trim();
-  } finally {
-    await worker.terminate();
+    const { createWorker } = await import("tesseract.js");
+    const worker = await createWorker("eng");
+    try {
+      const ret = await worker.recognize(Buffer.from(imageBuffer));
+      const text = ret.data.text ?? "";
+      if (text.trim().length >= 20) {
+        console.log("[OCR] Tesseract extracted:", text.length, "characters");
+        return text.trim();
+      }
+    } finally {
+      await worker.terminate();
+    }
+  } catch (ocrErr) {
+    console.warn("[OCR] Local OCR fallback could not process image:", ocrErr);
   }
+
+  return "";
 }
 
 /**
  * Extract text from a PDF with two-stage strategy:
- * Stage 1: Fast direct text extraction (unpdf / pdf-parse).
- * Stage 2: Scanned PDF OCR fallback (extract page images and OCR sequentially).
+ * Stage 1: Fast direct pure-ESM text extraction via unpdf.
+ * Stage 2: Scanned PDF OCR fallback (extract page images or multimodal Gemini).
  */
 async function extractTextFromPDF(pdfBuffer: Uint8Array): Promise<ExtractedResume> {
   let text = "";
-  let extractedSuccessfully = false;
 
-  // ── Stage 1: Direct Text Extraction ─────────────────────────────────────────
-
-  // Try unpdf first
+  // ── Stage 1: Direct Text Extraction with pure ESM unpdf ─────────────────────────
   try {
-    const { extractText, getDocumentProxy } = await import("unpdf");
-    const pdf = await getDocumentProxy(pdfBuffer);
-    const out = await extractText(pdf, { mergePages: true });
+    const { extractText } = await import("unpdf");
+    const out = await extractText(pdfBuffer, { mergePages: true });
     text = Array.isArray(out.text) ? out.text.join("\n") : (out.text as string);
-    // Ensure we extracted substantive selectable text (at least 60 characters with words)
-    if (text && text.trim().length >= 60 && /[a-zA-Z]{3,}/.test(text)) {
-      extractedSuccessfully = true;
+    // Ensure we extracted substantive selectable text (at least 50 characters with words)
+    if (text && text.trim().length >= 50 && /[a-zA-Z]{3,}/.test(text)) {
       return {
         text: text.trim(),
         source: "pdf_text",
@@ -217,86 +220,19 @@ async function extractTextFromPDF(pdfBuffer: Uint8Array): Promise<ExtractedResum
     console.warn("[PDF Parse] unpdf extractText warning:", unpdfErr);
   }
 
-  // Try pdf-parse as secondary text parser
-  if (!extractedSuccessfully) {
-    try {
-      const pdfParseModule = await import("pdf-parse");
-      const pdfParse = pdfParseModule.default ?? pdfParseModule;
-      const pdfData = await pdfParse(Buffer.from(pdfBuffer));
-      text = pdfData.text ?? "";
-      if (text && text.trim().length >= 60 && /[a-zA-Z]{3,}/.test(text)) {
-        return {
-          text: text.trim(),
-          source: "pdf_text",
-          mimeType: "application/pdf",
-        };
-      }
-    } catch (parseErr: unknown) {
-      const errMsg = parseErr instanceof Error ? parseErr.message : String(parseErr);
-      if (/password/i.test(errMsg)) {
-        throw new Error(
-          "This PDF is password protected. Please remove the password and re-upload your resume.",
-        );
-      }
-      console.warn("[PDF Parse] pdf-parse warning:", parseErr);
-    }
-  }
-
   // ── Stage 2: Scanned PDF OCR Fallback ───────────────────────────────────────
   console.log(
-    "[PDF Parse] PDF has insufficient selectable text (<60 chars). Activating Scanned PDF OCR fallback...",
+    "[PDF Parse] PDF has insufficient selectable text (<50 chars). Activating Scanned PDF OCR fallback...",
   );
 
-  try {
-    const { extractImages, getDocumentProxy } = await import("unpdf");
-    const pdf = await getDocumentProxy(pdfBuffer);
-    const numPages = Math.min(pdf.numPages || 1, 10); // Limit to first 10 pages for safety
-    const pageTexts: string[] = [];
-
-    for (let pageNum = 1; pageNum <= numPages; pageNum++) {
-      console.log(`[PDF OCR] Processing PDF page ${pageNum}/${numPages}...`);
-      try {
-        const images = await extractImages(pdf, pageNum);
-        if (images && images.length > 0) {
-          // Sort or pick largest image on the page (usually the scanned document page)
-          for (const img of images) {
-            const imgBuffer = new Uint8Array(img.data);
-            if (imgBuffer.length > 500) {
-              const detectedImg = detectFileType(imgBuffer);
-              const mime = detectedImg.mime.startsWith("image/") ? detectedImg.mime : "image/png";
-              const pageOcrText = await performImageOCR(imgBuffer, mime);
-              if (pageOcrText) {
-                pageTexts.push(`--- Page ${pageNum} ---\n` + pageOcrText);
-              }
-            }
-          }
-        }
-      } catch (pageErr) {
-        console.warn(`[PDF OCR] Error extracting images from page ${pageNum}:`, pageErr);
-      }
-    }
-
-    if (pageTexts.length > 0) {
-      const combined = pageTexts.join("\n\n").trim();
-      if (combined.length >= 30) {
-        return {
-          text: combined,
-          source: "pdf_ocr",
-          pagesProcessed: pageTexts.length,
-          mimeType: "application/pdf",
-        };
-      }
-    }
-  } catch (ocrFallbackErr) {
-    console.warn("[PDF OCR] Page image extraction fallback failed:", ocrFallbackErr);
-  }
-
-  // Fallback: If no images could be extracted, try Gemini directly with application/pdf
+  // Strategy 2A: Gemini direct application/pdf multimodal extraction
   const geminiKey = process.env.GEMINI_API_KEY;
   if (geminiKey) {
     const candidateModels = [
-      process.env.GEMINI_MODEL || "gemini-3.1-flash-lite-preview",
-      "gemma-4-26b-a4b-it",
+      process.env.GEMINI_MODEL || "gemini-2.5-flash",
+      "gemini-2.0-flash",
+      "gemini-1.5-flash",
+      "gemini-3.1-flash-lite-preview",
     ].filter((m, i, arr) => arr.indexOf(m) === i);
 
     const base64Data = Buffer.from(pdfBuffer).toString("base64");
@@ -344,6 +280,49 @@ async function extractTextFromPDF(pdfBuffer: Uint8Array): Promise<ExtractedResum
         console.warn(`[PDF OCR] Multimodal PDF Gemini extraction error on ${model}:`, e);
       }
     }
+  }
+
+  // Strategy 2B: Extract images per page via unpdf and OCR
+  try {
+    const { extractImages, getDocumentProxy } = await import("unpdf");
+    const pdf = await getDocumentProxy(pdfBuffer);
+    const numPages = Math.min(pdf.numPages || 1, 10);
+    const pageTexts: string[] = [];
+
+    for (let pageNum = 1; pageNum <= numPages; pageNum++) {
+      try {
+        const images = await extractImages(pdf, pageNum);
+        if (images && images.length > 0) {
+          for (const img of images) {
+            const imgBuffer = new Uint8Array(img.data);
+            if (imgBuffer.length > 500) {
+              const detectedImg = detectFileType(imgBuffer);
+              const mime = detectedImg.mime.startsWith("image/") ? detectedImg.mime : "image/png";
+              const pageOcrText = await performImageOCR(imgBuffer, mime);
+              if (pageOcrText) {
+                pageTexts.push(`--- Page ${pageNum} ---\n` + pageOcrText);
+              }
+            }
+          }
+        }
+      } catch (pageErr) {
+        console.warn(`[PDF OCR] Error extracting images from page ${pageNum}:`, pageErr);
+      }
+    }
+
+    if (pageTexts.length > 0) {
+      const combined = pageTexts.join("\n\n").trim();
+      if (combined.length >= 30) {
+        return {
+          text: combined,
+          source: "pdf_ocr",
+          pagesProcessed: pageTexts.length,
+          mimeType: "application/pdf",
+        };
+      }
+    }
+  } catch (ocrFallbackErr) {
+    console.warn("[PDF OCR] Page image extraction fallback failed:", ocrFallbackErr);
   }
 
   if (text && text.trim().length > 0) {

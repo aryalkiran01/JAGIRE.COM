@@ -9,7 +9,15 @@ const priority = z.enum(["high", "medium", "low"]);
 export const coverLetterGeneratorSchema = z.object({
   cover_letter: z.string(),
   tone: z.string().default("professional"),
-  word_count: z.number().optional().default(0),
+  word_count: z
+    .union([z.number(), z.string()])
+    .transform((val) => {
+      if (typeof val === "number") return val;
+      const parsed = parseInt(String(val).replace(/[^0-9]/g, ""), 10);
+      return isNaN(parsed) ? 0 : parsed;
+    })
+    .optional()
+    .default(0),
   key_strengths_highlighted: stringArray,
 });
 

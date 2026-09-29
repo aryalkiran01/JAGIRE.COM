@@ -621,6 +621,64 @@ function normalizeAndSanitizeTaskOutput(task: AITask | undefined, raw: unknown):
       result.hiring_velocity_assessment =
         "Active hiring pipeline with strong potential to accelerate screening and shortlisting turnaround.";
     }
+  } else if (
+    task === "cover-letter-generator" ||
+    task === "cover-letter" ||
+    result.cover_letter !== undefined ||
+    result.letter !== undefined ||
+    result.coverLetter !== undefined
+  ) {
+    if (typeof result.cover_letter !== "string" || !result.cover_letter.trim()) {
+      if (typeof result.letter === "string" && result.letter.trim()) {
+        result.cover_letter = result.letter.trim();
+      } else if (typeof result.coverLetter === "string" && result.coverLetter.trim()) {
+        result.cover_letter = result.coverLetter.trim();
+      } else if (typeof result.content === "string" && result.content.trim()) {
+        result.cover_letter = result.content.trim();
+      } else if (typeof result.body === "string" && result.body.trim()) {
+        result.cover_letter = result.body.trim();
+      } else if (typeof result.text === "string" && result.text.trim()) {
+        result.cover_letter = result.text.trim();
+      }
+    }
+
+    if (typeof result.tone !== "string" || !result.tone.trim()) {
+      result.tone = "professional";
+    }
+
+    if (typeof result.word_count === "string") {
+      const parsed = parseInt(result.word_count.replace(/[^0-9]/g, ""), 10);
+      result.word_count = isNaN(parsed) ? 0 : parsed;
+    }
+    if (typeof result.word_count !== "number" || result.word_count <= 0) {
+      if (typeof result.cover_letter === "string") {
+        result.word_count = result.cover_letter.split(/\s+/).filter(Boolean).length;
+      } else {
+        result.word_count = 0;
+      }
+    }
+
+    if (typeof result.key_strengths_highlighted === "string") {
+      result.key_strengths_highlighted = result.key_strengths_highlighted
+        .split(/[\r\n,•;]+/)
+        .map((s: string) => s.replace(/^\d+[.)]\s*/, "").trim())
+        .filter(Boolean);
+    } else if (!Array.isArray(result.key_strengths_highlighted)) {
+      if (Array.isArray(result.strengths)) {
+        result.key_strengths_highlighted = result.strengths.map(String).filter(Boolean);
+      } else if (Array.isArray(result.key_strengths)) {
+        result.key_strengths_highlighted = result.key_strengths.map(String).filter(Boolean);
+      } else if (Array.isArray(result.highlights)) {
+        result.key_strengths_highlighted = result.highlights.map(String).filter(Boolean);
+      } else {
+        result.key_strengths_highlighted = [];
+      }
+    } else {
+      result.key_strengths_highlighted = result.key_strengths_highlighted
+        .map(String)
+        .map((s) => s.trim())
+        .filter(Boolean);
+    }
   }
 
   return result;

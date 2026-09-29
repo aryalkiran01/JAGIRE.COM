@@ -5,7 +5,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth.middleware";
 import { requirePremium } from "@/lib/premium.server";
 import { aiGenerateEmbedding } from "@/integrations/ai/ai-service";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import pdf from "pdf-parse";
+import { extractText } from "unpdf";
 
 const CHUNK_SIZE = 1000;
 const CHUNK_OVERLAP = 200;
@@ -121,8 +121,9 @@ export const uploadKnowledgeDocument = createServerFn({ method: "POST" })
     if (data.fileBase64 && data.fileType === "application/pdf") {
       try {
         const buffer = Buffer.from(data.fileBase64, "base64");
-        const pdfData = await pdf(buffer);
-        finalText = pdfData.text.slice(0, 100_000);
+        const out = await extractText(new Uint8Array(buffer), { mergePages: true });
+        const extracted = Array.isArray(out.text) ? out.text.join("\n") : (out.text as string);
+        finalText = (extracted || "").slice(0, 100_000);
         console.log(`Extracted ${finalText.length} characters from PDF`);
       } catch (err) {
         throw new Error(

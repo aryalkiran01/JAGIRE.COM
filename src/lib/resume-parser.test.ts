@@ -58,6 +58,17 @@ describe("Resume Parser: File Type Detection & Validation", () => {
     expect(result.source).toBe("plain_text");
   });
 
+  it("safely extracts DOCX resumes without __dirname errors", async () => {
+    // Test that mammoth module loads cleanly in ESM
+    const mammoth = await import("mammoth");
+    expect(typeof mammoth.extractRawText).toBe("function");
+  });
+
+  it("safely loads unpdf extractText in ES module environment without __dirname", async () => {
+    const { extractText } = await import("unpdf");
+    expect(typeof extractText).toBe("function");
+  });
+
   it("rejects unsupported file formats gracefully", async () => {
     const binaryBytes = new Uint8Array([0x00, 0x01, 0x02, 0x03, 0x04]);
     await expect(

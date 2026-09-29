@@ -113,7 +113,7 @@ function unwrapAndConvert(schema: z.ZodTypeAny): GeminiSchema {
 
       const isOptional =
         field instanceof z.ZodOptional ||
-        (field instanceof z.ZodDefault && field._def.innerType instanceof z.ZodOptional);
+        field instanceof z.ZodDefault;
 
       if (!isOptional) {
         required.push(key);

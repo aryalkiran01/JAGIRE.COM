@@ -4,7 +4,7 @@
  */
 
 const TRIVIAL_GREETING_REGEX =
-  /^(?:hi|hello|hey|namaste|heyy+|hii+|hola|greetings|good morning|good afternoon|good evening|howdy|sup|test)[!.,\s]*$/i;
+  /^(?:hi|hello|hey|namaste|heyy+|hii+|hola|greetings|good morning|good afternoon|good evening|howdy|sup|test|hello there|hi there|hey there)[!.,\s]*$/i;
 
 const TRIVIAL_COURTESY_REGEX =
   /^(?:thanks|thank you|thx|ty|bye|goodbye|cya|see ya)[!.,\s]*$/i;
