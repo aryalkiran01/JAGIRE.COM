@@ -31,6 +31,11 @@ import {
   UserCheck,
   Zap,
   BookOpen,
+  FileText,
+  PenLine,
+  DollarSign,
+  Video,
+  Layers,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -38,9 +43,77 @@ import {
   syncCareerIntelligence,
   updatePreferredName,
 } from "@/lib/career-intelligence.server";
+import { JOBSEEKER_AI_GROUPS } from "@/lib/jobseeker-ai-features";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/career")({ component: CareerPage });
+
+const PRIMARY_AI_TOOLS = [
+  {
+    title: "AI Career Coach",
+    description: "Personalized 1-on-1 career guidance, interview strategy, and role targeting.",
+    to: "/career-coach",
+    icon: Sparkles,
+    badge: "Interactive Chat",
+    badgeColor: "bg-primary/10 text-primary border-primary/20",
+  },
+  {
+    title: "Resume Scanner (ATS)",
+    description: "Instant ATS score, formatting validation, and keyword gap detection.",
+    to: "/resume-scanner",
+    icon: ScanText,
+    badge: "ATS Analyzer",
+    badgeColor: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20",
+  },
+  {
+    title: "AI Resume Optimizer",
+    description: "Optimize experience bullets for impact, quantifiable metrics, and ATS keywords.",
+    to: "/ai/resume-optimizer",
+    icon: FileText,
+    badge: "Optimizer",
+    badgeColor: "bg-blue-500/10 text-blue-600 border-blue-500/20",
+  },
+  {
+    title: "Resume Builder",
+    description: "Build clean, professional resumes with PDF export and ATS templates.",
+    to: "/resume-builder",
+    icon: FileText,
+    badge: "PDF Export",
+    badgeColor: "bg-purple-500/10 text-purple-600 border-purple-500/20",
+  },
+  {
+    title: "AI Cover Letter Generator",
+    description: "Generate tailored, job-specific cover letters matching your background.",
+    to: "/ai/cover-letter-generator",
+    icon: PenLine,
+    badge: "Instant Draft",
+    badgeColor: "bg-amber-500/10 text-amber-600 border-amber-500/20",
+  },
+  {
+    title: "AI Job Match Analyzer",
+    description: "Analyze role alignment, keyword overlap, and candidacy fit percentage.",
+    to: "/ai/job-match-analyzer",
+    icon: Target,
+    badge: "Match Score",
+    badgeColor: "bg-indigo-500/10 text-indigo-600 border-indigo-500/20",
+  },
+  {
+    title: "AI Interview Prep & Mock",
+    description: "Practice behavioral STAR questions, technical questions, and get feedback.",
+    to: "/interviews",
+    icon: Video,
+    badge: "Interactive",
+    badgeColor: "bg-rose-500/10 text-rose-600 border-rose-500/20",
+  },
+  {
+    title: "AI Salary Analyzer",
+    description: "Explore market compensation benchmarks for Nepal and global remote roles.",
+    to: "/ai/salary-analyzer",
+    icon: DollarSign,
+    badge: "Market Intel",
+    badgeColor: "bg-teal-500/10 text-teal-600 border-teal-500/20",
+  },
+];
 
 function getReadinessTier(score: number) {
   if (score >= 80)
@@ -330,12 +403,61 @@ function CareerPage() {
         </Card>
       </div>
 
+      {/* Primary AI Career Tools Hub */}
+      <div className="space-y-3 pt-2">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-bold flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              AI Career Suite & Core Tools
+            </h2>
+            <p className="text-xs text-muted-foreground">
+              Launch interactive AI career features, resume analyzers, cover letters, and interview coaching.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {PRIMARY_AI_TOOLS.map((tool) => (
+            <Link
+              key={tool.to}
+              to={tool.to}
+              className="group relative flex flex-col justify-between rounded-xl border border-border bg-card/60 p-4 transition-all hover:border-primary/50 hover:bg-card hover:shadow-md"
+            >
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
+                    <tool.icon className="h-5 w-5" />
+                  </div>
+                  <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0", tool.badgeColor)}>
+                    {tool.badge}
+                  </Badge>
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors flex items-center gap-1">
+                    <span>{tool.title}</span>
+                    <ArrowUpRight className="h-3.5 w-3.5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </h3>
+                  <p className="text-xs text-muted-foreground mt-1 line-clamp-2 leading-relaxed">
+                    {tool.description}
+                  </p>
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </div>
+
       {/* Main Tabs */}
       <Tabs defaultValue="roadmap" className="w-full space-y-6">
-        <TabsList className="grid grid-cols-3 max-w-lg">
+        <TabsList className="grid grid-cols-2 sm:grid-cols-4 max-w-2xl">
           <TabsTrigger value="roadmap" className="gap-1.5 text-xs">
             <Sparkles className="h-4 w-4 text-primary" />
             <span>AI Roadmap</span>
+          </TabsTrigger>
+          <TabsTrigger value="tools" className="gap-1.5 text-xs">
+            <Layers className="h-4 w-4 text-emerald-500" />
+            <span>All AI Tools ({JOBSEEKER_AI_GROUPS.flatMap((g) => g.items).length})</span>
           </TabsTrigger>
           <TabsTrigger value="portfolio" className="gap-1.5 text-xs">
             <Briefcase className="h-4 w-4 text-blue-500" />
@@ -531,7 +653,50 @@ function CareerPage() {
           </div>
         </TabsContent>
 
-        {/* ── Tab 2: 360° Portfolio & Connected Sources ──────────────── */}
+        {/* ── Tab 2: All 18 AI Tools Directory ─────────────────────── */}
+        <TabsContent value="tools" className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {JOBSEEKER_AI_GROUPS.map((group) => (
+              <Card key={group.id} className="border-border">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <group.icon className="h-4 w-4 text-primary" />
+                    {group.label}
+                  </CardTitle>
+                  <CardDescription className="text-xs">
+                    {group.items.length} specialized AI tools
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-2.5">
+                  {group.items.map((item) => (
+                    <Link
+                      key={item.slug}
+                      to={item.to}
+                      className="flex items-center justify-between p-3 rounded-lg border bg-muted/20 hover:bg-muted/40 hover:border-primary/30 transition-all group"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors shrink-0">
+                          <item.icon className="h-4 w-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-xs font-semibold text-foreground group-hover:text-primary transition-colors truncate">
+                            {item.title}
+                          </div>
+                          <div className="text-[11px] text-muted-foreground truncate">
+                            {item.description}
+                          </div>
+                        </div>
+                      </div>
+                      <ArrowUpRight className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all shrink-0 ml-2" />
+                    </Link>
+                  ))}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </TabsContent>
+
+        {/* ── Tab 3: 360° Portfolio & Connected Sources ──────────────── */}
         <TabsContent value="portfolio" className="space-y-6">
           {/* Linked Sources Overview */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

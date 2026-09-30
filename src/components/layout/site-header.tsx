@@ -37,6 +37,7 @@ import {
   Target,
   ChevronDown,
   Shield,
+  Sparkles,
   type LucideIcon,
 } from "lucide-react";
 
@@ -48,6 +49,12 @@ type FeatureLink = {
 };
 
 const FEATURE_LINKS: FeatureLink[] = [
+  {
+    to: "/career",
+    label: "AI Career Hub",
+    icon: Sparkles,
+    desc: "AI tools & career roadmap",
+  },
   {
     to: "/resume-scanner",
     label: "Resume Scanner",
@@ -65,15 +72,14 @@ const FEATURE_LINKS: FeatureLink[] = [
   { to: "/saved", label: "Saved Jobs", icon: Bookmark, desc: "Your bookmarked roles" },
   { to: "/companies", label: "Companies Hiring", icon: Building2, desc: "Browse employers" },
   { to: "/feed", label: "Community Feed", icon: Rss, desc: "Posts & networking" },
-  { to: "/assessments", label: "Assessments", icon: GraduationCap, desc: "Skill tests" },
   { to: "/learn", label: "Learning Center", icon: BookOpen, desc: "Courses & guides" },
-  { to: "/referrals", label: "Refer & Earn", icon: Gift, desc: "Invite friends" },
 ];
 
 const NAV_LINKS = [
   { to: "/jobs", label: "Browse Jobs" },
+  { to: "/interviews", label: "Interview Prep", authOnly: true },
+  { to: "/career", label: "AI Career Hub", authOnly: true },
   { to: "/companies", label: "Companies" },
-  { to: "/feed", label: "Feed", authOnly: true },
   { to: "/about", label: "About" },
   { to: "/pricing", label: "Pricing" },
 ];
@@ -86,14 +92,27 @@ export function SiteHeader() {
   const qc = useQueryClient();
   const { theme, toggle } = useTheme();
   const [scrolled, setScrolled] = useState(false);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [featuresMenuOpen, setFeaturesMenuOpen] = useState(false);
   const routerState = useRouterState();
   const currentPath = routerState.location.pathname;
 
+  // Handle scroll state for sticky header glass effect
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  // Cleanly close any open dropdown menus and restore body scroll/pointer-events on route transitions
+  useEffect(() => {
+    setProfileMenuOpen(false);
+    setFeaturesMenuOpen(false);
+    if (typeof document !== "undefined") {
+      document.body.style.pointerEvents = "";
+      document.body.style.overflow = "";
+    }
   }, [currentPath]);
 
   const { data: unread } = useQuery({
@@ -184,7 +203,7 @@ export function SiteHeader() {
 
           {/* Features dropdown for guests */}
           {!user && (
-            <DropdownMenu>
+            <DropdownMenu modal={false} open={featuresMenuOpen} onOpenChange={setFeaturesMenuOpen}>
               <DropdownMenuTrigger asChild>
                 <button className="flex items-center gap-0.5 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-muted/50">
                   Features
@@ -194,7 +213,12 @@ export function SiteHeader() {
               <DropdownMenuContent align="center" className="w-[min(28rem,calc(100vw-2rem))] p-2">
                 <div className="grid grid-cols-2 gap-1">
                   {FEATURE_LINKS.map((f) => (
-                    <DropdownMenuItem key={f.to} asChild className="p-3 rounded-lg">
+                    <DropdownMenuItem
+                      key={f.to}
+                      asChild
+                      className="p-3 rounded-lg"
+                      onClick={() => setFeaturesMenuOpen(false)}
+                    >
                       <Link to={f.to}>
                         <div className="flex items-start gap-3">
                           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
@@ -260,7 +284,7 @@ export function SiteHeader() {
                 </Link>
               </Button>
 
-              <DropdownMenu>
+              <DropdownMenu modal={false} open={profileMenuOpen} onOpenChange={setProfileMenuOpen}>
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="ghost"
@@ -285,14 +309,32 @@ export function SiteHeader() {
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
+                  <DropdownMenuItem asChild onClick={() => setProfileMenuOpen(false)}>
                     <Link to="/profile">
                       <User className="mr-2 h-4 w-4" />
-                      Profile
+                      My Profile
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild onClick={() => setProfileMenuOpen(false)}>
+                    <Link to="/career">
+                      <Sparkles className="mr-2 h-4 w-4 text-primary" />
+                      AI Career Hub
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild onClick={() => setProfileMenuOpen(false)}>
+                    <Link to="/resume-scanner">
+                      <ScanText className="mr-2 h-4 w-4" />
+                      Resume Scanner
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild onClick={() => setProfileMenuOpen(false)}>
+                    <Link to="/resume-builder">
+                      <FileText className="mr-2 h-4 w-4" />
+                      Resume Builder
                     </Link>
                   </DropdownMenuItem>
                   {role === "admin" && (
-                    <DropdownMenuItem asChild>
+                    <DropdownMenuItem asChild onClick={() => setProfileMenuOpen(false)}>
                       <Link to="/admin">
                         <Shield className="mr-2 h-4 w-4 text-primary" />
                         Admin Panel
@@ -300,7 +342,12 @@ export function SiteHeader() {
                     </DropdownMenuItem>
                   )}
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleSignOut}>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      setProfileMenuOpen(false);
+                      handleSignOut();
+                    }}
+                  >
                     <LogOut className="mr-2 h-4 w-4" />
                     Sign out
                   </DropdownMenuItem>

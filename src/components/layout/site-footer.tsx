@@ -4,67 +4,58 @@ import { useAuth } from "@/hooks/use-auth";
 
 const JOB_SEEKER_SECTIONS = [
   {
-    title: "For Job Seekers",
+    title: "AI Career Suite",
     links: [
-      { label: "Browse Jobs", to: "/jobs" },
-      { label: "Companies", to: "/companies" },
-      { label: "AI Resume Scanner", to: "/resume-scanner" },
-      { label: "Resume Builder", to: "/resume-builder" },
+      { label: "AI Career Hub", to: "/career" },
       { label: "AI Career Coach", to: "/career-coach" },
-      { label: "AI Assistant", to: "/ai-assistant" },
-      { label: "Interview Prep", to: "/interviews" },
+      { label: "Resume Scanner & ATS", to: "/resume-scanner" },
+      { label: "Resume Builder", to: "/resume-builder" },
     ],
   },
   {
-    title: "Resources",
+    title: "Explore",
     links: [
-      { label: "Blog", to: "/blog" },
-      { label: "Success Stories", to: "/success-stories" },
-      { label: "Learning Center", to: "/learn" },
+      { label: "Find Jobs", to: "/jobs" },
+      { label: "Companies", to: "/companies" },
       { label: "Community Feed", to: "/feed" },
-      { label: "Assessments", to: "/assessments" },
-      { label: "Refer & Earn", to: "/referrals" },
+      { label: "Learning Center", to: "/learn" },
     ],
   },
   {
-    title: "Company",
+    title: "Support & Legal",
     links: [
-      { label: "About Us", to: "/about" },
-      { label: "Contact", to: "/contact" },
-      { label: "Help Center", to: "/support" },
-      { label: "Pricing", to: "/pricing" },
+      { label: "Help & Support", to: "/support" },
+      { label: "Contact Us", to: "/contact" },
+      { label: "Privacy Policy", to: "/privacy-policy" },
+      { label: "Terms of Service", to: "/support" },
     ],
   },
 ];
 
 const EMPLOYER_SECTIONS = [
   {
-    title: "For Employers",
+    title: "Recruitment Suite",
     links: [
       { label: "Post a Job", to: "/employer/jobs/new" },
       { label: "Employer Dashboard", to: "/employer" },
       { label: "Company Profile", to: "/employer/company" },
-      { label: "Manage Jobs", to: "/employer" },
-      { label: "Applications", to: "/applications" },
-      { label: "Analytics", to: "/employer/intelligence" },
+      { label: "AI Recruitment Suite", to: "/employer/intelligence" },
     ],
   },
   {
-    title: "Resources",
+    title: "Solutions & Pricing",
     links: [
-      { label: "Pricing", to: "/pricing" },
-      { label: "Enterprise", to: "/enterprise" },
-      { label: "Knowledge Base", to: "/employer/knowledge-base" },
-      { label: "Hiring Tips", to: "/hiring-tips" },
-      { label: "Success Stories", to: "/success-stories" },
+      { label: "Pricing Plans", to: "/pricing" },
+      { label: "Enterprise Solutions", to: "/enterprise" },
+      { label: "Learning Center", to: "/learn" },
     ],
   },
   {
-    title: "Company",
+    title: "Support & Legal",
     links: [
-      { label: "About Us", to: "/about" },
-      { label: "Contact", to: "/contact" },
-      { label: "Help Center", to: "/support" },
+      { label: "Help & Support", to: "/support" },
+      { label: "Contact Us", to: "/contact" },
+      { label: "Privacy Policy", to: "/privacy-policy" },
       { label: "Terms of Service", to: "/support" },
     ],
   },
@@ -72,44 +63,40 @@ const EMPLOYER_SECTIONS = [
 
 const ADMIN_SECTIONS = [
   {
-    title: "Admin",
+    title: "Administration",
     links: [
-      { label: "Dashboard", to: "/admin" },
+      { label: "Admin Console", to: "/admin" },
       { label: "User Management", to: "/admin" },
-      { label: "Companies", to: "/admin" },
-      { label: "Jobs", to: "/admin" },
-      { label: "Reports", to: "/admin" },
-      { label: "Settings", to: "/admin" },
+      { label: "Manage Jobs", to: "/jobs" },
+      { label: "Manage Companies", to: "/companies" },
     ],
   },
   {
-    title: "Resources",
+    title: "AI Tools",
     links: [
-      { label: "Blog", to: "/blog" },
-      { label: "Success Stories", to: "/success-stories" },
-      { label: "Learning Center", to: "/learn" },
-      { label: "Community Feed", to: "/feed" },
-      { label: "Assessments", to: "/assessments" },
+      { label: "AI Career Hub", to: "/career" },
+      { label: "Resume Scanner", to: "/resume-scanner" },
+      { label: "Resume Builder", to: "/resume-builder" },
     ],
   },
   {
-    title: "Company",
+    title: "Support & Legal",
     links: [
-      { label: "About Us", to: "/about" },
-      { label: "Contact", to: "/contact" },
-      { label: "Help Center", to: "/support" },
+      { label: "Help & Support", to: "/support" },
+      { label: "Contact Us", to: "/contact" },
+      { label: "Privacy Policy", to: "/privacy-policy" },
     ],
   },
 ];
 
 const PUBLIC_SECTIONS = [
   {
-    title: "For Job Seekers",
+    title: "AI Career Tools",
     links: [
-      { label: "Browse Jobs", to: "/jobs" },
-      { label: "Companies", to: "/companies" },
+      { label: "AI Career Hub", to: "/career" },
+      { label: "AI Career Coach", to: "/career-coach" },
+      { label: "Resume Scanner & ATS", to: "/resume-scanner" },
       { label: "Resume Builder", to: "/resume-builder" },
-      { label: "AI Assistant", to: "/ai-assistant" },
     ],
   },
   {
@@ -117,27 +104,17 @@ const PUBLIC_SECTIONS = [
     links: [
       { label: "Post a Job", to: "/employer/jobs/new" },
       { label: "Employer Dashboard", to: "/employer" },
-      { label: "Pricing", to: "/pricing" },
-      { label: "Enterprise", to: "/enterprise" },
+      { label: "Pricing Plans", to: "/pricing" },
+      { label: "Enterprise Solutions", to: "/enterprise" },
     ],
   },
   {
-    title: "Resources",
-    links: [
-      { label: "Blog", to: "/blog" },
-      { label: "Success Stories", to: "/success-stories" },
-      { label: "Hiring Tips", to: "/hiring-tips" },
-      { label: "Learning Center", to: "/learn" },
-      { label: "Community Feed", to: "/feed" },
-      { label: "Assessments", to: "/assessments" },
-    ],
-  },
-  {
-    title: "Company",
+    title: "Company & Support",
     links: [
       { label: "About Us", to: "/about" },
-      { label: "Contact", to: "/contact" },
-      { label: "Help Center", to: "/support" },
+      { label: "Help & Support", to: "/support" },
+      { label: "Contact Us", to: "/contact" },
+      { label: "Privacy Policy", to: "/privacy-policy" },
     ],
   },
 ];

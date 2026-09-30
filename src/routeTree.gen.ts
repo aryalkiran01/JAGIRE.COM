@@ -21,6 +21,8 @@ import { Route as PaymentSuccessRouteImport } from './routes/payment-success'
 import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as PrivacyPolicyRouteImport } from './routes/privacy-policy'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as SignInRouteImport } from './routes/sign-in'
+import { Route as SignUpRouteImport } from './routes/sign-up'
 import { Route as SuccessStoriesRouteImport } from './routes/success-stories'
 import { Route as SupportRouteImport } from './routes/support'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
@@ -119,6 +121,16 @@ const PrivacyPolicyRoute = PrivacyPolicyRouteImport.update({
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SignInRoute = SignInRouteImport.update({
+  id: '/sign-in',
+  path: '/sign-in',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SignUpRoute = SignUpRouteImport.update({
+  id: '/sign-up',
+  path: '/sign-up',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SuccessStoriesRoute = SuccessStoriesRouteImport.update({
@@ -352,6 +364,8 @@ export interface FileRoutesByFullPath {
   '/pricing': typeof PricingRoute
   '/privacy-policy': typeof PrivacyPolicyRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/sign-in': typeof SignInRoute
+  '/sign-up': typeof SignUpRoute
   '/success-stories': typeof SuccessStoriesRoute
   '/support': typeof SupportRoute
   '/admin': typeof AuthenticatedAdminRoute
@@ -405,6 +419,8 @@ export interface FileRoutesByTo {
   '/pricing': typeof PricingRoute
   '/privacy-policy': typeof PrivacyPolicyRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/sign-in': typeof SignInRoute
+  '/sign-up': typeof SignUpRoute
   '/success-stories': typeof SuccessStoriesRoute
   '/support': typeof SupportRoute
   '/admin': typeof AuthenticatedAdminRoute
@@ -459,6 +475,8 @@ export interface FileRoutesById {
   '/pricing': typeof PricingRoute
   '/privacy-policy': typeof PrivacyPolicyRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/sign-in': typeof SignInRoute
+  '/sign-up': typeof SignUpRoute
   '/success-stories': typeof SuccessStoriesRoute
   '/support': typeof SupportRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
@@ -514,6 +532,8 @@ export interface FileRouteTypes {
     | '/pricing'
     | '/privacy-policy'
     | '/reset-password'
+    | '/sign-in'
+    | '/sign-up'
     | '/success-stories'
     | '/support'
     | '/admin'
@@ -567,6 +587,8 @@ export interface FileRouteTypes {
     | '/pricing'
     | '/privacy-policy'
     | '/reset-password'
+    | '/sign-in'
+    | '/sign-up'
     | '/success-stories'
     | '/support'
     | '/admin'
@@ -620,6 +642,8 @@ export interface FileRouteTypes {
     | '/pricing'
     | '/privacy-policy'
     | '/reset-password'
+    | '/sign-in'
+    | '/sign-up'
     | '/success-stories'
     | '/support'
     | '/_authenticated/admin'
@@ -675,6 +699,8 @@ export interface RootRouteChildren {
   PricingRoute: typeof PricingRoute
   PrivacyPolicyRoute: typeof PrivacyPolicyRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  SignInRoute: typeof SignInRoute
+  SignUpRoute: typeof SignUpRoute
   SuccessStoriesRoute: typeof SuccessStoriesRoute
   SupportRoute: typeof SupportRoute
   BlogSlugRoute: typeof BlogSlugRoute
@@ -771,6 +797,20 @@ declare module '@tanstack/react-router' {
       path: '/reset-password'
       fullPath: '/reset-password'
       preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sign-in': {
+      id: '/sign-in'
+      path: '/sign-in'
+      fullPath: '/sign-in'
+      preLoaderRoute: typeof SignInRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sign-up': {
+      id: '/sign-up'
+      path: '/sign-up'
+      fullPath: '/sign-up'
+      preLoaderRoute: typeof SignUpRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/success-stories': {
@@ -1153,6 +1193,8 @@ const rootRouteChildren: RootRouteChildren = {
   PricingRoute: PricingRoute,
   PrivacyPolicyRoute: PrivacyPolicyRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  SignInRoute: SignInRoute,
+  SignUpRoute: SignUpRoute,
   SuccessStoriesRoute: SuccessStoriesRoute,
   SupportRoute: SupportRoute,
   BlogSlugRoute: BlogSlugRoute,

@@ -171,8 +171,26 @@ function ProfilePage() {
     }
   }
 
-  const projects = (profile as any)?.projects ?? [];
-  const skills = (profile as any)?.skills ?? [];
+  const rawSkills = (profile as any)?.skills;
+  const skills: string[] = Array.isArray(rawSkills)
+    ? rawSkills
+    : typeof rawSkills === "string"
+      ? rawSkills.split(",").map((s) => s.trim()).filter(Boolean)
+      : [];
+
+  const rawProjects = (profile as any)?.projects;
+  const projects: any[] = Array.isArray(rawProjects)
+    ? rawProjects
+    : typeof rawProjects === "string"
+      ? (() => {
+          try {
+            const parsed = JSON.parse(rawProjects);
+            return Array.isArray(parsed) ? parsed : [];
+          } catch {
+            return [];
+          }
+        })()
+      : [];
 
   return (
     <div className="container mx-auto px-3 sm:px-4 py-6 sm:py-8 max-w-4xl space-y-6">

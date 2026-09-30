@@ -9,23 +9,18 @@ import {
   Building2,
   Rss,
   Video,
-  FileText,
   Target,
   BookOpen,
   Shield,
-  BrainCircuit,
-  Sparkles,
   TrendingUp,
-  ChevronDown,
   Bookmark,
   X,
   User,
+  PanelLeftClose,
+  PanelLeftOpen,
   type LucideIcon,
 } from "lucide-react";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { useState, useEffect, useRef } from "react";
-import { EMPLOYER_AI_GROUPS } from "@/lib/employer-ai-features";
-import { JOBSEEKER_AI_GROUPS } from "@/lib/jobseeker-ai-features";
+import { useEffect, useRef } from "react";
 
 type NavItem = {
   to: string;
@@ -47,25 +42,16 @@ const SEEKER_NAV: NavItem[] = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/jobs", label: "Find Jobs", icon: Briefcase },
   { to: "/applications", label: "My Applications", icon: Target },
-  { to: "/resume-builder", label: "Resume Builder", icon: FileText },
-  { to: "/resume-scanner", label: "Resume Scanner", icon: Target },
-  { to: "/career-coach", label: "AI Career Coach", icon: BrainCircuit },
-  { to: "/saved", label: "Saved Items", icon: Bookmark },
-  { to: "/messages", label: "Messages", icon: Rss },
+  { to: "/saved", label: "Saved Jobs", icon: Bookmark },
   { to: "/profile", label: "My Profile", icon: User },
-  { to: "/feed", label: "Community Feed", icon: Rss },
-  { to: "/learn", label: "Learning Center", icon: BookOpen },
 ];
 
 const EMPLOYER_NAV: NavItem[] = [
   { to: "/employer", label: "Employer Dashboard", icon: LayoutDashboard },
   { to: "/employer/jobs/new", label: "Post a Job", icon: Briefcase },
-  { to: "/employer/intelligence", label: "AI Recruitment", icon: BrainCircuit },
   { to: "/employer/interviews", label: "Interview Sessions", icon: Video },
   { to: "/employer/company", label: "Company Profile", icon: Building2 },
-  { to: "/employer/knowledge-base", label: "Knowledge Base", icon: BookOpen },
-  { to: "/messages", label: "Messages", icon: Rss },
-  { to: "/feed", label: "Community Feed", icon: Rss },
+  { to: "/profile", label: "My Profile", icon: User },
 ];
 
 const ADMIN_NAV: NavItem[] = [
@@ -73,92 +59,42 @@ const ADMIN_NAV: NavItem[] = [
   { to: "/dashboard", label: "User Dashboard", icon: LayoutDashboard },
   { to: "/jobs", label: "Manage Jobs", icon: Briefcase },
   { to: "/companies", label: "Manage Companies", icon: Building2 },
-  { to: "/feed", label: "Community Feed", icon: Rss },
+  { to: "/profile", label: "My Profile", icon: User },
 ];
 
-function NavLink({ item, onNavigate }: { item: NavItem; onNavigate?: () => void }) {
+function NavLink({
+  item,
+  isCollapsed = false,
+  onNavigate,
+}: {
+  item: NavItem;
+  isCollapsed?: boolean;
+  onNavigate?: () => void;
+}) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const active = pathname === item.to || (item.to !== "/" && pathname.startsWith(item.to + "/"));
   return (
     <Link
       to={item.to}
       onClick={onNavigate}
+      title={isCollapsed ? item.label : undefined}
       className={cn(
-        "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background",
+        "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background",
         active
           ? "gradient-brand text-primary-foreground shadow-glow"
           : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
+        isCollapsed && "justify-center px-2",
       )}
     >
       <item.icon className="h-4 w-4 shrink-0" />
-      <span className="truncate">{item.label}</span>
+      {!isCollapsed && <span className="truncate">{item.label}</span>}
     </Link>
-  );
-}
-
-function AiGroupCollapsible<
-  T extends {
-    id: string;
-    label: string;
-    icon: LucideIcon;
-    items: { slug: string; title: string; description: string; to: string; icon: LucideIcon }[];
-  },
->({ group, defaultOpen, onNavigate }: { group: T; defaultOpen: boolean; onNavigate?: () => void }) {
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const [open, setOpen] = useState(defaultOpen);
-  const hasActive = group.items.some((i) => pathname === i.to || pathname.startsWith(i.to + "/"));
-
-  return (
-    <Collapsible open={open || hasActive} onOpenChange={setOpen}>
-      <CollapsibleTrigger
-        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
-        aria-expanded={open || hasActive}
-      >
-        <group.icon className="h-4 w-4 shrink-0 text-primary" />
-        <span className="flex-1 text-left">{group.label}</span>
-        <ChevronDown
-          className={cn("h-3.5 w-3.5 transition-transform", (open || hasActive) && "rotate-180")}
-        />
-      </CollapsibleTrigger>
-      <CollapsibleContent className="pt-1 pl-2 space-y-0.5 data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up overflow-hidden">
-        {group.items.map((item) => {
-          const active = pathname === item.to;
-          return (
-            <Link
-              key={item.slug}
-              to={item.to}
-              onClick={onNavigate}
-              title={item.description}
-              className={cn(
-                "group flex items-start gap-2.5 rounded-lg px-3 py-2 text-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background",
-                active
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
-              )}
-            >
-              <item.icon
-                className={cn(
-                  "h-4 w-4 shrink-0 mt-0.5 transition-transform group-hover:scale-110",
-                  active ? "text-primary" : "text-muted-foreground group-hover:text-primary",
-                )}
-              />
-              <div className="min-w-0 flex-1">
-                <div className="font-medium leading-tight truncate">{item.title}</div>
-                <div className="text-[11px] text-muted-foreground/80 leading-tight truncate">
-                  {item.description}
-                </div>
-              </div>
-            </Link>
-          );
-        })}
-      </CollapsibleContent>
-    </Collapsible>
   );
 }
 
 export function AppSidebar() {
   const { user, role } = useAuth();
-  const { isOpen, close } = useSidebar();
+  const { isOpen, closeMobile, isCollapsed, toggleCollapsed } = useSidebar();
   const isEmployer = role === "employer";
   const nav = !user
     ? GUEST_NAV
@@ -171,182 +107,151 @@ export function AppSidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const prevPathnameRef = useRef(pathname);
 
-  // Auto-close sidebar on route changes (especially for mobile drawer)
+  // Determine if this is an authenticated/dashboard section where desktop sidebar is displayed
+  const isDashboardRoute =
+    !!user ||
+    pathname.startsWith("/dashboard") ||
+    pathname.startsWith("/employer") ||
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/applications") ||
+    pathname.startsWith("/profile") ||
+    pathname.startsWith("/saved") ||
+    pathname.startsWith("/messages") ||
+    pathname.startsWith("/notifications") ||
+    pathname.startsWith("/resume-") ||
+    pathname.startsWith("/career-coach");
+
+  // Auto-close mobile drawer on route changes
   useEffect(() => {
     if (prevPathnameRef.current !== pathname) {
       prevPathnameRef.current = pathname;
-      if (typeof window !== "undefined" && window.innerWidth < 1024) {
-        close();
-      }
+      closeMobile();
     }
-  }, [pathname, close]);
+  }, [pathname, closeMobile]);
 
-  // Handle ESC key to close sidebar
+  // Handle ESC key to close mobile drawer
   useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        close();
+        closeMobile();
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, close]);
-
-  if (!isOpen) return null;
+  }, [isOpen, closeMobile]);
 
   return (
     <>
-      {/* ── Mobile/Tablet Drawer (< lg) ────────────────────────── */}
-      <div
-        className="fixed inset-0 z-50 lg:hidden"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Navigation Menu"
-      >
-        {/* Soft overlay backdrop */}
+      {/* Mobile Drawer (< lg screens) */}
+      {isOpen && (
         <div
-          className="fixed inset-0 bg-black/40 transition-opacity animate-fade-in"
-          onClick={close}
-          aria-hidden="true"
-        />
+          className="fixed inset-0 z-50 lg:hidden"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Navigation Menu"
+        >
+          {/* Soft backdrop */}
+          <div
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity animate-fade-in"
+            onClick={closeMobile}
+            aria-hidden="true"
+          />
 
-        {/* Slide-out Drawer Panel */}
-        <aside className="fixed inset-y-0 left-0 z-50 w-[260px] max-w-[85vw] bg-card border-r border-border shadow-2xl flex flex-col pt-3 overflow-y-auto animate-slide-in-left">
-          <div className="flex items-center justify-between px-4 pb-3 border-b border-border/50">
-            <Link to="/" onClick={close} className="flex items-center gap-2">
-              <span className="text-xl font-bold gradient-text tracking-tight">JAGIRE</span>
-            </Link>
+          {/* Slide-out Drawer Panel */}
+          <aside className="fixed inset-y-0 left-0 z-50 w-[260px] max-w-[85vw] bg-card border-r border-border shadow-2xl flex flex-col pt-3 overflow-y-auto animate-slide-in-left">
+            <div className="flex items-center justify-between px-4 pb-3 border-b border-border/50">
+              <Link to="/" onClick={closeMobile} className="flex items-center gap-2">
+                <span className="text-xl font-bold gradient-text tracking-tight">JAGIRE</span>
+              </Link>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={closeMobile}
+                aria-label="Close menu"
+                className="h-8 w-8 text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+
+            <nav className="flex-1 px-3 py-4 space-y-1 pb-10">
+              {nav.map((item) => (
+                <NavLink key={item.to} item={item} onNavigate={closeMobile} />
+              ))}
+
+              {!user && (
+                <div className="pt-4 px-2 space-y-2 border-t mt-4">
+                  <Button variant="outline" className="w-full" asChild onClick={closeMobile}>
+                    <Link to="/sign-in">Sign In</Link>
+                  </Button>
+                  <Button
+                    className="w-full gradient-brand text-primary-foreground"
+                    asChild
+                    onClick={closeMobile}
+                  >
+                    <Link to="/sign-up">Get Started</Link>
+                  </Button>
+                </div>
+              )}
+            </nav>
+          </aside>
+        </div>
+      )}
+
+      {/* Desktop Inline Sidebar (lg: screens) - Active on Dashboard/Auth routes */}
+      {isDashboardRoute && (
+        <aside
+          className={cn(
+            "hidden lg:flex lg:shrink-0 lg:flex-col lg:bg-card/40 lg:border-r lg:border-border/40 lg:h-[calc(100vh-4rem)] lg:sticky lg:top-16 overflow-y-auto z-30 transition-[width] duration-200 ease-in-out",
+            isCollapsed ? "lg:w-[72px]" : "lg:w-[250px]",
+          )}
+          aria-label="Sidebar Navigation"
+        >
+          <div
+            className={cn(
+              "flex items-center justify-between px-3 py-3 border-b border-border/40",
+              isCollapsed && "justify-center px-1",
+            )}
+          >
+            {!isCollapsed && (
+              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                Navigation
+              </span>
+            )}
             <Button
               variant="ghost"
               size="icon"
-              onClick={close}
-              aria-label="Close menu"
-              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+              onClick={toggleCollapsed}
+              aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+              title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+              className="h-7 w-7 text-muted-foreground hover:text-foreground"
             >
-              <X className="h-4 w-4" />
+              {isCollapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
             </Button>
           </div>
 
-          <nav className="flex-1 px-3 py-4 space-y-1 pb-10">
+          <nav className="flex-1 px-3 py-3 space-y-1 pb-10">
             {nav.map((item) => (
-              <NavLink key={item.to} item={item} onNavigate={close} />
+              <NavLink key={item.to} item={item} isCollapsed={isCollapsed} />
             ))}
 
-            {user ? (
-              isEmployer ? (
-                <>
-                  <div className="px-3 pt-4 pb-1 text-[11px] font-bold uppercase tracking-wider text-primary/70 flex items-center gap-1.5">
-                    <Sparkles className="h-3.5 w-3.5" />
-                    AI Features
-                  </div>
-                  {EMPLOYER_AI_GROUPS.map((group, idx) => (
-                    <AiGroupCollapsible
-                      key={group.id}
-                      group={group}
-                      defaultOpen={idx === 0}
-                      onNavigate={close}
-                    />
-                  ))}
-                </>
-              ) : (
-                <>
-                  <div className="px-3 pt-4 pb-1 text-[11px] font-bold uppercase tracking-wider text-primary/70 flex items-center gap-1.5">
-                    <Sparkles className="h-3.5 w-3.5" />
-                    AI Tools
-                  </div>
-                  {JOBSEEKER_AI_GROUPS.map((group, idx) => (
-                    <AiGroupCollapsible
-                      key={group.id}
-                      group={group}
-                      defaultOpen={idx === 0}
-                      onNavigate={close}
-                    />
-                  ))}
-                </>
-              )
-            ) : (
+            {!user && (
               <div className="pt-4 px-2 space-y-2 border-t mt-4">
-                <Button variant="outline" className="w-full" asChild onClick={close}>
-                  <Link to="/auth">Sign In</Link>
+                <Button variant="outline" className={cn("w-full", isCollapsed && "px-0")} asChild>
+                  <Link to="/sign-in">{isCollapsed ? "In" : "Sign In"}</Link>
                 </Button>
                 <Button
-                  className="w-full gradient-brand text-primary-foreground"
+                  className={cn("w-full gradient-brand text-primary-foreground", isCollapsed && "px-0")}
                   asChild
-                  onClick={close}
                 >
-                  <Link to="/auth" search={{ mode: "signup" }}>
-                    Get Started
-                  </Link>
+                  <Link to="/sign-up">{isCollapsed ? "Up" : "Get Started"}</Link>
                 </Button>
               </div>
             )}
           </nav>
         </aside>
-      </div>
-
-      {/* ── Desktop Inline Sidebar (lg: screens) ──────────────────── */}
-      {/* Participates directly in flex layout (w-[260px] shrink-0), never overlaps main content */}
-      <aside
-        className="hidden lg:flex lg:w-[260px] lg:shrink-0 lg:flex-col lg:bg-card/40 lg:border-r lg:border-border/40 lg:h-[calc(100vh-4rem)] lg:sticky lg:top-16 overflow-y-auto z-30"
-        aria-label="Sidebar Navigation"
-      >
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border/40">
-          <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-            Navigation
-          </span>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={close}
-            aria-label="Collapse sidebar"
-            className="h-7 w-7 text-muted-foreground hover:text-foreground"
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
-
-        <nav className="flex-1 px-3 py-3 space-y-1 pb-10">
-          {nav.map((item) => (
-            <NavLink key={item.to} item={item} />
-          ))}
-
-          {user ? (
-            isEmployer ? (
-              <>
-                <div className="px-3 pt-4 pb-1 text-[11px] font-bold uppercase tracking-wider text-primary/70 flex items-center gap-1.5">
-                  <Sparkles className="h-3.5 w-3.5" />
-                  AI Features
-                </div>
-                {EMPLOYER_AI_GROUPS.map((group, idx) => (
-                  <AiGroupCollapsible key={group.id} group={group} defaultOpen={idx === 0} />
-                ))}
-              </>
-            ) : (
-              <>
-                <div className="px-3 pt-4 pb-1 text-[11px] font-bold uppercase tracking-wider text-primary/70 flex items-center gap-1.5">
-                  <Sparkles className="h-3.5 w-3.5" />
-                  AI Tools
-                </div>
-                {JOBSEEKER_AI_GROUPS.map((group, idx) => (
-                  <AiGroupCollapsible key={group.id} group={group} defaultOpen={idx === 0} />
-                ))}
-              </>
-            )
-          ) : (
-            <div className="pt-4 px-2 space-y-2 border-t mt-4">
-              <Button variant="outline" className="w-full" asChild>
-                <Link to="/auth">Sign In</Link>
-              </Button>
-              <Button className="w-full gradient-brand text-primary-foreground" asChild>
-                <Link to="/auth" search={{ mode: "signup" }}>
-                  Get Started
-                </Link>
-              </Button>
-            </div>
-          )}
-        </nav>
-      </aside>
+      )}
     </>
   );
 }

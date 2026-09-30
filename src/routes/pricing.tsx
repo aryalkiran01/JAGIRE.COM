@@ -280,94 +280,87 @@ function FreeTrialSection({ role }: { role: "seeker" | "employer" }) {
   const { data: sub } = useSubscription();
   const startTrial = useStartAITrial();
 
+  if (sub?.isPremium && !sub?.isTrialActive) {
+    return null;
+  }
+
   const isEmployer = role === "employer";
+  const upgradePlan = isEmployer ? "starter" : "premium";
+  const upgradeLabel = isEmployer ? "Upgrade to Starter" : "Upgrade to Premium";
 
+  // Active Trial State
+  if (sub?.isTrialActive) {
+    const trialDays = sub.trialDaysRemaining ?? 3;
+    const trialHours = sub.trialHoursRemaining ?? 72;
+    const remainingText =
+      trialDays > 1 ? `${trialDays} days remaining` : `${trialHours} hours remaining`;
+
+    return (
+      <div className="mb-8 p-4 sm:p-5 rounded-2xl border border-emerald-500/30 bg-emerald-50/60 dark:bg-emerald-950/30 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4 animate-fade-in">
+        <div className="flex items-center gap-3">
+          <span className="text-xl">🎁</span>
+          <span className="font-semibold text-base sm:text-lg text-foreground">
+            AI Trial Active — {remainingText}
+          </span>
+        </div>
+        <Button asChild className="w-full sm:w-auto gradient-brand text-primary-foreground font-semibold">
+          <Link to="/checkout/$plan" params={{ plan: upgradePlan }}>
+            {upgradeLabel}
+          </Link>
+        </Button>
+      </div>
+    );
+  }
+
+  // Expired Trial State
+  if (sub?.isTrialExpired) {
+    return (
+      <div className="mb-8 p-4 sm:p-5 rounded-2xl border border-amber-500/30 bg-amber-50/60 dark:bg-amber-950/30 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4 animate-fade-in">
+        <div className="flex items-center gap-3">
+          <span className="text-xl">⚠️</span>
+          <span className="font-semibold text-base sm:text-lg text-foreground">
+            AI Trial Ended
+          </span>
+        </div>
+        <Button asChild className="w-full sm:w-auto gradient-brand text-primary-foreground font-semibold">
+          <Link to="/checkout/$plan" params={{ plan: upgradePlan }}>
+            {upgradeLabel}
+          </Link>
+        </Button>
+      </div>
+    );
+  }
+
+  // Before Trial State
   return (
-    <div className="mb-10 p-6 md:p-8 rounded-3xl border border-primary/30 bg-gradient-to-br from-primary/10 via-background to-secondary/20 shadow-glow relative overflow-hidden">
-      <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none -mr-8 -mt-8">
-        <Sparkles className="w-48 h-48 text-primary" />
+    <div className="mb-8 p-4 sm:p-5 rounded-2xl border border-primary/30 bg-primary/5 dark:bg-primary/10 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4 animate-fade-in">
+      <div className="flex items-center gap-3">
+        <span className="text-xl">🎁</span>
+        <span className="font-semibold text-base sm:text-lg text-foreground">
+          3-Day Free AI Trial — No payment required
+        </span>
       </div>
 
-      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 relative z-10">
-        <div className="max-w-2xl">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/15 text-primary text-xs font-bold uppercase tracking-wider mb-3">
-            <Gift className="h-3.5 w-3.5" />
-            3-Day Free AI Trial
-          </div>
-          <h3 className="text-2xl md:text-3xl font-bold tracking-tight mb-2">
-            Try Jagire AI Free for 72 Hours
-          </h3>
-          <p className="text-muted-foreground text-sm md:text-base leading-relaxed mb-4">
-            {isEmployer
-              ? "Experience our full suite of AI recruitment and office tools without paying a rupee. No eSewa checkout or credit card required upfront."
-              : "Generate cover letters, optimize your resume for ATS, and talk to your AI Career Coach completely free for 3 calendar days."}
-          </p>
-
-          <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs md:text-sm text-foreground/80 font-medium">
-            <span className="flex items-center gap-1.5">
-              <Check className="h-4 w-4 text-emerald-500" />
-              100% Free Access
-            </span>
-            <span className="flex items-center gap-1.5">
-              <Check className="h-4 w-4 text-emerald-500" />
-              No eSewa / Payment Required
-            </span>
-            <span className="flex items-center gap-1.5">
-              <Check className="h-4 w-4 text-emerald-500" />
-              Instant Direct Activation
-            </span>
-          </div>
-        </div>
-
-        <div className="w-full sm:w-auto flex-shrink-0">
-          {!user ? (
-            <Button asChild size="lg" className="w-full sm:w-auto gradient-brand text-primary-foreground font-bold shadow-glow text-base px-8">
-              <Link to="/auth">
-                <Sparkles className="h-4 w-4 mr-2" />
-                Start 3-Day Free Trial
-              </Link>
-            </Button>
-          ) : sub?.isPremium && !sub?.isTrialActive ? (
-            <div className="px-5 py-3 rounded-2xl bg-primary/10 border border-primary/20 text-primary font-bold text-center">
-              <Crown className="h-5 w-5 mx-auto mb-1 text-primary" />
-              <span>Active Paid Plan</span>
-            </div>
-          ) : sub?.isTrialActive ? (
-            <div className="px-5 py-3 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 font-bold text-center">
-              <Check className="h-5 w-5 mx-auto mb-1 text-emerald-600" />
-              <span>AI Trial Active</span>
-              <div className="text-xs font-normal text-muted-foreground mt-0.5">
-                {sub.trialDaysRemaining && sub.trialDaysRemaining > 1 ? `${sub.trialDaysRemaining} days remaining` : `${sub.trialHoursRemaining ?? 72}h remaining`}
-              </div>
-            </div>
-          ) : sub?.isTrialExpired ? (
-            <Button asChild size="lg" className="w-full sm:w-auto gradient-brand text-primary-foreground font-bold shadow-glow">
-              <Link to="/checkout/$plan" params={{ plan: isEmployer ? "starter" : "premium" }}>
-                Upgrade to Paid Plan
-              </Link>
-            </Button>
+      {!user ? (
+        <Button asChild className="w-full sm:w-auto gradient-brand text-primary-foreground font-semibold px-6">
+          <Link to="/sign-in">Start Free Trial</Link>
+        </Button>
+      ) : (
+        <Button
+          onClick={() => startTrial.mutate()}
+          disabled={startTrial.isPending}
+          className="w-full sm:w-auto gradient-brand text-primary-foreground font-semibold px-6 hover:scale-105 transition-all"
+        >
+          {startTrial.isPending ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              Starting...
+            </>
           ) : (
-            <Button
-              onClick={() => startTrial.mutate()}
-              disabled={startTrial.isPending}
-              size="lg"
-              className="w-full sm:w-auto gradient-brand text-primary-foreground font-bold shadow-glow text-base px-8 hover:scale-105 transition-all"
-            >
-              {startTrial.isPending ? (
-                <>
-                  <Loader2 className="h-5 w-5 animate-spin mr-2" />
-                  Activating Trial...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="h-5 w-5 mr-2" />
-                  Start 3-Day Free Trial
-                </>
-              )}
-            </Button>
+            "Start Free Trial"
           )}
-        </div>
-      </div>
+        </Button>
+      )}
     </div>
   );
 }
@@ -964,84 +957,7 @@ function CurrentSubscriptionCard({
   sub: ReturnType<typeof useSubscription>["data"];
   userRole?: string | null;
 }) {
-  if (!sub) return null;
-
-  const startTrial = useStartAITrial();
-  const isEmployer = userRole === "employer";
-
-  // Active AI Trial State
-  if (sub.isTrialActive) {
-    const trialHours = sub.trialHoursRemaining ?? 72;
-    const trialDays = sub.trialDaysRemaining ?? 3;
-    const expires = sub.trialExpiresAt ? new Date(sub.trialExpiresAt).toLocaleString() : "in 3 days";
-
-    return (
-      <Card className="border-primary/40 bg-primary/5 dark:bg-primary/10 shadow-glow mb-10 animate-fade-in">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between gap-4 flex-wrap">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-full gradient-brand flex items-center justify-center">
-                <Sparkles className="h-5 w-5 text-primary-foreground" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-lg">🎁 3-Day Free AI Trial</span>
-                  <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 font-semibold">
-                    Active
-                  </Badge>
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  Your AI trial is active.{" "}
-                  <span className="font-medium text-foreground">
-                    Expires in: {trialDays > 1 ? `${trialDays} days` : `${trialHours} hours`} ({expires})
-                  </span>
-                </div>
-              </div>
-            </div>
-            <Button asChild className="gradient-brand text-primary-foreground">
-              <Link to="/checkout/$plan" params={{ plan: isEmployer ? "starter" : "premium" }}>
-                {isEmployer ? "Upgrade to Starter" : "Upgrade to Premium"}
-              </Link>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  // Expired AI Trial State
-  if (sub.isTrialExpired && !sub.isPremium) {
-    return (
-      <Card className="border-amber-400/50 bg-amber-50/70 dark:border-amber-700/50 dark:bg-amber-950/40 mb-10 animate-fade-in">
-        <CardContent className="p-6 flex items-center justify-between gap-4 flex-wrap">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-full bg-amber-200 dark:bg-amber-900 flex items-center justify-center">
-              <Clock className="h-5 w-5 text-amber-700 dark:text-amber-300" />
-            </div>
-            <div>
-              <div className="font-semibold text-base text-amber-900 dark:text-amber-200">
-                Your 3-day AI trial has ended
-              </div>
-              <div className="text-sm text-muted-foreground">
-                Upgrade your plan to continue using Jagire's AI-powered features.
-              </div>
-            </div>
-          </div>
-          <Button asChild className="gradient-brand text-primary-foreground">
-            <Link to="/checkout/$plan" params={{ plan: isEmployer ? "starter" : "premium" }}>
-              {isEmployer ? "Upgrade to Starter" : "Upgrade to Premium"}
-            </Link>
-          </Button>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  // If user has not started trial and has no paid plan, we don't render a duplicate top card
-  // because the large primary FreeTrialSection card below provides the full explanation & single CTA.
-  if (!sub.isPremium) {
-    return null;
-  }
+  if (!sub || !sub.isPremium || sub.isTrialActive) return null;
 
   const planLabel = PLAN_NAMES[sub.plan_type ?? ""] ?? "Premium";
   const started = sub.started_at ? new Date(sub.started_at).toLocaleDateString() : "—";

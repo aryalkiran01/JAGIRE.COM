@@ -3,7 +3,7 @@ import { describe, it, expect } from "vitest";
 describe("Sidebar Navigation & State Management", () => {
   it("manages sidebar open, close, and toggle states properly", () => {
     let isOpen = false;
-    const setIsOpen = (updater: (prev: boolean) => boolean | boolean) => {
+    const setIsOpen = (updater: boolean | ((prev: boolean) => boolean)) => {
       isOpen = typeof updater === "function" ? updater(isOpen) : updater;
     };
     const toggle = () => setIsOpen((prev) => !prev);
@@ -80,13 +80,14 @@ describe("Sidebar Navigation & State Management", () => {
 
     const navMap = {
       guest: ["Browse Jobs", "Companies", "Community Feed", "Learning Center", "About Us", "Pricing"],
-      jobseeker: ["Dashboard", "Find Jobs", "My Applications", "Resume Builder", "Resume Scanner", "AI Career Coach"],
-      employer: ["Employer Dashboard", "Post a Job", "AI Recruitment", "Interview Sessions", "Company Profile"],
-      admin: ["Admin Console", "User Dashboard", "Manage Jobs", "Manage Companies"],
+      jobseeker: ["Dashboard", "Find Jobs", "My Applications", "Saved Jobs", "My Profile"],
+      employer: ["Employer Dashboard", "Post a Job", "Interview Sessions", "Company Profile", "My Profile"],
+      admin: ["Admin Console", "User Dashboard", "Manage Jobs", "Manage Companies", "My Profile"],
     };
 
     roles.forEach((role) => {
       expect(navMap[role].length).toBeGreaterThan(0);
     });
+    expect(navMap.jobseeker).toEqual(["Dashboard", "Find Jobs", "My Applications", "Saved Jobs", "My Profile"]);
   });
 });
